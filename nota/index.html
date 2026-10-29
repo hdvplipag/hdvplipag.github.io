@@ -4,9 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#1769aa">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <title>Minhas Notinhas</title>
 
-  <!-- Biblioteca gratuita com versão fixa -->
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 
   <style>
@@ -20,7 +21,9 @@
       --sucesso: #17633a;
     }
 
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+    }
 
     body {
       margin: 0;
@@ -43,7 +46,10 @@
       line-height: 1.1;
     }
 
-    .subtitulo { margin: 0 0 22px; color: #526171; }
+    .subtitulo {
+      margin: 0 0 22px;
+      color: #526171;
+    }
 
     .cartao {
       background: #fff;
@@ -54,18 +60,22 @@
       box-shadow: 0 3px 12px rgba(25, 45, 70, .05);
     }
 
-    label, .rotulo {
+    label,
+    .rotulo {
       display: block;
       font-weight: 700;
       margin-bottom: 8px;
     }
 
-    input, select, button {
+    input,
+    select,
+    button {
       font: inherit;
       border-radius: 12px;
     }
 
-    input, select {
+    input,
+    select {
       width: 100%;
       min-height: 52px;
       padding: 12px 14px;
@@ -74,7 +84,9 @@
       color: var(--texto);
     }
 
-    input:focus, select:focus, button:focus-visible {
+    input:focus,
+    select:focus,
+    button:focus-visible {
       outline: 3px solid #9cccf4;
       outline-offset: 2px;
     }
@@ -88,7 +100,10 @@
       touch-action: manipulation;
     }
 
-    button:disabled { opacity: .6; cursor: wait; }
+    button:disabled {
+      opacity: .6;
+      cursor: wait;
+    }
 
     .botao-principal {
       width: 100%;
@@ -98,7 +113,9 @@
       min-height: 64px;
     }
 
-    .botao-principal:active { background: var(--azul-escuro); }
+    .botao-principal:active {
+      background: var(--azul-escuro);
+    }
 
     .botao-secundario {
       background: #e7f1fb;
@@ -122,10 +139,18 @@
       font-size: .9rem;
     }
 
-    .linha-senha button { flex-shrink: 0; }
+    .linha-senha button {
+      flex-shrink: 0;
+    }
 
-    #areaCamera { display: none; margin-top: 16px; }
-    #areaCamera.aberta { display: block; }
+    #areaCamera {
+      display: none;
+      margin-top: 16px;
+    }
+
+    #areaCamera.aberta {
+      display: block;
+    }
 
     #cameraPalco {
       position: relative;
@@ -149,15 +174,15 @@
     #leitor video {
       display: block;
       width: 100% !important;
-      height: auto !important;
       max-height: 65vh;
       object-fit: cover !important;
       border-radius: 12px;
     }
 
-    #leitor img { max-width: 100%; }
+    #leitor img {
+      max-width: 100%;
+    }
 
-    /* Moldura visual central, no estilo de um leitor de QR de celular. */
     #molduraLeitura {
       position: absolute;
       width: 76%;
@@ -165,9 +190,9 @@
       left: 50%;
       top: 50%;
       transform: translate(-50%, -50%);
-      border: 3px solid rgba(255,255,255,.95);
+      border: 3px solid rgba(255, 255, 255, .95);
       border-radius: 22px;
-      box-shadow: 0 0 0 999px rgba(0,0,0,.28);
+      box-shadow: 0 0 0 999px rgba(0, 0, 0, .28);
       pointer-events: none;
       z-index: 5;
     }
@@ -185,13 +210,11 @@
     #molduraLeitura::before {
       border-top-color: #fff;
       border-left-color: #fff;
-      border-top-left-radius: 22px;
     }
 
     #molduraLeitura::after {
       border-right-color: #fff;
       border-bottom-color: #fff;
-      border-bottom-right-radius: 22px;
     }
 
     .acoes-camera {
@@ -200,7 +223,9 @@
       margin-top: 12px;
     }
 
-    .acoes-camera button { flex: 1; }
+    .acoes-camera button {
+      flex: 1;
+    }
 
     .dica {
       font-size: .93rem;
@@ -214,8 +239,14 @@
       align-items: stretch;
     }
 
-    .linha input { min-width: 0; flex: 1; }
-    .linha button { flex-shrink: 0; }
+    .linha input {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .linha button {
+      flex-shrink: 0;
+    }
 
     .mensagem {
       display: none;
@@ -225,13 +256,35 @@
       overflow-wrap: anywhere;
     }
 
-    .mensagem.visivel { display: block; }
-    .mensagem.erro { background: #fff0f0; color: var(--erro); border: 1px solid #efb7b7; }
-    .mensagem.info { background: #eaf4ff; color: #154d7b; border: 1px solid #b8d9f7; }
-    .mensagem.sucesso { background: #eaf8ef; color: var(--sucesso); border: 1px solid #b7e0c5; }
+    .mensagem.visivel {
+      display: block;
+    }
 
-    #resultado { display: none; }
-    #resultado.visivel { display: block; }
+    .mensagem.erro {
+      background: #fff0f0;
+      color: var(--erro);
+      border: 1px solid #efb7b7;
+    }
+
+    .mensagem.info {
+      background: #eaf4ff;
+      color: #154d7b;
+      border: 1px solid #b8d9f7;
+    }
+
+    .mensagem.sucesso {
+      background: #eaf8ef;
+      color: var(--sucesso);
+      border: 1px solid #b7e0c5;
+    }
+
+    #resultado {
+      display: none;
+    }
+
+    #resultado.visivel {
+      display: block;
+    }
 
     .resumo {
       display: grid;
@@ -247,32 +300,87 @@
       min-width: 0;
     }
 
-    .resumo .rotulo { margin: 0 0 4px; font-size: .85rem; color: #526171; }
-    .valor-resumo { font-size: 1.08rem; font-weight: 750; overflow-wrap: anywhere; }
+    .resumo .rotulo {
+      margin: 0 0 4px;
+      font-size: .85rem;
+      color: #526171;
+    }
 
-    h2 { font-size: 1.25rem; margin: 0 0 12px; }
-    h3 { font-size: 1.05rem; margin: 18px 0 8px; }
+    .valor-resumo {
+      font-size: 1.08rem;
+      font-weight: 750;
+      overflow-wrap: anywhere;
+    }
+
+    h2 {
+      font-size: 1.25rem;
+      margin: 0 0 12px;
+    }
+
+    h3 {
+      font-size: 1.05rem;
+      margin: 18px 0 8px;
+    }
 
     .item {
       padding: 12px 0;
       border-bottom: 1px solid #e5ebf1;
     }
-    .item:last-child { border-bottom: 0; }
-    .item-nome { font-weight: 700; overflow-wrap: anywhere; }
-    .item-detalhes { color: #526171; font-size: .92rem; margin-top: 4px; }
-    .item-total { font-weight: 750; margin-top: 4px; }
 
-    .categoria-ajuda { color: #526171; font-size: .9rem; margin: 8px 0 0; }
-    .rodape { text-align: center; color: #667586; font-size: .82rem; padding-top: 10px; }
+    .item:last-child {
+      border-bottom: 0;
+    }
+
+    .item-nome {
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+
+    .item-detalhes {
+      color: #526171;
+      font-size: .92rem;
+      margin-top: 4px;
+    }
+
+    .item-total {
+      font-weight: 750;
+      margin-top: 4px;
+    }
+
+    .categoria-ajuda {
+      color: #526171;
+      font-size: .9rem;
+      margin: 8px 0 0;
+    }
+
+    .rodape {
+      text-align: center;
+      color: #667586;
+      font-size: .82rem;
+      padding-top: 10px;
+    }
 
     @media (max-width: 380px) {
-      main { padding-left: 11px; padding-right: 11px; }
-      .cartao { padding: 14px; }
-      .linha { flex-direction: column; }
-      .linha button { width: 100%; }
+      main {
+        padding-left: 11px;
+        padding-right: 11px;
+      }
+
+      .cartao {
+        padding: 14px;
+      }
+
+      .linha {
+        flex-direction: column;
+      }
+
+      .linha button {
+        width: 100%;
+      }
     }
   </style>
 </head>
+
 <body>
 <main>
   <h1>Minhas Notinhas</h1>
@@ -280,33 +388,56 @@
 
   <section class="cartao" aria-labelledby="tituloLeitura">
     <h2 id="tituloLeitura">Registrar compra</h2>
-    <button id="btnLer" class="botao-principal" type="button">📷 Ler notinha</button>
+
+    <button id="btnLer" class="botao-principal" type="button">
+      📷 Ler notinha
+    </button>
 
     <div id="areaCamera">
       <div id="cameraPalco">
         <div id="leitor"></div>
         <div id="molduraLeitura" aria-hidden="true"></div>
       </div>
-      <p id="estadoCamera" class="dica" aria-live="polite">Aponte o QR Code para dentro do quadrado.</p>
+
+      <p id="estadoCamera" class="dica" aria-live="polite">
+        Aponte o QR Code para dentro do quadrado.
+      </p>
+
       <div class="acoes-camera">
-        <button id="btnLanterna" class="botao-secundario" type="button">🔦 Lanterna</button>
-        <button id="btnFecharCamera" class="botao-secundario" type="button">Fechar câmera</button>
+        <button id="btnLanterna" class="botao-secundario" type="button">
+          🔦 Lanterna
+        </button>
+
+        <button id="btnFecharCamera" class="botao-secundario" type="button">
+          Fechar câmera
+        </button>
       </div>
     </div>
 
-    <!-- Entrada manual do link ocultada conforme solicitado. -->
     <div id="entradaManualLink" style="display:none">
       <label for="linkNota">Ou cole o link da nota</label>
+
       <div class="linha">
-        <input id="linkNota" type="url" inputmode="url" autocomplete="url"
-               placeholder="Cole aqui o link do QR Code">
-        <button id="btnLancar" class="botao-secundario" type="button">Lançar</button>
+        <input
+          id="linkNota"
+          type="url"
+          inputmode="url"
+          autocomplete="url"
+          placeholder="Cole aqui o link do QR Code"
+        >
+
+        <button id="btnLancar" class="botao-secundario" type="button">
+          Lançar
+        </button>
       </div>
     </div>
 
     <div class="linha-senha">
-      <span id="estadoSenha">Senha salva neste celular.</span>
-      <button id="btnTrocarSenha" class="botao-secundario botao-pequeno" type="button">Trocar senha</button>
+      <span id="estadoSenha">A senha será solicitada no primeiro uso.</span>
+
+      <button id="btnTrocarSenha" class="botao-secundario botao-pequeno" type="button">
+        Trocar senha
+      </button>
     </div>
   </section>
 
@@ -314,14 +445,31 @@
 
   <section id="resultado" class="cartao" aria-labelledby="tituloResultado">
     <h2 id="tituloResultado">Compra</h2>
+
     <div class="resumo">
-      <div><span class="rotulo">Loja</span><div id="resLoja" class="valor-resumo">—</div></div>
-      <div><span class="rotulo">Data</span><div id="resData" class="valor-resumo">—</div></div>
-      <div><span class="rotulo">Total</span><div id="resTotal" class="valor-resumo">—</div></div>
-      <div><span class="rotulo">Pagamento</span><div id="resPagamento" class="valor-resumo">—</div></div>
+      <div>
+        <span class="rotulo">Loja</span>
+        <div id="resLoja" class="valor-resumo">—</div>
+      </div>
+
+      <div>
+        <span class="rotulo">Data</span>
+        <div id="resData" class="valor-resumo">—</div>
+      </div>
+
+      <div>
+        <span class="rotulo">Total</span>
+        <div id="resTotal" class="valor-resumo">—</div>
+      </div>
+
+      <div>
+        <span class="rotulo">Pagamento</span>
+        <div id="resPagamento" class="valor-resumo">—</div>
+      </div>
     </div>
 
     <label for="categoria">Categoria desta loja</label>
+
     <select id="categoria">
       <option value="Mercado">Mercado</option>
       <option value="Farmácia">Farmácia</option>
@@ -329,402 +477,875 @@
       <option value="Restaurante">Restaurante</option>
       <option value="Outros">Outros</option>
     </select>
-    <p class="categoria-ajuda">Ao mudar a categoria, ela será salva para esta loja.</p>
+
+    <p class="categoria-ajuda">
+      Ao mudar a categoria, ela será salva para esta loja.
+    </p>
 
     <h3>Itens da nota</h3>
     <div id="listaItens"></div>
   </section>
 
-  <p class="rodape">Se a câmera não abrir, permita o acesso à câmera nas configurações do navegador e abra esta página por HTTPS.</p>
+  <p class="rodape">
+    Se a câmera não abrir, permita o acesso à câmera nas configurações
+    do navegador e abra esta página por HTTPS.
+  </p>
 </main>
 
 <script>
-  // Cole aqui o endereço completo do seu Web App do Google Apps Script.
-  const URL_DO_MOTOR = "https://script.google.com/macros/s/AKfycby7bScgVxp5wJxV0KZ26kvU0Awd8az-pMZXSg8kTM137bvnQxQxvgpXJ39zutU8gC_Xew/exec";
+"use strict";
 
-  const CHAVE_SENHA = "minhasNotinhas_senha";
-  const CATEGORIAS = ["Mercado", "Farmácia", "Combustível", "Restaurante", "Outros"];
+/*
+ * ENDEREÇO DO GOOGLE APPS SCRIPT
+ * Mantido conforme o arquivo enviado.
+ */
+const URL_DO_MOTOR =
+  "https://script.google.com/macros/s/AKfycby7bScgVxp5wJxV0KZ26kvU0Awd8az-pMZXSg8kTM137bvnQxQxvgpXJ39zutU8gC_Xew/exec";
 
-  let senhaAtual = localStorage.getItem(CHAVE_SENHA) || "";
-  let leitorQr = null;
-  let cameraAtiva = false;
-  let processandoLeitura = false;
-  let lojaAtual = "";
-  let lanternaLigada = false;
+const CHAVE_SENHA = "minhasNotinhas_senha";
 
-  const el = (id) => document.getElementById(id);
+const CATEGORIAS = [
+  "Mercado",
+  "Farmácia",
+  "Combustível",
+  "Restaurante",
+  "Outros"
+];
 
-  function mostrarMensagem(texto, tipo = "info") {
-    const caixa = el("mensagem");
-    caixa.textContent = texto;
-    caixa.className = "mensagem visivel " + tipo;
-  }
+let senhaAtual = localStorage.getItem(CHAVE_SENHA) || "";
 
-  function limparMensagem() {
-    el("mensagem").textContent = "";
-    el("mensagem").className = "mensagem";
-  }
+let leitorQr = null;
+let cameraAtiva = false;
+let cameraIniciando = false;
+let solicitouPararDuranteInicio = false;
+let processandoLeitura = false;
+let requisicaoEmAndamento = false;
+let lojaAtual = "";
+let lanternaLigada = false;
+let operacaoCamera = Promise.resolve();
+let inicioCameraPromise = null;
 
-  function obterSenha() {
-    if (senhaAtual) return senhaAtual;
-    const informada = prompt("Digite a senha do aplicativo:");
-    if (informada === null || !informada.trim()) {
-      mostrarMensagem("Informe a senha para usar o aplicativo.", "erro");
-      return "";
-    }
-    senhaAtual = informada.trim();
-    localStorage.setItem(CHAVE_SENHA, senhaAtual);
-    el("estadoSenha").textContent = "Senha salva neste celular.";
+const el = (id) => document.getElementById(id);
+
+
+/* MENSAGENS */
+
+function mostrarMensagem(texto, tipo = "info") {
+  const caixa = el("mensagem");
+
+  caixa.textContent = String(texto || "");
+  caixa.className = "mensagem visivel " + tipo;
+}
+
+function limparMensagem() {
+  el("mensagem").textContent = "";
+  el("mensagem").className = "mensagem";
+}
+
+
+/* SENHA */
+
+function obterSenha() {
+  if (senhaAtual) {
     return senhaAtual;
   }
 
-  function trocarSenha() {
-    const nova = prompt("Digite a nova senha do aplicativo:");
-    if (nova === null) return;
-    if (!nova.trim()) {
-      mostrarMensagem("A senha não pode ficar vazia.", "erro");
+  const informada = prompt("Digite a senha do aplicativo:");
+
+  if (informada === null || !informada.trim()) {
+    mostrarMensagem(
+      "Informe a senha para usar o aplicativo.",
+      "erro"
+    );
+
+    return "";
+  }
+
+  senhaAtual = informada.trim();
+
+  localStorage.setItem(CHAVE_SENHA, senhaAtual);
+
+  el("estadoSenha").textContent = "Senha salva neste celular.";
+
+  return senhaAtual;
+}
+
+function trocarSenha() {
+  const nova = prompt("Digite a nova senha do aplicativo:");
+
+  if (nova === null) {
+    return;
+  }
+
+  if (!nova.trim()) {
+    mostrarMensagem("A senha não pode ficar vazia.", "erro");
+    return;
+  }
+
+  senhaAtual = nova.trim();
+
+  localStorage.setItem(CHAVE_SENHA, senhaAtual);
+
+  el("estadoSenha").textContent = "Senha atualizada neste celular.";
+
+  mostrarMensagem(
+    "Senha atualizada neste celular.",
+    "sucesso"
+  );
+}
+
+
+/* COMUNICAÇÃO COM O APPS SCRIPT */
+
+function validarMotor() {
+  if (!URL_DO_MOTOR.trim()) {
+    throw new Error(
+      "O endereço do Google Apps Script não foi configurado."
+    );
+  }
+
+  if (!/^https:\/\/script\.google\.com\//i.test(URL_DO_MOTOR.trim())) {
+    throw new Error(
+      "O endereço configurado não parece ser um Web App HTTPS do Google Apps Script."
+    );
+  }
+}
+
+async function enviarMotor(dados) {
+  validarMotor();
+
+  const senha = obterSenha();
+
+  if (!senha) {
+    return null;
+  }
+
+  const corpo = {
+    senha: senha,
+    acao: dados.acao,
+    link: dados.link || "",
+    loja: dados.loja || "",
+    categoria: dados.categoria || ""
+  };
+
+  let resposta;
+
+  try {
+    resposta = await fetch(URL_DO_MOTOR.trim(), {
+      method: "POST",
+      headers: {
+        "Content-Type": "text/plain;charset=utf-8"
+      },
+      body: JSON.stringify(corpo),
+      redirect: "follow"
+    });
+  } catch (erro) {
+    throw new Error(
+      "Não foi possível conectar ao Google Apps Script. " +
+      "Confira a conexão com a internet, o endereço /exec e as permissões da implantação."
+    );
+  }
+
+  const texto = await resposta.text();
+
+  let resultado;
+
+  try {
+    resultado = JSON.parse(texto);
+  } catch (_) {
+    throw new Error(
+      "O Google Apps Script respondeu em formato inesperado. " +
+      "Confira se o endereço é o da implantação /exec."
+    );
+  }
+
+  if (!resposta.ok) {
+    throw new Error(
+      "O servidor respondeu com erro HTTP " + resposta.status + "."
+    );
+  }
+
+  const mensagemMotor = String(
+    resultado.aviso || resultado.mensagem || ""
+  );
+
+  if (
+    resultado.ok === false &&
+    /senha inválida/i.test(mensagemMotor)
+  ) {
+    senhaAtual = "";
+
+    localStorage.removeItem(CHAVE_SENHA);
+
+    el("estadoSenha").textContent =
+      "A senha precisa ser informada novamente.";
+
+    throw new Error(
+      "Senha inválida. Toque em Trocar senha e informe a senha correta."
+    );
+  }
+
+  return resultado;
+}
+
+
+/* FORMATAÇÃO E EXIBIÇÃO */
+
+function formatarDinheiro(valor) {
+  if (typeof valor === "number" && Number.isFinite(valor)) {
+    return valor.toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL"
+    });
+  }
+
+  if (valor === null || valor === undefined || valor === "") {
+    return "—";
+  }
+
+  const numero = Number(valor);
+
+  if (Number.isFinite(numero)) {
+    return numero.toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL"
+    });
+  }
+
+  return String(valor);
+}
+
+function escaparHtml(valor) {
+  return String(valor ?? "").replace(/[&<>"']/g, (caractere) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  })[caractere]);
+}
+
+function definirCategoria(valor) {
+  const select = el("categoria");
+
+  select.value = CATEGORIAS.includes(valor)
+    ? valor
+    : "Outros";
+}
+
+function renderizarCompra(dados) {
+  const itens = Array.isArray(dados.itens)
+    ? dados.itens
+    : [];
+
+  lojaAtual = String(dados.loja || "");
+
+  el("resLoja").textContent =
+    lojaAtual || "Loja não identificada";
+
+  el("resData").textContent =
+    dados.data || "—";
+
+  el("resTotal").textContent =
+    formatarDinheiro(dados.total);
+
+  el("resPagamento").textContent =
+    dados.formaPagamento ||
+    dados.forma_pagamento ||
+    dados.pagamento ||
+    "—";
+
+  definirCategoria(dados.categoria || "Outros");
+
+  const lista = el("listaItens");
+
+  if (!itens.length) {
+    lista.textContent =
+      "O motor não retornou os itens desta nota.";
+  } else {
+    lista.innerHTML = itens.map((item) => {
+      const descricao =
+        item.descricao || item.nome || "Item";
+
+      const quantidade =
+        item.quantidade ?? "—";
+
+      const unidade =
+        item.unidade || "";
+
+      const unitario =
+        item.precoUnitario ??
+        item.preco_unitario ??
+        item.valorUnitario ??
+        item.valor_unitario;
+
+      const total =
+        item.total ??
+        item.valorTotal ??
+        item.valor_total;
+
+      return `
+        <article class="item">
+          <div class="item-nome">
+            ${escaparHtml(descricao)}
+          </div>
+
+          <div class="item-detalhes">
+            ${escaparHtml(quantidade)}
+            ${escaparHtml(unidade)}
+            · Unitário: ${escaparHtml(formatarDinheiro(unitario))}
+          </div>
+
+          <div class="item-total">
+            Total: ${escaparHtml(formatarDinheiro(total))}
+          </div>
+        </article>
+      `;
+    }).join("");
+  }
+
+  el("resultado").classList.add("visivel");
+}
+
+
+/* LANÇAMENTO DA NOTA */
+
+async function lancarLink(link) {
+  const valor = String(link || "").trim();
+
+  if (!valor) {
+    mostrarMensagem(
+      "Leia o QR Code ou cole o link da nota antes de lançar.",
+      "erro"
+    );
+
+    return;
+  }
+
+  if (!/^https?:\/\//i.test(valor)) {
+    mostrarMensagem(
+      "O link não parece válido. Confira o endereço do QR Code.",
+      "erro"
+    );
+
+    return;
+  }
+
+  if (requisicaoEmAndamento) {
+    return;
+  }
+
+  requisicaoEmAndamento = true;
+
+  limparMensagem();
+
+  el("btnLancar").disabled = true;
+  el("btnLer").disabled = true;
+
+  mostrarMensagem("Buscando a nota fiscal…", "info");
+
+  try {
+    const dados = await enviarMotor({
+      acao: "lancar",
+      link: valor
+    });
+
+    if (!dados) {
       return;
     }
-    senhaAtual = nova.trim();
-    localStorage.setItem(CHAVE_SENHA, senhaAtual);
-    el("estadoSenha").textContent = "Senha atualizada neste celular.";
-    mostrarMensagem("Senha atualizada neste celular.", "sucesso");
-  }
 
-  function validarMotor() {
-    if (!URL_DO_MOTOR.trim()) {
-      throw new Error("Configure URL_DO_MOTOR no início do JavaScript com o endereço do Web App do Apps Script.");
-    }
-    if (!/^https:\/\/script\.google\.com\//i.test(URL_DO_MOTOR.trim())) {
-      throw new Error("URL_DO_MOTOR deve ser o endereço HTTPS do Web App do Google Apps Script.");
-    }
-  }
-
-  async function enviarMotor(dados) {
-    validarMotor();
-    const senha = obterSenha();
-    if (!senha) return null;
-
-    const corpo = {
-      senha,
-      acao: dados.acao,
-      link: dados.link || "",
-      loja: dados.loja || "",
-      categoria: dados.categoria || ""
-    };
-
-    let resposta;
-    try {
-      resposta = await fetch(URL_DO_MOTOR.trim(), {
-        method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify(corpo),
-        redirect: "follow"
-      });
-    } catch (erro) {
-      throw new Error("Não foi possível conectar ao motor. Confira a URL do Apps Script, a implantação como aplicativo da web e a conexão com a internet.");
-    }
-
-    const texto = await resposta.text();
-    let resultado;
-    try {
-      resultado = JSON.parse(texto);
-    } catch (_) {
-      throw new Error("O motor respondeu em um formato inesperado. Confirme se a URL é da implantação /exec do Apps Script.");
-    }
-
-    if (!resposta.ok) {
-      throw new Error("O motor respondeu com erro HTTP " + resposta.status + ".");
-    }
-    if (resultado.ok === false && /senha inválida/i.test(String(resultado.aviso || resultado.mensagem || ""))) {
-      senhaAtual = "";
-      localStorage.removeItem(CHAVE_SENHA);
-      el("estadoSenha").textContent = "A senha precisa ser informada novamente.";
-      throw new Error("Senha inválida. Toque em Trocar senha e informe a senha correta.");
-    }
-    return resultado;
-  }
-
-  function formatarDinheiro(valor) {
-    if (typeof valor === "number" && Number.isFinite(valor)) {
-      return valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-    }
-    if (valor === null || valor === undefined || valor === "") return "—";
-    const numero = Number(valor);
-    if (Number.isFinite(numero)) {
-      return numero.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-    }
-    return String(valor);
-  }
-
-  function escaparHtml(valor) {
-    return String(valor ?? "").replace(/[&<>"']/g, (c) => ({
-      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-    }[c]));
-  }
-
-  function definirCategoria(valor) {
-    const select = el("categoria");
-    const categoria = CATEGORIAS.includes(valor) ? valor : "Outros";
-    select.value = categoria;
-  }
-
-  function renderizarCompra(dados) {
-    const itens = Array.isArray(dados.itens) ? dados.itens : [];
-    lojaAtual = String(dados.loja || "");
-    el("resLoja").textContent = lojaAtual || "Loja não identificada";
-    el("resData").textContent = dados.data || "—";
-    el("resTotal").textContent = formatarDinheiro(dados.total);
-    el("resPagamento").textContent = dados.formaPagamento || dados.forma_pagamento || dados.pagamento || "—";
-    definirCategoria(dados.categoria || "Outros");
-
-    const lista = el("listaItens");
-    if (!itens.length) {
-      lista.textContent = "O motor não retornou os itens desta nota.";
+    if (dados.aviso) {
+      mostrarMensagem(
+        String(dados.aviso),
+        dados.ok === false ? "erro" : "info"
+      );
+    } else if (dados.ok === false) {
+      mostrarMensagem(
+        "O motor não conseguiu lançar a nota. Confira o link e tente novamente.",
+        "erro"
+      );
     } else {
-      lista.innerHTML = itens.map((item) => {
-        const descricao = item.descricao || item.nome || "Item";
-        const quantidade = item.quantidade ?? "—";
-        const unidade = item.unidade || "";
-        const unitario = item.precoUnitario ?? item.preco_unitario ?? item.valorUnitario ?? item.valor_unitario;
-        const total = item.total ?? item.valorTotal ?? item.valor_total;
-        return `<article class="item">
-          <div class="item-nome">${escaparHtml(descricao)}</div>
-          <div class="item-detalhes">${escaparHtml(quantidade)} ${escaparHtml(unidade)} · Unitário: ${escaparHtml(formatarDinheiro(unitario))}</div>
-          <div class="item-total">Total: ${escaparHtml(formatarDinheiro(total))}</div>
-        </article>`;
-      }).join("");
-    }
-    el("resultado").classList.add("visivel");
-  }
-
-  async function lancarLink(link) {
-    const valor = String(link || "").trim();
-    if (!valor) {
-      mostrarMensagem("Leia o QR Code ou cole o link da nota antes de lançar.", "erro");
-      return;
-    }
-    if (!/^https?:\/\//i.test(valor)) {
-      mostrarMensagem("O link não parece válido. Cole o endereço completo que aparece ao ler o QR Code.", "erro");
-      return;
+      mostrarMensagem("Nota processada.", "sucesso");
     }
 
-    limparMensagem();
-    el("btnLancar").disabled = true;
-    el("btnLer").disabled = true;
-    mostrarMensagem("Buscando a nota…", "info");
+    if (
+      dados.loja ||
+      dados.data ||
+      dados.total !== undefined ||
+      Array.isArray(dados.itens)
+    ) {
+      renderizarCompra(dados);
+    } else if (dados.ok !== false) {
+      mostrarMensagem(
+        "A resposta não trouxe os dados esperados da nota. Confira o Apps Script.",
+        "erro"
+      );
+    }
+  } catch (erro) {
+    mostrarMensagem(
+      erro.message || "Ocorreu um erro ao lançar a nota.",
+      "erro"
+    );
+  } finally {
+    requisicaoEmAndamento = false;
 
-    try {
-      const dados = await enviarMotor({ acao: "lancar", link: valor });
-      if (!dados) return;
+    el("btnLancar").disabled = false;
 
-      if (dados.aviso) {
-        const tipo = dados.ok === false ? "erro" : "info";
-        mostrarMensagem(String(dados.aviso), tipo);
-      } else if (dados.ok === false) {
-        mostrarMensagem("O motor não conseguiu lançar a nota. Confira o link e tente novamente.", "erro");
-      } else {
-        mostrarMensagem("Nota processada.", "sucesso");
-      }
-
-      if (dados.loja || dados.data || dados.total !== undefined || Array.isArray(dados.itens)) {
-        renderizarCompra(dados);
-      } else if (dados.ok !== false) {
-        mostrarMensagem("A nota foi processada, mas a resposta não trouxe os dados esperados para exibição.", "erro");
-      }
-    } catch (erro) {
-      mostrarMensagem(erro.message || "Ocorreu um erro inesperado ao lançar a nota.", "erro");
-    } finally {
-      el("btnLancar").disabled = false;
+    if (!cameraIniciando && !cameraAtiva) {
       el("btnLer").disabled = false;
     }
   }
+}
 
-  async function pararCamera() {
-    if (leitorQr && cameraAtiva) {
-      try { await leitorQr.stop(); } catch (_) {}
+
+/* CONTROLE DA CÂMERA */
+
+async function pararCamera() {
+  /*
+   * Nunca tenta parar o leitor enquanto start() ainda está
+   * executando. Registra a solicitação e deixa o início terminar.
+   */
+  if (cameraIniciando) {
+    solicitouPararDuranteInicio = true;
+
+    el("estadoCamera").textContent = "Fechando câmera…";
+
+    return;
+  }
+
+  const operacao = async () => {
+    const leitor = leitorQr;
+
+    if (leitor) {
+      if (cameraAtiva) {
+        try {
+          await leitor.stop();
+        } catch (erro) {
+          console.warn("Aviso ao parar a câmera:", erro);
+        }
+      }
+
+      try {
+        await leitor.clear();
+      } catch (erro) {
+        console.warn("Aviso ao limpar o leitor:", erro);
+      }
     }
-    if (leitorQr) {
-      try { await leitorQr.clear(); } catch (_) {}
+
+    if (leitorQr === leitor) {
+      leitorQr = null;
     }
-    leitorQr = null;
+
     cameraAtiva = false;
     processandoLeitura = false;
     lanternaLigada = false;
+
     el("btnLanterna").textContent = "🔦 Lanterna";
+
     el("areaCamera").classList.remove("aberta");
     el("estadoCamera").textContent = "";
-    el("btnLer").disabled = false;
+
+    if (!requisicaoEmAndamento) {
+      el("btnLer").disabled = false;
+    }
+  };
+
+  operacaoCamera = operacaoCamera.then(operacao, operacao);
+
+  await operacaoCamera;
+}
+
+function mensagemErroCamera(erro) {
+  const nome = String(
+    erro && (erro.name || erro.message) || erro || ""
+  );
+
+  if (!window.isSecureContext) {
+    return "A câmera exige HTTPS. Abra o aplicativo pelo endereço seguro do GitHub Pages.";
   }
 
-  function mensagemErroCamera(erro) {
-    const nome = String(erro && (erro.name || erro.message) || erro || "");
-    if (!window.isSecureContext) {
-      return "A câmera só funciona em uma página segura (HTTPS). Abra o endereço do GitHub Pages começando com https://.";
-    }
-    if (/NotAllowedError|PermissionDeniedError|permission|denied/i.test(nome)) {
-      return "O acesso à câmera foi bloqueado. Toque no cadeado ao lado do endereço do site, permita a câmera e tente novamente.";
-    }
-    if (/NotFoundError|DevicesNotFoundError/i.test(nome)) {
-      return "Não encontrei uma câmera neste dispositivo.";
-    }
-    if (/NotReadableError|TrackStartError|Could not start video source/i.test(nome)) {
-      return "A câmera pode estar sendo usada por outro aplicativo. Feche outros apps que usam a câmera e tente novamente.";
-    }
-    if (/OverconstrainedError/i.test(nome)) {
-      return "Não consegui abrir a câmera traseira solicitada. Tente novamente ou use a opção de colar o link da nota.";
-    }
-    return "Não foi possível abrir a câmera. Verifique a permissão do navegador e tente novamente. Detalhe: " + nome;
+  if (/NotAllowedError|PermissionDeniedError|permission|denied/i.test(nome)) {
+    return "O acesso à câmera foi bloqueado. Permita o uso da câmera nas configurações do navegador.";
   }
 
-  async function iniciarCamera() {
-    limparMensagem();
+  if (/NotFoundError|DevicesNotFoundError/i.test(nome)) {
+    return "Não encontrei uma câmera neste dispositivo.";
+  }
 
-    if (!window.isSecureContext) {
-      mostrarMensagem("A câmera exige HTTPS. Abra o GitHub Pages pelo endereço https://.", "erro");
-      return;
-    }
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      mostrarMensagem("Este navegador não disponibiliza acesso à câmera. Atualize o navegador ou cole o link da nota.", "erro");
-      return;
-    }
-    if (typeof Html5Qrcode === "undefined") {
-      mostrarMensagem("A biblioteca de leitura não carregou. Confira a internet e recarregue a página.", "erro");
-      return;
-    }
+  if (/NotReadableError|TrackStartError|Could not start video source/i.test(nome)) {
+    return "A câmera pode estar sendo usada por outro aplicativo. Feche outros apps que usam a câmera e tente novamente.";
+  }
 
-    if (cameraAtiva || leitorQr) await pararCamera();
+  if (/OverconstrainedError/i.test(nome)) {
+    return "Não foi possível abrir a câmera solicitada. Tente novamente.";
+  }
 
-    el("areaCamera").classList.add("aberta");
-    el("estadoCamera").textContent = "Solicitando acesso à câmera…";
-    el("btnLer").disabled = true;
+  if (/already under transition|transition/i.test(nome)) {
+    return "A câmera ainda estava mudando de estado. Feche a câmera, aguarde alguns segundos e tente novamente.";
+  }
 
-    // Criado somente após o toque do usuário; ajuda a evitar falhas de inicialização.
-    leitorQr = new Html5Qrcode("leitor", {
+  return "Não foi possível abrir a câmera. Confira a permissão do navegador. Detalhe: " + nome;
+}
+
+async function iniciarCamera() {
+  /*
+   * Impede inicializações duplicadas provocadas por toques rápidos.
+   */
+  if (cameraIniciando || cameraAtiva) {
+    return;
+  }
+
+  if (inicioCameraPromise) {
+    return inicioCameraPromise;
+  }
+
+  inicioCameraPromise = executarInicioCamera();
+
+  try {
+    await inicioCameraPromise;
+  } finally {
+    inicioCameraPromise = null;
+  }
+}
+
+async function executarInicioCamera() {
+  limparMensagem();
+
+  if (!window.isSecureContext) {
+    mostrarMensagem(
+      "A câmera exige HTTPS. Abra o GitHub Pages pelo endereço https://.",
+      "erro"
+    );
+
+    return;
+  }
+
+  if (
+    !navigator.mediaDevices ||
+    !navigator.mediaDevices.getUserMedia
+  ) {
+    mostrarMensagem(
+      "Este navegador não disponibiliza acesso à câmera. Atualize o navegador.",
+      "erro"
+    );
+
+    return;
+  }
+
+  if (typeof Html5Qrcode === "undefined") {
+    mostrarMensagem(
+      "A biblioteca de leitura não carregou. Confira a internet e recarregue a página.",
+      "erro"
+    );
+
+    return;
+  }
+
+  if (cameraAtiva || leitorQr) {
+    await pararCamera();
+  }
+
+  cameraIniciando = true;
+  solicitouPararDuranteInicio = false;
+
+  el("areaCamera").classList.add("aberta");
+
+  el("estadoCamera").textContent =
+    "Solicitando acesso à câmera…";
+
+  el("btnLer").disabled = true;
+
+  let leitorCriado = null;
+
+  try {
+    leitorCriado = new Html5Qrcode("leitor", {
       verbose: false,
-      // O cupom fiscal usa QR Code; limitar o formato evita tentativas desnecessárias.
-      formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE]
+      formatsToSupport: [
+        Html5QrcodeSupportedFormats.QR_CODE
+      ]
     });
 
-    // O qrbox é a região REAL usada para decodificar; ela acompanha a moldura visual.
-    // Mantemos uma margem para que o QR Code inteiro caiba no quadrado.
+    leitorQr = leitorCriado;
+
     const config = {
-      fps: 12,
+      fps: 10,
+
       qrbox: function(largura, altura) {
-        const lado = Math.floor(Math.min(largura, altura) * 0.76);
-        return { width: lado, height: lado };
+        const lado = Math.floor(
+          Math.min(largura, altura) * 0.76
+        );
+
+        return {
+          width: lado,
+          height: lado
+        };
       },
+
       aspectRatio: 1,
       disableFlip: false
     };
 
-    const aoLer = async (textoLido) => {
-      if (processandoLeitura) return;
+    /*
+     * A leitura pode ocorrer logo após o início do vídeo.
+     * O callback registra a leitura e espera o start() terminar
+     * antes de tentar desligar a câmera.
+     */
+    const aoLer = (textoLido) => {
+      if (processandoLeitura) {
+        return;
+      }
+
       processandoLeitura = true;
-      el("estadoCamera").textContent = "QR Code lido. Desligando a câmera…";
-      await pararCamera();
-      el("linkNota").value = textoLido;
-      await lancarLink(textoLido);
+
+      el("estadoCamera").textContent =
+        "QR Code lido. Preparando a nota…";
+
+      el("btnLer").disabled = true;
+
+      Promise.resolve().then(async () => {
+        /*
+         * Se o leitor ainda estiver iniciando, solicita a parada
+         * para depois do start(), sem executar stop() em paralelo.
+         */
+        if (cameraIniciando) {
+          solicitouPararDuranteInicio = true;
+
+          while (cameraIniciando) {
+            await new Promise(resolve =>
+              setTimeout(resolve, 50)
+            );
+          }
+        }
+
+        await pararCamera();
+
+        el("linkNota").value = textoLido;
+
+        await lancarLink(textoLido);
+      }).catch((erro) => {
+        mostrarMensagem(
+          erro.message || "Erro ao processar o QR Code.",
+          "erro"
+        );
+
+        processandoLeitura = false;
+        el("btnLer").disabled = false;
+      });
     };
 
+    /*
+     * Primeiro tenta selecionar a câmera traseira usando
+     * facingMode. Caso não funcione, procura uma câmera traseira
+     * pelo rótulo do dispositivo.
+     */
     try {
-      // Primeiro tenta a câmera traseira pelo rótulo; fallback para facingMode.
-      try {
-        // Pede câmera traseira e uma resolução nítida como preferência.
-        // "ideal" permite que aparelhos com menos recursos também abram a câmera.
-        await leitorQr.start(
-          {
-            facingMode: { ideal: "environment" },
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-          },
-          config,
-          aoLer,
-          () => {}
-        );
-      } catch (primeiroErro) {
-        // Fallback para navegadores que não aceitam constraints de câmera.
-        try {
-          const cameras = await Html5Qrcode.getCameras();
-          if (!cameras || !cameras.length) throw primeiroErro;
-          const traseira = cameras.find(c => /back|rear|environment|traseir|principal|0,5|wide/i.test(c.label));
-          const cameraId = (traseira || cameras[cameras.length - 1]).id;
-          await leitorQr.start(cameraId, config, aoLer, () => {});
-        } catch (segundoErro) {
-          throw segundoErro || primeiroErro;
+      await leitorCriado.start(
+        {
+          facingMode: "environment"
+        },
+        config,
+        aoLer,
+        () => {}
+      );
+    } catch (primeiroErro) {
+      if (solicitouPararDuranteInicio) {
+        throw primeiroErro;
+      }
+
+      const cameras = await Html5Qrcode.getCameras();
+
+      if (!cameras || cameras.length === 0) {
+        throw primeiroErro;
+      }
+
+      const traseira = cameras.find(c =>
+        /back|rear|environment|traseir|principal|wide/i.test(c.label)
+      );
+
+      const cameraId = (
+        traseira || cameras[cameras.length - 1]
+      ).id;
+
+      await leitorCriado.start(
+        cameraId,
+        config,
+        aoLer,
+        () => {}
+      );
+    }
+
+    cameraAtiva = true;
+
+    el("estadoCamera").textContent =
+      "Centralize o QR Code inteiro dentro do quadrado.";
+
+  } catch (erro) {
+    cameraAtiva = false;
+
+    mostrarMensagem(
+      mensagemErroCamera(erro),
+      "erro"
+    );
+
+    /*
+     * Não chama pararCamera() enquanto cameraIniciando for true.
+     * O finally abaixo libera o estado; depois a limpeza é feita.
+     */
+  } finally {
+    cameraIniciando = false;
+  }
+
+  /*
+   * Agora o start() terminou: é seguro executar stop() e clear().
+   */
+  if (solicitouPararDuranteInicio) {
+    solicitouPararDuranteInicio = false;
+
+    await pararCamera();
+
+    return;
+  }
+
+  if (!cameraAtiva) {
+    await pararCamera();
+    return;
+  }
+
+  el("btnLer").disabled = false;
+}
+
+
+/* LANTERNA */
+
+async function alternarLanterna() {
+  if (!leitorQr || !cameraAtiva || cameraIniciando) {
+    mostrarMensagem(
+      "Abra a câmera antes de tentar ligar a lanterna.",
+      "info"
+    );
+
+    return;
+  }
+
+  try {
+    const proximoEstado = !lanternaLigada;
+
+    await leitorQr.applyVideoConstraints({
+      advanced: [
+        {
+          torch: proximoEstado
         }
-      }
+      ]
+    });
 
-      cameraAtiva = true;
-      el("estadoCamera").textContent = "Centralize o QR Code inteiro dentro do quadrado. Se estiver escuro, tente a lanterna.";
-    } catch (erro) {
-      const mensagem = mensagemErroCamera(erro);
-      await pararCamera();
-      mostrarMensagem(mensagem, "erro");
-    }
+    lanternaLigada = proximoEstado;
+
+    el("btnLanterna").textContent = lanternaLigada
+      ? "🔦 Desligar lanterna"
+      : "🔦 Lanterna";
+
+    el("estadoCamera").textContent = lanternaLigada
+      ? "Lanterna ligada. Mantenha o QR Code inteiro dentro do quadrado."
+      : "Centralize o QR Code inteiro dentro do quadrado.";
+
+  } catch (erro) {
+    mostrarMensagem(
+      "Este celular ou navegador não permite controlar a lanterna por esta página. Você ainda pode usar a câmera normalmente.",
+      "info"
+    );
+  }
+}
+
+
+/* CATEGORIA DA LOJA */
+
+async function salvarCategoria() {
+  if (!lojaAtual) {
+    mostrarMensagem(
+      "Lance uma nota primeiro para definir a categoria da loja.",
+      "erro"
+    );
+
+    return;
   }
 
-  async function alternarLanterna() {
-    if (!leitorQr || !cameraAtiva) {
-      mostrarMensagem("Abra a câmera antes de tentar ligar a lanterna.", "info");
+  const categoria = el("categoria").value;
+
+  limparMensagem();
+
+  try {
+    const dados = await enviarMotor({
+      acao: "categoria",
+      loja: lojaAtual,
+      categoria: categoria
+    });
+
+    if (!dados) {
       return;
     }
 
-    try {
-      const proximoEstado = !lanternaLigada;
-      // A biblioteca encaminha as restrições de vídeo para a câmera ativa.
-      await leitorQr.applyVideoConstraints({
-        advanced: [{ torch: proximoEstado }]
-      });
-      lanternaLigada = proximoEstado;
-      el("btnLanterna").textContent = lanternaLigada ? "🔦 Desligar lanterna" : "🔦 Lanterna";
-      el("estadoCamera").textContent = lanternaLigada
-        ? "Lanterna ligada. Mantenha o QR Code inteiro dentro do quadrado."
-        : "Centralize o QR Code inteiro dentro do quadrado.";
-    } catch (_) {
-      mostrarMensagem("Este celular ou navegador não permite controlar a lanterna por esta página. Você ainda pode usar a câmera normalmente.", "info");
+    if (dados.ok === false) {
+      mostrarMensagem(
+        dados.aviso || "Não foi possível salvar a categoria.",
+        "erro"
+      );
+    } else {
+      mostrarMensagem(
+        dados.aviso || "Categoria da loja atualizada.",
+        "sucesso"
+      );
     }
+
+  } catch (erro) {
+    mostrarMensagem(
+      erro.message || "Erro ao atualizar a categoria.",
+      "erro"
+    );
   }
+}
 
-  async function salvarCategoria() {
-    if (!lojaAtual) {
-      mostrarMensagem("Lance uma nota primeiro para definir a categoria da loja.", "erro");
-      return;
-    }
-    const categoria = el("categoria").value;
-    limparMensagem();
-    try {
-      const dados = await enviarMotor({ acao: "categoria", loja: lojaAtual, categoria });
-      if (!dados) return;
-      if (dados.ok === false) {
-        mostrarMensagem(dados.aviso || "Não foi possível salvar a categoria.", "erro");
-      } else {
-        mostrarMensagem(dados.aviso || "Categoria da loja atualizada.", "sucesso");
-      }
-    } catch (erro) {
-      mostrarMensagem(erro.message || "Erro ao atualizar a categoria.", "erro");
-    }
+
+/* EVENTOS */
+
+el("btnLer").addEventListener("click", iniciarCamera);
+
+el("btnFecharCamera").addEventListener("click", pararCamera);
+
+el("btnLanterna").addEventListener("click", alternarLanterna);
+
+el("btnLancar").addEventListener("click", () => {
+  lancarLink(el("linkNota").value);
+});
+
+el("btnTrocarSenha").addEventListener("click", trocarSenha);
+
+el("categoria").addEventListener("change", salvarCategoria);
+
+el("linkNota").addEventListener("keydown", (evento) => {
+  if (evento.key === "Enter") {
+    evento.preventDefault();
+
+    lancarLink(el("linkNota").value);
   }
+});
 
-  el("btnLer").addEventListener("click", iniciarCamera);
-  el("btnFecharCamera").addEventListener("click", pararCamera);
-  el("btnLanterna").addEventListener("click", alternarLanterna);
-  el("btnLancar").addEventListener("click", () => lancarLink(el("linkNota").value));
-  el("btnTrocarSenha").addEventListener("click", trocarSenha);
-  el("categoria").addEventListener("change", salvarCategoria);
 
-  el("linkNota").addEventListener("keydown", (evento) => {
-    if (evento.key === "Enter") {
-      evento.preventDefault();
-      lancarLink(el("linkNota").value);
-    }
-  });
+/* ESTADO INICIAL */
 
-  // Exibe estado inicial sem pedir senha até a pessoa tentar usar o app.
-  el("estadoSenha").textContent = senhaAtual ? "Senha salva neste celular." : "A senha será solicitada no primeiro uso.";
-  window.addEventListener("pagehide", () => {
-    if (leitorQr && cameraAtiva) leitorQr.stop().catch(() => {});
-  });
+el("estadoSenha").textContent = senhaAtual
+  ? "Senha salva neste celular."
+  : "A senha será solicitada no primeiro uso.";
+
+
+/*
+ * Ao sair da página, tenta liberar a câmera.
+ * O navegador também pode interromper o vídeo automaticamente.
+ */
+window.addEventListener("pagehide", () => {
+  if (leitorQr && cameraAtiva && !cameraIniciando) {
+    leitorQr.stop().catch(() => {});
+  }
+});
 </script>
 </body>
 </html>
