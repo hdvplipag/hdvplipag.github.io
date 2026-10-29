@@ -408,10 +408,22 @@
           🔦 Lanterna
         </button>
 
+        <button id="btnFotoQr" class="botao-secundario" type="button">
+          📸 Fotografar QR
+        </button>
+
         <button id="btnFecharCamera" class="botao-secundario" type="button">
           Fechar câmera
         </button>
       </div>
+
+      <input
+        id="fotoQr"
+        type="file"
+        accept="image/*"
+        capture="environment"
+        hidden
+      >
     </div>
 
     <div id="entradaManualLink" style="display:none">
@@ -1060,6 +1072,7 @@ async function executarInicioCamera() {
   try {
     leitorCriado = new Html5Qrcode("leitor", {
       verbose: false,
+      useBarCodeDetectorIfSupported: false,
       formatsToSupport: [
         Html5QrcodeSupportedFormats.QR_CODE
       ]
@@ -1133,47 +1146,76 @@ async function executarInicioCamera() {
       });
     };
 
-    /*
-     * Primeiro tenta selecionar a câmera traseira usando
-     * facingMode. Caso não funcione, procura uma câmera traseira
-     * pelo rótulo do dispositivo.
-     */
+    // A permissão faz o iPhone revelar os nomes das lentes disponíveis.
+    let cameras = [];
+    let streamPermissao = null;
     try {
-      await leitorCriado.start(
-        {
-          facingMode: "environment"
-        },
-        config,
-        aoLer,
-        () => {}
-      );
-    } catch (primeiroErro) {
-      if (solicitouPararDuranteInicio) {
-        throw primeiroErro;
+      streamPermissao = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: true
+      });
+      streamPermissao.getTracks().forEach(track => track.stop());
+      streamPermissao = null;
+      cameras = await Html5Qrcode.getCameras();
+    } catch (erroPermissao) {
+      if (streamPermissao) {
+        streamPermissao.getTracks().forEach(track => track.stop());
       }
+    }
 
-      const cameras = await Html5Qrcode.getCameras();
+    if (solicitouPararDuranteInicio) {
+      throw new Error('Leitura cancelada.');
+    }
 
-      if (!cameras || cameras.length === 0) {
-        throw primeiroErro;
+    const nomeCamera = camera => String(camera.label || '').toLowerCase();
+    const traseiras = cameras.filter(camera =>
+      /back|rear|environment|traseir|posterior/.test(nomeCamera(camera))
+    );
+    const candidatas = traseiras.length ? traseiras : cameras;
+    const semLenteEspecial = candidatas.filter(camera =>
+      !/ultra.?wide|ultra.?angular|0[,.]5\s*x|telephoto|macro|front|frontal/.test(nomeCamera(camera))
+    );
+    const cameraPrincipal =
+      semLenteEspecial.find(camera => /main|wide|1\s*x|back camera$|rear camera$/.test(nomeCamera(camera))) ||
+      semLenteEspecial[0] ||
+      candidatas[candidatas.length - 1];
+
+    try {
+      if (cameraPrincipal && cameraPrincipal.id) {
+        await leitorCriado.start(cameraPrincipal.id, config, aoLer, () => {});
+      } else {
+        await leitorCriado.start(
+          { facingMode: { ideal: 'environment' } },
+          config,
+          aoLer,
+          () => {}
+        );
       }
-
-      const traseira = cameras.find(c =>
-        /back|rear|environment|traseir|principal|wide/i.test(c.label)
-      );
-
-      const cameraId = (
-        traseira || cameras[cameras.length - 1]
-      ).id;
-
+    } catch (erroCamera) {
+      if (solicitouPararDuranteInicio) throw erroCamera;
       await leitorCriado.start(
-        cameraId,
+        { facingMode: { ideal: 'environment' } },
         config,
         aoLer,
         () => {}
       );
     }
 
+    // Solicita foco contínuo quando a câmera do navegador oferece esse controle.
+    try {
+      await leitorCriado.applyVideoConstraints({
+        advanced: [{ focusMode: 'continuous' }]
+      });
+    } catch (erroFoco) {
+      // O iOS pode ignorar esse controle; a leitura continua pela câmera selecionada.
+    }
+
+    const video = el('leitor').querySelector('video');
+    if (video) {
+      video.setAttribute('playsinline', '');
+      video.setAttribute('webkit-playsinline', '');
+      video.muted = true;
+    }
     cameraAtiva = true;
 
     el("estadoCamera").textContent =
@@ -1309,7 +1351,48 @@ async function salvarCategoria() {
 
 el("btnLer").addEventListener("click", iniciarCamera);
 
+async function fotografarQr() {
+  if (cameraIniciando) {
+    mostrarMensagem('Aguarde a câmera terminar de abrir.', 'info');
+    return;
+  }
+  if (cameraAtiva || leitorQr) await pararCamera();
+  el('fotoQr').click();
+}
+
+async function lerFotoQr(evento) {
+  const arquivo = evento.target.files && evento.target.files[0];
+  evento.target.value = '';
+  if (!arquivo) return;
+
+  limparMensagem();
+  mostrarMensagem('Lendo o QR Code da foto…', 'info');
+  el('btnLer').disabled = true;
+
+  const leitorFoto = new Html5Qrcode('leitor', {
+    verbose: false,
+    useBarCodeDetectorIfSupported: false,
+    formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE]
+  });
+
+  try {
+    const link = await leitorFoto.scanFile(arquivo, false);
+    await leitorFoto.clear();
+    el('linkNota').value = link;
+    await lancarLink(link);
+  } catch (erro) {
+    try { await leitorFoto.clear(); } catch (_) {}
+    mostrarMensagem(
+      'Não consegui ler o QR Code da foto. Tire outra foto mais próxima, com o código inteiro visível e em foco.',
+      'erro'
+    );
+  } finally {
+    el('btnLer').disabled = false;
+  }
+}
 el("btnFecharCamera").addEventListener("click", pararCamera);
+el("btnFotoQr").addEventListener("click", fotografarQr);
+el("fotoQr").addEventListener("change", lerFotoQr);
 
 el("btnLanterna").addEventListener("click", alternarLanterna);
 
