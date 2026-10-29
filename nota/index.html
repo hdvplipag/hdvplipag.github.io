@@ -1356,7 +1356,9 @@ async function lerQrDaFoto(arquivo) {
   } catch (erro) {
     console.warn("Não foi possível decodificar o QR da foto:", erro);
     mostrarMensagem(
-      "Não consegui ler o QR Code da foto. Tente fotografar mais perto, com o código inteiro visível e sem reflexo.",
+      "Não consegui ler o QR Code da foto. " +
+      (erro && erro.message ? erro.message + " " : "") +
+      "Tente enquadrar só o QR Code, mais perto e sem reflexo.",
       "erro"
     );
   } finally {
@@ -1381,26 +1383,65 @@ function decodificarFotoComJsQr(arquivo) {
 
     imagem.onload = () => {
       try {
-        const escala = Math.min(1, 3000 / Math.max(imagem.naturalWidth, imagem.naturalHeight));
-        const largura = Math.max(1, Math.round(imagem.naturalWidth * escala));
-        const altura = Math.max(1, Math.round(imagem.naturalHeight * escala));
-        const canvas = document.createElement("canvas");
-        canvas.width = largura;
-        canvas.height = altura;
+        const larguraOriginal = imagem.naturalWidth;
+        const alturaOriginal = imagem.naturalHeight;
+        const regioes = [
+          { x: 0, y: 0, w: 1, h: 1 },
+          { x: 0, y: 0.34, w: 1, h: 0.66 },
+          { x: 0.08, y: 0.32, w: 0.84, h: 0.68 },
+          { x: 0.15, y: 0.42, w: 0.70, h: 0.58 },
+          { x: 0, y: 0.52, w: 1, h: 0.48 }
+        ];
 
-        const contexto = canvas.getContext("2d", { willReadFrequently: true });
-        contexto.drawImage(imagem, 0, 0, largura, altura);
+        for (const regiao of regioes) {
+          const sx = Math.round(larguraOriginal * regiao.x);
+          const sy = Math.round(alturaOriginal * regiao.y);
+          const sw = Math.max(1, Math.round(larguraOriginal * regiao.w));
+          const sh = Math.max(1, Math.round(alturaOriginal * regiao.h));
+          const escala = Math.min(1, 2600 / Math.max(sw, sh));
+          const largura = Math.max(1, Math.round(sw * escala));
+          const altura = Math.max(1, Math.round(sh * escala));
+          const canvas = document.createElement("canvas");
+          canvas.width = largura;
+          canvas.height = altura;
 
-        const pixels = contexto.getImageData(0, 0, largura, altura);
-        const resultado = jsQR(pixels.data, largura, altura, {
-          inversionAttempts: "attemptBoth"
-        });
+          const contexto = canvas.getContext("2d", { willReadFrequently: true });
+          contexto.drawImage(imagem, sx, sy, sw, sh, 0, 0, largura, altura);
 
-        if (resultado && resultado.data) {
-          resolve(resultado.data);
-        } else {
-          reject(new Error("QR Code não encontrado na foto."));
+          const pixels = contexto.getImageData(0, 0, largura, altura);
+          const resultado = jsQR(pixels.data, largura, altura, {
+            inversionAttempts: "attemptBoth"
+          });
+          if (resultado && resultado.data) {
+            URL.revokeObjectURL(url);
+            resolve(resultado.data);
+            return;
+          }
+
+          // Reforça contraste de cupons apagados ou fotografados com pouca luz.
+          const dados = pixels.data;
+          for (let i = 0; i < dados.length; i += 4) {
+            const cinza = 0.299 * dados[i] + 0.587 * dados[i + 1] + 0.114 * dados[i + 2];
+            const contraste = Math.max(0, Math.min(255, (cinza - 128) * 1.55 + 128));
+            dados[i] = contraste;
+            dados[i + 1] = contraste;
+            dados[i + 2] = contraste;
+          }
+
+          const resultadoContraste = jsQR(dados, largura, altura, {
+            inversionAttempts: "attemptBoth"
+          });
+          if (resultadoContraste && resultadoContraste.data) {
+            URL.revokeObjectURL(url);
+            resolve(resultadoContraste.data);
+            return;
+          }
         }
+
+        reject(new Error(
+          "QR não localizado. Foto recebida: " + larguraOriginal + "×" + alturaOriginal +
+          " px; tipo " + (arquivo.type || "desconhecido") + "."
+        ));
       } catch (erro) {
         reject(erro);
       } finally {
