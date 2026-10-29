@@ -248,7 +248,8 @@
       border: 1px solid #efb7b7;
     }
 
-    .mensagem.info {
+    .mensagem.info,
+    .mensagem.buscando {
       background: #eaf4ff;
       color: #154d7b;
       border: 1px solid #b8d9f7;
@@ -528,7 +529,13 @@ const el = (id) => document.getElementById(id);
 function mostrarMensagem(texto, tipo = "info") {
   const caixa = el("mensagem");
 
-  // A tela só exibe falhas e avisos de nota duplicada (classificados como erro).
+  // Exibe falhas/duplicidades e o andamento da consulta.
+  if (tipo === "buscando") {
+    caixa.textContent = String(texto || "");
+    caixa.className = "mensagem visivel buscando";
+    return;
+  }
+
   if (tipo !== "erro") {
     limparMensagem();
     return;
@@ -802,7 +809,7 @@ async function lancarLink(link) {
   el("btnLancar").disabled = true;
   el("btnLer").disabled = true;
 
-  mostrarMensagem("Buscando a nota fiscal…", "info");
+  mostrarMensagem("Buscando dados da nota…", "buscando");
 
   try {
     const dados = await enviarMotor({
