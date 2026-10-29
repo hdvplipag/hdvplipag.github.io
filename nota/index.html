@@ -242,7 +242,7 @@
     }
 
     #leitor video {
-      object-fit: cover !important;
+      object-fit: contain !important;
     }
 
     #leitor img {
@@ -768,19 +768,23 @@
         await leitorQR.start(
           { facingMode: 'environment' },
           {
-            fps: 10,
-            qrbox: function(largura, altura) {
-              const lado = Math.floor(
-                Math.min(largura, altura) * 0.75
-              );
+           {
+  fps: 15,
 
-              return {
-                width: lado,
-                height: lado
-              };
-            },
-            aspectRatio: 1
-          },
+  qrbox: function(largura, altura) {
+    const lado = Math.floor(
+      Math.min(largura, altura) * 0.85
+    );
+
+    return {
+      width: lado,
+      height: lado
+    };
+  },
+
+  aspectRatio: 1,
+  disableFlip: false
+},
           async function(textoLido) {
             // O primeiro QR Code reconhecido encerra a câmera
             // antes de começar a consulta da nota.
