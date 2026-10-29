@@ -1681,6 +1681,14 @@
       }
     }
 
+    // Explica o motivo real da falha de comunicação (em vez da mensagem genérica)
+    function mensagemErroServidor(err) {
+      const m = String((err && err.message) || '');
+      if (m === 'Erro no servidor.') return 'O servidor respondeu com erro interno. Veja o motivo em Apps Script > Execuções.';
+      if (m && !/failed to fetch|networkerror|load failed|unexpected token|json/i.test(m)) return m;
+      return 'Não foi possível falar com o servidor. Verifique a internet e se a implantação do Apps Script está como "Qualquer pessoa" e atualizada (Nova versão).';
+    }
+
     function realizarLogin(event) {
       if (event) event.preventDefault();
       const usuario = document.getElementById('loginUsuario').value.trim().toLowerCase();
@@ -1742,7 +1750,7 @@
             clearTimeout(timerSeguranca);
             btn.disabled = false;
             btn.innerHTML = '<span>Acessar Conta</span><i class="fa-solid fa-arrow-right"></i>';
-            exibirToast("Erro na comunicação com o servidor.", "erro");
+            exibirToast(mensagemErroServidor(err), "erro", 9000);
           })
           .autenticarUsuario(usuario, senhaPura, confirmacao);
       } else {
