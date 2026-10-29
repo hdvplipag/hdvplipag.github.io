@@ -393,6 +393,14 @@
       📷 Ler notinha
     </button>
 
+    <input
+      id="fotoQrIphone"
+      type="file"
+      accept="image/*"
+      capture="environment"
+      hidden
+    >
+
     <div id="areaCamera">
       <div id="cameraPalco">
         <div id="leitor"></div>
@@ -1304,11 +1312,62 @@ async function salvarCategoria() {
 
 /* EVENTOS */
 
+async function lerQrDaFoto(arquivo) {
+  if (!arquivo) return;
+
+  if (typeof Html5Qrcode === "undefined") {
+    mostrarMensagem(
+      "A biblioteca de leitura não carregou. Confira a internet e recarregue a página.",
+      "erro"
+    );
+    return;
+  }
+
+  el("btnLer").disabled = true;
+  mostrarMensagem("Analisando a foto do QR Code…", "info");
+
+  const leitorFoto = new Html5Qrcode("leitor", {
+    verbose: false,
+    formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE]
+  });
+
+  try {
+    const textoLido = await leitorFoto.scanFile(arquivo, false);
+    el("linkNota").value = textoLido;
+    await lancarLink(textoLido);
+  } catch (erro) {
+    console.warn("Não foi possível decodificar o QR da foto:", erro);
+    mostrarMensagem(
+      "Não consegui ler o QR Code da foto. Tente fotografar mais perto, com o código inteiro visível e sem reflexo.",
+      "erro"
+    );
+  } finally {
+    try {
+      await leitorFoto.clear();
+    } catch (_) {}
+
+    el("fotoQrIphone").value = "";
+    el("btnLer").disabled = false;
+  }
+}
+
 function acionarLeitura() {
+  if (EH_IOS) {
+    // O Safari não entrega à página o resultado do Scanner de Código do iOS.
+    // Captura uma foto com a câmera nativa e decodifica o QR localmente.
+    el("fotoQrIphone").click();
+    return;
+  }
+
   iniciarCamera();
 }
 
 el("btnLer").addEventListener("click", acionarLeitura);
+
+el("fotoQrIphone").addEventListener("change", (evento) => {
+  const arquivo = evento.target.files && evento.target.files[0];
+  if (arquivo) lerQrDaFoto(arquivo);
+});
 
 el("btnFecharCamera").addEventListener("click", pararCamera);
 
@@ -1338,6 +1397,7 @@ el("estadoSenha").textContent = senhaAtual
   : "A senha será solicitada no primeiro uso.";
 if (EH_IOS) {
   el("entradaManualLink").style.display = "none";
+  el("btnLer").textContent = "📷 Fotografar e ler QR Code";
 }
 
 
