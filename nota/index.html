@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#1769aa">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <title>Minhas Notinhas</title>
+  <title>Cupom Fiscal</title>
 
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
@@ -396,14 +396,6 @@
       📷 Ler notinha
     </button>
 
-    <input
-      id="fotoQrIphone"
-      type="file"
-      accept="image/*"
-      capture="environment"
-      hidden
-    >
-
     <div id="areaCamera">
       <div id="cameraPalco">
         <div id="leitor"></div>
@@ -538,6 +530,13 @@ let lojaAtual = "";
 let lanternaLigada = false;
 let operacaoCamera = Promise.resolve();
 let inicioCameraPromise = null;
+let iosCameraStream = null;
+let iosCameraVideo = null;
+let iosCanvas = null;
+let iosContextoCanvas = null;
+let iosTimerLeitura = null;
+let iosZbar = null;
+let iosQuadro = 0;
 
 const el = (id) => document.getElementById(id);
 
@@ -930,6 +929,26 @@ async function pararCamera() {
   const operacao = async () => {
     const leitor = leitorQr;
 
+    if (iosTimerLeitura) {
+      clearTimeout(iosTimerLeitura);
+      iosTimerLeitura = null;
+    }
+
+    if (iosCameraStream) {
+      iosCameraStream.getTracks().forEach(track => track.stop());
+      iosCameraStream = null;
+    }
+
+    if (iosCameraVideo) {
+      iosCameraVideo.pause();
+      iosCameraVideo.srcObject = null;
+      iosCameraVideo.remove();
+      iosCameraVideo = null;
+    }
+
+    iosCanvas = null;
+    iosContextoCanvas = null;
+
     if (leitor) {
       if (cameraAtiva) {
         try {
@@ -1001,6 +1020,131 @@ function mensagemErroCamera(erro) {
   return "Não foi possível abrir a câmera. Confira a permissão do navegador. Detalhe: " + nome;
 }
 
+async function iniciarLeituraAoVivoNoIphone_() {
+  const pedidoCamera = navigator.mediaDevices.getUserMedia({
+    audio: false,
+    video: {
+      facingMode: { ideal: "environment" },
+      width: { ideal: 1920 },
+      height: { ideal: 1080 }
+    }
+  });
+
+  const pedidoZbar = import(
+    "https://cdn.jsdelivr.net/npm/@undecaf/zbar-wasm@0.11.0/dist/index.mjs"
+  ).catch(() => null);
+
+  const [stream, zbar] = await Promise.all([pedidoCamera, pedidoZbar]);
+
+  if (!zbar && typeof jsQR !== "function") {
+    stream.getTracks().forEach(track => track.stop());
+    throw new Error("Os leitores de QR não carregaram. Confira a internet e tente novamente.");
+  }
+
+  iosCameraStream = stream;
+  iosZbar = zbar;
+  iosQuadro = 0;
+
+  const video = document.createElement("video");
+  video.autoplay = true;
+  video.muted = true;
+  video.playsInline = true;
+  video.setAttribute("playsinline", "");
+  video.setAttribute("webkit-playsinline", "");
+  video.style.width = "100%";
+  video.style.height = "auto";
+  video.style.display = "block";
+  video.srcObject = stream;
+
+  el("leitor").replaceChildren(video);
+  iosCameraVideo = video;
+
+  await video.play();
+  if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+    await new Promise((resolve, reject) => {
+      const limite = setTimeout(
+        () => reject(new Error("A câmera abriu, mas não enviou imagem.")),
+        8000
+      );
+      video.addEventListener("loadeddata", () => {
+        clearTimeout(limite);
+        resolve();
+      }, { once: true });
+    });
+  }
+
+  iosCanvas = document.createElement("canvas");
+  iosContextoCanvas = iosCanvas.getContext("2d", { willReadFrequently: true });
+  if (!iosContextoCanvas) {
+    throw new Error("Não consegui preparar a leitura da câmera.");
+  }
+
+  cameraAtiva = true;
+  el("estadoCamera").textContent =
+    "Leitura automática ativa. Mantenha o QR Code inteiro visível.";
+  agendarLeituraDoQuadroIphone_();
+}
+
+function agendarLeituraDoQuadroIphone_() {
+  if (!cameraAtiva || !iosCameraVideo || processandoLeitura) return;
+  iosTimerLeitura = setTimeout(processarQuadroIphone_, 180);
+}
+
+async function processarQuadroIphone_() {
+  iosTimerLeitura = null;
+  const video = iosCameraVideo;
+  if (
+    !cameraAtiva ||
+    !video ||
+    video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA ||
+    processandoLeitura
+  ) {
+    agendarLeituraDoQuadroIphone_();
+    return;
+  }
+
+  try {
+    const escala = Math.min(1, 1600 / video.videoWidth);
+    const largura = Math.max(1, Math.round(video.videoWidth * escala));
+    const altura = Math.max(1, Math.round(video.videoHeight * escala));
+    if (iosCanvas.width !== largura || iosCanvas.height !== altura) {
+      iosCanvas.width = largura;
+      iosCanvas.height = altura;
+    }
+    iosContextoCanvas.drawImage(video, 0, 0, largura, altura);
+    const pixels = iosContextoCanvas.getImageData(0, 0, largura, altura);
+    let textoLido = "";
+
+    if (iosZbar) {
+      const simbolos = await iosZbar.scanImageData(pixels);
+      const qr = simbolos.find(simbolo => /qr/i.test(simbolo.typeName || ""));
+      if (qr) textoLido = qr.decode();
+    }
+
+    iosQuadro += 1;
+    if (!textoLido && typeof jsQR === "function" && iosQuadro % 2 === 0) {
+      const qr = jsQR(pixels.data, largura, altura, {
+        inversionAttempts: "attemptBoth"
+      });
+      if (qr) textoLido = qr.data;
+    }
+
+    if (textoLido) {
+      processandoLeitura = true;
+      el("estadoCamera").textContent = "QR Code lido. Abrindo a nota…";
+      el("btnLer").disabled = true;
+      await pararCamera();
+      el("linkNota").value = textoLido;
+      await lancarLink(textoLido);
+      return;
+    }
+  } catch (erro) {
+    console.warn("Falha ao analisar quadro da câmera do iPhone:", erro);
+  }
+
+  agendarLeituraDoQuadroIphone_();
+}
+
 async function iniciarCamera() {
   /*
    * Impede inicializações duplicadas provocadas por toques rápidos.
@@ -1050,8 +1194,7 @@ async function executarInicioCamera() {
   }
 
   if (
-    typeof Html5Qrcode === "undefined" &&
-    typeof jsQR !== "function"
+    !EH_IOS && typeof Html5Qrcode === "undefined"
   ) {
     mostrarMensagem(
       "A biblioteca de leitura não carregou. Confira a internet e recarregue a página.",
@@ -1074,6 +1217,32 @@ async function executarInicioCamera() {
     "Solicitando acesso à câmera…";
 
   el("btnLer").disabled = true;
+
+  if (EH_IOS) {
+    try {
+      await iniciarLeituraAoVivoNoIphone_();
+    } catch (erro) {
+      cameraAtiva = false;
+      el("ajudaCamera").classList.add("visivel");
+      mostrarMensagem(mensagemErroCamera(erro), "erro");
+    } finally {
+      cameraIniciando = false;
+    }
+
+    if (solicitouPararDuranteInicio) {
+      solicitouPararDuranteInicio = false;
+      await pararCamera();
+      return;
+    }
+
+    if (!cameraAtiva) {
+      await pararCamera();
+      return;
+    }
+
+    el("btnLer").disabled = false;
+    return;
+  }
 
   let leitorCriado = null;
 
@@ -1172,14 +1341,6 @@ async function executarInicioCamera() {
           () => {}
         );
       }
-    } else {
-      // Abre diretamente a câmera traseira padrão com uma única solicitação de permissão.
-      await leitorCriado.start(
-        { facingMode: { ideal: "environment" } },
-        config,
-        aoLer,
-        () => {}
-      );
     }
 
     const video = el("leitor").querySelector("video");
@@ -1233,7 +1394,7 @@ async function executarInicioCamera() {
 /* LANTERNA */
 
 async function alternarLanterna() {
-  if (!leitorQr || !cameraAtiva || cameraIniciando) {
+  if ((!leitorQr && !iosCameraStream) || !cameraAtiva || cameraIniciando) {
     mostrarMensagem(
       "Abra a câmera antes de tentar ligar a lanterna.",
       "info"
@@ -1245,13 +1406,14 @@ async function alternarLanterna() {
   try {
     const proximoEstado = !lanternaLigada;
 
-    await leitorQr.applyVideoConstraints({
-      advanced: [
-        {
-          torch: proximoEstado
-        }
-      ]
-    });
+    if (iosCameraStream) {
+      const trilha = iosCameraStream.getVideoTracks()[0];
+      await trilha.applyConstraints({ advanced: [{ torch: proximoEstado }] });
+    } else {
+      await leitorQr.applyVideoConstraints({
+        advanced: [{ torch: proximoEstado }]
+      });
+    }
 
     lanternaLigada = proximoEstado;
 
@@ -1322,227 +1484,12 @@ async function salvarCategoria() {
 
 /* EVENTOS */
 
-async function lerQrDaFoto(arquivo) {
-  if (!arquivo) return;
-
-  if (typeof Html5Qrcode === "undefined") {
-    mostrarMensagem(
-      "A biblioteca de leitura não carregou. Confira a internet e recarregue a página.",
-      "erro"
-    );
-    return;
-  }
-
-  el("btnLer").disabled = true;
-  mostrarMensagem("Analisando a foto do QR Code…", "info");
-
-  const leitorFoto = typeof Html5Qrcode !== "undefined"
-    ? new Html5Qrcode("leitor", {
-        verbose: false,
-        formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE]
-      })
-    : null;
-
-  try {
-    let textoLido = "";
-
-    try {
-      // ZBar/WebAssembly é um decodificador independente e mais robusto para fotos.
-      textoLido = await decodificarFotoComZbar(arquivo);
-    } catch (erroZbar) {
-      try {
-        textoLido = await decodificarFotoComJsQr(arquivo);
-      } catch (erroJsQr) {
-        // Mantém o decodificador anterior como terceira alternativa.
-        if (!leitorFoto) throw erroJsQr;
-        textoLido = await leitorFoto.scanFile(arquivo, false);
-      }
-    }
-
-    if (!textoLido) {
-      textoLido = await decodificarFotoComJsQr(arquivo);
-    }
-
-    el("linkNota").value = textoLido;
-    await lancarLink(textoLido);
-  } catch (erro) {
-    console.warn("Não foi possível decodificar o QR da foto:", erro);
-    mostrarMensagem(
-      "Não consegui ler o QR Code da foto. " +
-      (erro && erro.message ? erro.message + " " : "") +
-      "Tente enquadrar só o QR Code, mais perto e sem reflexo.",
-      "erro"
-    );
-  } finally {
-    try {
-      if (leitorFoto) await leitorFoto.clear();
-    } catch (_) {}
-
-    el("fotoQrIphone").value = "";
-    el("btnLer").disabled = false;
-  }
-}
-
-async function decodificarFotoComZbar(arquivo) {
-  const zbar = await import(
-    "https://cdn.jsdelivr.net/npm/@undecaf/zbar-wasm@0.11.0/dist/index.mjs"
-  );
-
-  const url = URL.createObjectURL(arquivo);
-  try {
-    const imagem = new Image();
-    imagem.src = url;
-    await imagem.decode();
-
-    const larguraOriginal = imagem.naturalWidth;
-    const alturaOriginal = imagem.naturalHeight;
-    const regioes = [
-      { x: 0, y: 0, w: 1, h: 1 },
-      { x: 0, y: 0.32, w: 1, h: 0.68 },
-      { x: 0.08, y: 0.30, w: 0.84, h: 0.70 },
-      { x: 0.15, y: 0.40, w: 0.70, h: 0.60 },
-      { x: 0, y: 0.50, w: 1, h: 0.50 }
-    ];
-
-    for (const regiao of regioes) {
-      const sx = Math.round(larguraOriginal * regiao.x);
-      const sy = Math.round(alturaOriginal * regiao.y);
-      const sw = Math.max(1, Math.round(larguraOriginal * regiao.w));
-      const sh = Math.max(1, Math.round(alturaOriginal * regiao.h));
-      const escala = Math.min(1, 2800 / Math.max(sw, sh));
-      const largura = Math.max(1, Math.round(sw * escala));
-      const altura = Math.max(1, Math.round(sh * escala));
-      const canvas = document.createElement("canvas");
-      canvas.width = largura;
-      canvas.height = altura;
-      const contexto = canvas.getContext("2d", { willReadFrequently: true });
-      contexto.fillStyle = "#fff";
-      contexto.fillRect(0, 0, largura, altura);
-      contexto.drawImage(imagem, sx, sy, sw, sh, 0, 0, largura, altura);
-
-      const simbolos = await zbar.scanImageData(
-        contexto.getImageData(0, 0, largura, altura)
-      );
-      const qr = simbolos.find(simbolo => /qr/i.test(simbolo.typeName || ""));
-      if (qr) {
-        const texto = qr.decode();
-        if (texto) return texto;
-      }
-    }
-
-    throw new Error(
-      "QR não localizado. Foto recebida: " + larguraOriginal + "×" + alturaOriginal +
-      " px; tipo " + (arquivo.type || "desconhecido") + "."
-    );
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
-
-function decodificarFotoComJsQr(arquivo) {
-  return new Promise((resolve, reject) => {
-    if (typeof jsQR !== "function") {
-      reject(new Error("O decodificador alternativo não carregou."));
-      return;
-    }
-
-    const url = URL.createObjectURL(arquivo);
-    const imagem = new Image();
-
-    imagem.onload = () => {
-      try {
-        const larguraOriginal = imagem.naturalWidth;
-        const alturaOriginal = imagem.naturalHeight;
-        const regioes = [
-          { x: 0, y: 0, w: 1, h: 1 },
-          { x: 0, y: 0.34, w: 1, h: 0.66 },
-          { x: 0.08, y: 0.32, w: 0.84, h: 0.68 },
-          { x: 0.15, y: 0.42, w: 0.70, h: 0.58 },
-          { x: 0, y: 0.52, w: 1, h: 0.48 }
-        ];
-
-        for (const regiao of regioes) {
-          const sx = Math.round(larguraOriginal * regiao.x);
-          const sy = Math.round(alturaOriginal * regiao.y);
-          const sw = Math.max(1, Math.round(larguraOriginal * regiao.w));
-          const sh = Math.max(1, Math.round(alturaOriginal * regiao.h));
-          const escala = Math.min(1, 2600 / Math.max(sw, sh));
-          const largura = Math.max(1, Math.round(sw * escala));
-          const altura = Math.max(1, Math.round(sh * escala));
-          const canvas = document.createElement("canvas");
-          canvas.width = largura;
-          canvas.height = altura;
-
-          const contexto = canvas.getContext("2d", { willReadFrequently: true });
-          contexto.drawImage(imagem, sx, sy, sw, sh, 0, 0, largura, altura);
-
-          const pixels = contexto.getImageData(0, 0, largura, altura);
-          const resultado = jsQR(pixels.data, largura, altura, {
-            inversionAttempts: "attemptBoth"
-          });
-          if (resultado && resultado.data) {
-            URL.revokeObjectURL(url);
-            resolve(resultado.data);
-            return;
-          }
-
-          // Reforça contraste de cupons apagados ou fotografados com pouca luz.
-          const dados = pixels.data;
-          for (let i = 0; i < dados.length; i += 4) {
-            const cinza = 0.299 * dados[i] + 0.587 * dados[i + 1] + 0.114 * dados[i + 2];
-            const contraste = Math.max(0, Math.min(255, (cinza - 128) * 1.55 + 128));
-            dados[i] = contraste;
-            dados[i + 1] = contraste;
-            dados[i + 2] = contraste;
-          }
-
-          const resultadoContraste = jsQR(dados, largura, altura, {
-            inversionAttempts: "attemptBoth"
-          });
-          if (resultadoContraste && resultadoContraste.data) {
-            URL.revokeObjectURL(url);
-            resolve(resultadoContraste.data);
-            return;
-          }
-        }
-
-        reject(new Error(
-          "QR não localizado. Foto recebida: " + larguraOriginal + "×" + alturaOriginal +
-          " px; tipo " + (arquivo.type || "desconhecido") + "."
-        ));
-      } catch (erro) {
-        reject(erro);
-      } finally {
-        URL.revokeObjectURL(url);
-      }
-    };
-
-    imagem.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("O iPhone não conseguiu abrir a imagem capturada."));
-    };
-
-    imagem.src = url;
-  });
-}
-
 function acionarLeitura() {
-  if (EH_IOS) {
-    // O Safari não entrega à página o resultado do Scanner de Código do iOS.
-    // Captura uma foto com a câmera nativa e decodifica o QR localmente.
-    el("fotoQrIphone").click();
-    return;
-  }
-
   iniciarCamera();
 }
 
 el("btnLer").addEventListener("click", acionarLeitura);
 
-el("fotoQrIphone").addEventListener("change", (evento) => {
-  const arquivo = evento.target.files && evento.target.files[0];
-  if (arquivo) lerQrDaFoto(arquivo);
-});
 
 el("btnFecharCamera").addEventListener("click", pararCamera);
 
@@ -1573,7 +1520,7 @@ el("estadoSenha").textContent = senhaAtual
 if (EH_IOS) {
   document.body.classList.add("ios-ios");
   el("entradaManualLink").style.display = "none";
-  el("btnLer").textContent = "📷 Fotografar e ler QR Code";
+  el("btnLer").textContent = "📷 Ler notinha";
 }
 
 
@@ -1582,6 +1529,16 @@ if (EH_IOS) {
  * O navegador também pode interromper o vídeo automaticamente.
  */
 window.addEventListener("pagehide", () => {
+  if (iosTimerLeitura) {
+    clearTimeout(iosTimerLeitura);
+    iosTimerLeitura = null;
+  }
+
+  if (iosCameraStream) {
+    iosCameraStream.getTracks().forEach(track => track.stop());
+    iosCameraStream = null;
+  }
+
   if (leitorQr && cameraAtiva && !cameraIniciando) {
     leitorQr.stop().catch(() => {});
   }
