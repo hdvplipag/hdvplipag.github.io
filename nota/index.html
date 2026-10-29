@@ -353,6 +353,12 @@
       margin: 8px 0 0;
     }
 
+    .pergunta-botoes {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
     .rodape {
       display: none;
       text-align: center;
@@ -445,6 +451,19 @@
   </section>
 
   <div id="mensagem" class="mensagem" role="status" aria-live="polite"></div>
+
+  <section id="perguntaOutra" class="cartao" style="display:none" aria-live="polite">
+    <h2>Captura concluída</h2>
+    <p>Deseja realizar outra captura?</p>
+    <div class="pergunta-botoes">
+      <button id="btnOutraCaptura" class="botao-principal" type="button">
+        Sim, capturar outra
+      </button>
+      <button id="btnConcluirCapturas" class="botao-secundario" type="button">
+        Não, concluir
+      </button>
+    </div>
+  </section>
 
   <section id="resultado" class="cartao" aria-labelledby="tituloResultado">
     <h2 id="tituloResultado">Compra</h2>
@@ -1136,6 +1155,7 @@ async function processarQuadroIphone_() {
       await pararCamera();
       el("linkNota").value = textoLido;
       await lancarLink(textoLido);
+      mostrarPerguntaOutraCaptura_();
       return;
     }
   } catch (erro) {
@@ -1312,6 +1332,7 @@ async function executarInicioCamera() {
         el("linkNota").value = textoLido;
 
         await lancarLink(textoLido);
+        mostrarPerguntaOutraCaptura_();
       }).catch((erro) => {
         mostrarMensagem(
           erro.message || "Erro ao processar o QR Code.",
@@ -1488,7 +1509,23 @@ function acionarLeitura() {
   iniciarCamera();
 }
 
+function mostrarPerguntaOutraCaptura_() {
+  el("perguntaOutra").style.display = "block";
+  el("perguntaOutra").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
 el("btnLer").addEventListener("click", acionarLeitura);
+
+el("btnOutraCaptura").addEventListener("click", () => {
+  el("perguntaOutra").style.display = "none";
+  el("resultado").classList.remove("visivel");
+  limparMensagem();
+  iniciarCamera();
+});
+
+el("btnConcluirCapturas").addEventListener("click", () => {
+  el("perguntaOutra").style.display = "none";
+});
 
 
 el("btnFecharCamera").addEventListener("click", pararCamera);
@@ -1522,6 +1559,8 @@ if (EH_IOS) {
   el("entradaManualLink").style.display = "none";
   el("btnLer").textContent = "📷 Capturar";
 }
+
+window.addEventListener("load", () => iniciarCamera(), { once: true });
 
 
 /*
