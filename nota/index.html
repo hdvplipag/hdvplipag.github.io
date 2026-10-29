@@ -335,6 +335,12 @@
       gap: 10px;
     }
 
+    .pergunta-botoes button {
+      min-height: 32px;
+      padding: 5px 10px;
+      line-height: 1.2;
+    }
+
     .rodape {
       display: none;
       text-align: center;
@@ -522,8 +528,14 @@ const el = (id) => document.getElementById(id);
 function mostrarMensagem(texto, tipo = "info") {
   const caixa = el("mensagem");
 
+  // A tela só exibe falhas e avisos de nota duplicada (classificados como erro).
+  if (tipo !== "erro") {
+    limparMensagem();
+    return;
+  }
+
   caixa.textContent = String(texto || "");
-  caixa.className = "mensagem visivel " + tipo;
+  caixa.className = "mensagem visivel erro";
 }
 
 function limparMensagem() {
