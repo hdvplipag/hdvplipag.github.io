@@ -271,14 +271,14 @@
     .resumo {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 12px;
+      gap: 12px 16px;
       margin: 14px 0;
+      padding: 14px;
+      background: #f4f7fa;
+      border-radius: 12px;
     }
 
     .resumo > div {
-      background: #f4f7fa;
-      border-radius: 12px;
-      padding: 12px;
       min-width: 0;
     }
 
@@ -459,7 +459,7 @@
       </div>
 
       <div>
-        <span class="rotulo">Pagamento</span>
+        <span class="rotulo">Forma de pagamento</span>
         <div id="resPagamento" class="valor-resumo">—</div>
       </div>
     </div>
@@ -643,6 +643,47 @@ function formatarDinheiro(valor) {
   return String(valor);
 }
 
+function formatarDataHora(valor) {
+  if (valor === null || valor === undefined || valor === "") return "—";
+
+  let data;
+  if (valor instanceof Date) {
+    data = valor;
+  } else if (typeof valor === "string") {
+    const texto = valor.trim();
+    const dataBrasileira = texto.match(
+      /^(\d{1,2})[\/.](\d{1,2})[\/.](\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
+    );
+    const dataISOsemFuso = texto.match(
+      /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?$/
+    );
+
+    if (dataBrasileira) {
+      data = new Date(
+        Number(dataBrasileira[3]), Number(dataBrasileira[2]) - 1,
+        Number(dataBrasileira[1]), Number(dataBrasileira[4] || 0),
+        Number(dataBrasileira[5] || 0), Number(dataBrasileira[6] || 0)
+      );
+    } else if (dataISOsemFuso) {
+      data = new Date(
+        Number(dataISOsemFuso[1]), Number(dataISOsemFuso[2]) - 1,
+        Number(dataISOsemFuso[3]), Number(dataISOsemFuso[4] || 0),
+        Number(dataISOsemFuso[5] || 0), Number(dataISOsemFuso[6] || 0)
+      );
+    } else {
+      data = new Date(texto);
+    }
+  } else {
+    data = new Date(valor);
+  }
+
+  if (!Number.isFinite(data.getTime())) return String(valor);
+
+  const doisDigitos = numero => String(numero).padStart(2, "0");
+  return `${doisDigitos(data.getDate())}/${doisDigitos(data.getMonth() + 1)}/${data.getFullYear()} ` +
+    `${doisDigitos(data.getHours())}:${doisDigitos(data.getMinutes())}:${doisDigitos(data.getSeconds())}`;
+}
+
 function escaparHtml(valor) {
   return String(valor ?? "").replace(/[&<>"']/g, (caractere) => ({
     "&": "&amp;",
@@ -672,7 +713,7 @@ function renderizarCompra(dados) {
     lojaAtual || "Loja não identificada";
 
   el("resData").textContent =
-    dados.data || "—";
+    formatarDataHora(dados.data);
 
   el("resTotal").textContent =
     formatarDinheiro(dados.total);
@@ -725,7 +766,7 @@ function renderizarCompra(dados) {
           </div>
 
           <div class="item-total">
-            Total: ${escaparHtml(formatarDinheiro(total))}
+            ${escaparHtml(formatarDinheiro(total))}
           </div>
         </article>
       `;
@@ -1476,3 +1517,4 @@ window.addEventListener("pagehide", () => {
 </script>
 </body>
 </html>
+
