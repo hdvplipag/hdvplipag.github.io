@@ -9,6 +9,7 @@
   <title>Minhas Notinhas</title>
 
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 
   <style>
     :root {
@@ -141,6 +142,11 @@
 
     .linha-senha button {
       flex-shrink: 0;
+    }
+
+    body.ios-ios .linha-senha,
+    body.ios-ios .rodape {
+      display: none;
     }
 
     #areaCamera {
@@ -1332,7 +1338,19 @@ async function lerQrDaFoto(arquivo) {
   });
 
   try {
-    const textoLido = await leitorFoto.scanFile(arquivo, false);
+    let textoLido = "";
+
+    try {
+      textoLido = await leitorFoto.scanFile(arquivo, false);
+    } catch (erroHtml5Qrcode) {
+      // Segunda tentativa independente: decodifica os pixels da foto no próprio iPhone.
+      textoLido = await decodificarFotoComJsQr(arquivo);
+    }
+
+    if (!textoLido) {
+      textoLido = await decodificarFotoComJsQr(arquivo);
+    }
+
     el("linkNota").value = textoLido;
     await lancarLink(textoLido);
   } catch (erro) {
@@ -1349,6 +1367,54 @@ async function lerQrDaFoto(arquivo) {
     el("fotoQrIphone").value = "";
     el("btnLer").disabled = false;
   }
+}
+
+function decodificarFotoComJsQr(arquivo) {
+  return new Promise((resolve, reject) => {
+    if (typeof jsQR !== "function") {
+      reject(new Error("O decodificador alternativo não carregou."));
+      return;
+    }
+
+    const url = URL.createObjectURL(arquivo);
+    const imagem = new Image();
+
+    imagem.onload = () => {
+      try {
+        const escala = Math.min(1, 3000 / Math.max(imagem.naturalWidth, imagem.naturalHeight));
+        const largura = Math.max(1, Math.round(imagem.naturalWidth * escala));
+        const altura = Math.max(1, Math.round(imagem.naturalHeight * escala));
+        const canvas = document.createElement("canvas");
+        canvas.width = largura;
+        canvas.height = altura;
+
+        const contexto = canvas.getContext("2d", { willReadFrequently: true });
+        contexto.drawImage(imagem, 0, 0, largura, altura);
+
+        const pixels = contexto.getImageData(0, 0, largura, altura);
+        const resultado = jsQR(pixels.data, largura, altura, {
+          inversionAttempts: "attemptBoth"
+        });
+
+        if (resultado && resultado.data) {
+          resolve(resultado.data);
+        } else {
+          reject(new Error("QR Code não encontrado na foto."));
+        }
+      } catch (erro) {
+        reject(erro);
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    };
+
+    imagem.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("O iPhone não conseguiu abrir a imagem capturada."));
+    };
+
+    imagem.src = url;
+  });
 }
 
 function acionarLeitura() {
@@ -1396,6 +1462,7 @@ el("estadoSenha").textContent = senhaAtual
   ? "Senha salva neste celular."
   : "A senha será solicitada no primeiro uso.";
 if (EH_IOS) {
+  document.body.classList.add("ios-ios");
   el("entradaManualLink").style.display = "none";
   el("btnLer").textContent = "📷 Fotografar e ler QR Code";
 }
