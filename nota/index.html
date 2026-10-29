@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#1769aa">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <title>Cupom Fiscal</title>
+  <title>Compras</title>
 
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
@@ -282,6 +282,11 @@
       min-width: 0;
     }
 
+    #campoData,
+    #campoLoja {
+      grid-column: 1 / -1;
+    }
+
     .resumo .rotulo {
       margin: 0 0 4px;
       font-size: .85rem;
@@ -371,7 +376,6 @@
 
 <body>
 <main>
-  <h1>Cupom Fiscal</h1>
   <section class="cartao" aria-labelledby="tituloLeitura">
     <h2 id="tituloLeitura">Registrar compra</h2>
 
@@ -438,12 +442,12 @@
     <h2 id="tituloResultado">Compra</h2>
 
     <div class="resumo">
-      <div>
+      <div id="campoData">
         <span class="rotulo">Data</span>
         <div id="resData" class="valor-resumo">—</div>
       </div>
 
-      <div>
+      <div id="campoLoja">
         <span class="rotulo">Loja</span>
         <div id="resLoja" class="valor-resumo">—</div>
       </div>
