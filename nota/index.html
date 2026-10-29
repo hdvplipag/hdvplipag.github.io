@@ -516,6 +516,10 @@ const URL_DO_MOTOR =
 
 const CHAVE_SENHA = "minhasNotinhas_senha";
 
+// Mantém o fluxo original no Android e isola os ajustes de câmera no iPhone.
+const EH_IOS = /iPad|iPhone|iPod/i.test(navigator.userAgent) ||
+  (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
 const CATEGORIAS = [
   "Mercado",
   "Farmácia",
@@ -1072,7 +1076,7 @@ async function executarInicioCamera() {
   try {
     leitorCriado = new Html5Qrcode("leitor", {
       verbose: false,
-      useBarCodeDetectorIfSupported: false,
+      useBarCodeDetectorIfSupported: !EH_IOS,
       formatsToSupport: [
         Html5QrcodeSupportedFormats.QR_CODE
       ]
@@ -1146,74 +1150,88 @@ async function executarInicioCamera() {
       });
     };
 
-    // A permissão faz o iPhone revelar os nomes das lentes disponíveis.
-    let cameras = [];
-    let streamPermissao = null;
-    try {
-      streamPermissao = await navigator.mediaDevices.getUserMedia({
-        audio: false,
-        video: true
-      });
-      streamPermissao.getTracks().forEach(track => track.stop());
-      streamPermissao = null;
-      cameras = await Html5Qrcode.getCameras();
-    } catch (erroPermissao) {
-      if (streamPermissao) {
-        streamPermissao.getTracks().forEach(track => track.stop());
-      }
-    }
-
-    if (solicitouPararDuranteInicio) {
-      throw new Error('Leitura cancelada.');
-    }
-
-    const nomeCamera = camera => String(camera.label || '').toLowerCase();
-    const traseiras = cameras.filter(camera =>
-      /back|rear|environment|traseir|posterior/.test(nomeCamera(camera))
-    );
-    const candidatas = traseiras.length ? traseiras : cameras;
-    const semLenteEspecial = candidatas.filter(camera =>
-      !/ultra.?wide|ultra.?angular|0[,.]5\s*x|telephoto|macro|front|frontal/.test(nomeCamera(camera))
-    );
-    const cameraPrincipal =
-      semLenteEspecial.find(camera => /main|wide|1\s*x|back camera$|rear camera$/.test(nomeCamera(camera))) ||
-      semLenteEspecial[0] ||
-      candidatas[candidatas.length - 1];
-
-    try {
-      if (cameraPrincipal && cameraPrincipal.id) {
-        await leitorCriado.start(cameraPrincipal.id, config, aoLer, () => {});
-      } else {
+    if (!EH_IOS) {
+      // Android e demais aparelhos mantêm o fluxo original.
+      try {
         await leitorCriado.start(
-          { facingMode: { ideal: 'environment' } },
+          { facingMode: "environment" },
           config,
           aoLer,
           () => {}
         );
+      } catch (primeiroErro) {
+        if (solicitouPararDuranteInicio) throw primeiroErro;
+        const cameras = await Html5Qrcode.getCameras();
+        if (!cameras || cameras.length === 0) throw primeiroErro;
+        const traseira = cameras.find(camera =>
+          /back|rear|environment|traseir|principal|wide/i.test(camera.label)
+        );
+        const cameraId = (traseira || cameras[cameras.length - 1]).id;
+        await leitorCriado.start(cameraId, config, aoLer, () => {});
       }
-    } catch (erroCamera) {
-      if (solicitouPararDuranteInicio) throw erroCamera;
-      await leitorCriado.start(
-        { facingMode: { ideal: 'environment' } },
-        config,
-        aoLer,
-        () => {}
+    } else {
+      // No iPhone, seleciona explicitamente uma lente traseira não ultra-angular.
+      let cameras = [];
+      let streamPermissao = null;
+      try {
+        streamPermissao = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: true
+        });
+        streamPermissao.getTracks().forEach(track => track.stop());
+        streamPermissao = null;
+        cameras = await Html5Qrcode.getCameras();
+      } catch (erroPermissao) {
+        if (streamPermissao) {
+          streamPermissao.getTracks().forEach(track => track.stop());
+        }
+      }
+
+      if (solicitouPararDuranteInicio) {
+        throw new Error("Leitura cancelada.");
+      }
+
+      const nomeCamera = camera => String(camera.label || "").toLowerCase();
+      const traseiras = cameras.filter(camera =>
+        /back|rear|environment|traseir|posterior/.test(nomeCamera(camera))
       );
+      const candidatas = traseiras.length ? traseiras : cameras;
+      const semLenteEspecial = candidatas.filter(camera =>
+        !/ultra.?wide|ultra.?angular|0[,.]5\s*x|telephoto|macro|front|frontal/.test(nomeCamera(camera))
+      );
+      const cameraPrincipal =
+        semLenteEspecial.find(camera => /main|wide|1\s*x|back camera$|rear camera$/.test(nomeCamera(camera))) ||
+        semLenteEspecial[0] ||
+        candidatas[candidatas.length - 1];
+
+      try {
+        if (cameraPrincipal && cameraPrincipal.id) {
+          await leitorCriado.start(cameraPrincipal.id, config, aoLer, () => {});
+        } else {
+          await leitorCriado.start(
+            { facingMode: { ideal: "environment" } }, config, aoLer, () => {}
+          );
+        }
+      } catch (erroCamera) {
+        if (solicitouPararDuranteInicio) throw erroCamera;
+        await leitorCriado.start(
+          { facingMode: { ideal: "environment" } }, config, aoLer, () => {}
+        );
+      }
+
+      try {
+        await leitorCriado.applyVideoConstraints({
+          advanced: [{ focusMode: "continuous" }]
+        });
+      } catch (erroFoco) {
+        // Se iOS não expuser o controle, a leitura continua normalmente.
+      }
     }
 
-    // Solicita foco contínuo quando a câmera do navegador oferece esse controle.
-    try {
-      await leitorCriado.applyVideoConstraints({
-        advanced: [{ focusMode: 'continuous' }]
-      });
-    } catch (erroFoco) {
-      // O iOS pode ignorar esse controle; a leitura continua pela câmera selecionada.
-    }
-
-    const video = el('leitor').querySelector('video');
+    const video = el("leitor").querySelector("video");
     if (video) {
-      video.setAttribute('playsinline', '');
-      video.setAttribute('webkit-playsinline', '');
+      video.setAttribute("playsinline", "");
+      video.setAttribute("webkit-playsinline", "");
       video.muted = true;
     }
     cameraAtiva = true;
@@ -1371,7 +1389,7 @@ async function lerFotoQr(evento) {
 
   const leitorFoto = new Html5Qrcode('leitor', {
     verbose: false,
-    useBarCodeDetectorIfSupported: false,
+    useBarCodeDetectorIfSupported: !EH_IOS,
     formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE]
   });
 
@@ -1393,6 +1411,7 @@ async function lerFotoQr(evento) {
 el("btnFecharCamera").addEventListener("click", pararCamera);
 el("btnFotoQr").addEventListener("click", fotografarQr);
 el("fotoQr").addEventListener("change", lerFotoQr);
+if (!EH_IOS) el("btnFotoQr").style.display = "none";
 
 el("btnLanterna").addEventListener("click", alternarLanterna);
 
