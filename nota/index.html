@@ -1156,45 +1156,13 @@ async function executarInicioCamera() {
         );
       }
     } else {
-      // Autoriza a câmera primeiro para revelar os nomes das lentes do iPhone.
-      let cameras = [];
-      let permissao = null;
-      try {
-        permissao = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-        permissao.getTracks().forEach(track => track.stop());
-        permissao = null;
-        cameras = await Html5Qrcode.getCameras();
-      } catch (erroPermissao) {
-        if (permissao) permissao.getTracks().forEach(track => track.stop());
-      }
-
-      const nome = camera => String(camera.label || "").toLowerCase();
-      const traseiras = cameras.filter(camera =>
-        /back|rear|environment|traseir|posterior/.test(nome(camera))
+      // Abre diretamente a câmera traseira padrão com uma única solicitação de permissão.
+      await leitorCriado.start(
+        { facingMode: { ideal: "environment" } },
+        config,
+        aoLer,
+        () => {}
       );
-      const candidatas = traseiras.length ? traseiras : cameras;
-      const lentesNormais = candidatas.filter(camera =>
-        !/ultra.?wide|ultra.?angular|0[,.]5\s*x|telephoto|macro|front|frontal/.test(nome(camera))
-      );
-      const principal =
-        lentesNormais.find(camera => /main|wide|1\s*x|back camera$|rear camera$/.test(nome(camera))) ||
-        lentesNormais[0] || candidatas[candidatas.length - 1];
-
-      try {
-        if (principal && principal.id) {
-          await leitorCriado.start(principal.id, config, aoLer, () => {});
-        } else {
-          await leitorCriado.start({ facingMode: { ideal: "environment" } }, config, aoLer, () => {});
-        }
-      } catch (erroCamera) {
-        if (solicitouPararDuranteInicio) throw erroCamera;
-        await leitorCriado.start({ facingMode: { ideal: "environment" } }, config, aoLer, () => {});
-      }
-
-      // O foco contínuo é aplicado apenas se o navegador aceitar o controle.
-      try {
-        await leitorCriado.applyVideoConstraints({ advanced: [{ focusMode: "continuous" }] });
-      } catch (erroFoco) {}
     }
 
     const video = el("leitor").querySelector("video");
