@@ -778,7 +778,7 @@ async function lancarLink(link) {
       "Leia o QR Code ou cole o link da nota antes de lançar.",
       "erro"
     );
-
+    mostrarPerguntaOutraCaptura_();
     return;
   }
 
@@ -787,7 +787,7 @@ async function lancarLink(link) {
       "O link não parece válido. Confira o endereço do QR Code.",
       "erro"
     );
-
+    mostrarPerguntaOutraCaptura_();
     return;
   }
 
@@ -857,6 +857,8 @@ async function lancarLink(link) {
     if (!cameraIniciando && !cameraAtiva) {
       el("btnLer").disabled = false;
     }
+
+    mostrarPerguntaOutraCaptura_();
   }
 }
 
@@ -1101,7 +1103,6 @@ async function processarQuadroIphone_() {
       await pararCamera();
       el("linkNota").value = textoLido;
       await lancarLink(textoLido);
-      mostrarPerguntaOutraCaptura_();
       return;
     }
   } catch (erro) {
@@ -1278,7 +1279,6 @@ async function executarInicioCamera() {
         el("linkNota").value = textoLido;
 
         await lancarLink(textoLido);
-        mostrarPerguntaOutraCaptura_();
       }).catch((erro) => {
         mostrarMensagem(
           erro.message || "Erro ao processar o QR Code.",
