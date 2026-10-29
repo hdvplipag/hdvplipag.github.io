@@ -47,11 +47,6 @@
       line-height: 1.1;
     }
 
-    .subtitulo {
-      margin: 0 0 22px;
-      color: #526171;
-    }
-
     .cartao {
       background: #fff;
       border: 1px solid var(--borda);
@@ -144,8 +139,7 @@
       flex-shrink: 0;
     }
 
-    body.ios-ios .linha-senha,
-    body.ios-ios .rodape {
+    body.ios-ios .linha-senha {
       display: none;
     }
 
@@ -360,10 +354,15 @@
     }
 
     .rodape {
+      display: none;
       text-align: center;
       color: #667586;
       font-size: .82rem;
       padding-top: 10px;
+    }
+
+    .rodape.visivel {
+      display: block;
     }
 
     @media (max-width: 380px) {
@@ -390,8 +389,6 @@
 <body>
 <main>
   <h1>Minhas Notinhas</h1>
-  <p class="subtitulo">Leia o QR Code do cupom fiscal e registre sua compra.</p>
-
   <section class="cartao" aria-labelledby="tituloLeitura">
     <h2 id="tituloLeitura">Registrar compra</h2>
 
@@ -500,7 +497,7 @@
     <div id="listaItens"></div>
   </section>
 
-  <p class="rodape">
+  <p id="ajudaCamera" class="rodape">
     Se a câmera não abrir, permita o acesso à câmera nas configurações
     do navegador e abra esta página por HTTPS.
   </p>
@@ -1027,8 +1024,10 @@ async function iniciarCamera() {
 
 async function executarInicioCamera() {
   limparMensagem();
+  el("ajudaCamera").classList.remove("visivel");
 
   if (!window.isSecureContext) {
+    el("ajudaCamera").classList.add("visivel");
     mostrarMensagem(
       "A câmera exige HTTPS. Abra o GitHub Pages pelo endereço https://.",
       "erro"
@@ -1041,6 +1040,7 @@ async function executarInicioCamera() {
     !navigator.mediaDevices ||
     !navigator.mediaDevices.getUserMedia
   ) {
+    el("ajudaCamera").classList.add("visivel");
     mostrarMensagem(
       "Este navegador não disponibiliza acesso à câmera. Atualize o navegador.",
       "erro"
@@ -1049,7 +1049,10 @@ async function executarInicioCamera() {
     return;
   }
 
-  if (typeof Html5Qrcode === "undefined") {
+  if (
+    typeof Html5Qrcode === "undefined" &&
+    typeof jsQR !== "function"
+  ) {
     mostrarMensagem(
       "A biblioteca de leitura não carregou. Confira a internet e recarregue a página.",
       "erro"
@@ -1192,6 +1195,7 @@ async function executarInicioCamera() {
 
   } catch (erro) {
     cameraAtiva = false;
+    el("ajudaCamera").classList.add("visivel");
 
     mostrarMensagem(
       mensagemErroCamera(erro),
@@ -1332,19 +1336,27 @@ async function lerQrDaFoto(arquivo) {
   el("btnLer").disabled = true;
   mostrarMensagem("Analisando a foto do QR Code…", "info");
 
-  const leitorFoto = new Html5Qrcode("leitor", {
-    verbose: false,
-    formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE]
-  });
+  const leitorFoto = typeof Html5Qrcode !== "undefined"
+    ? new Html5Qrcode("leitor", {
+        verbose: false,
+        formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE]
+      })
+    : null;
 
   try {
     let textoLido = "";
 
     try {
-      textoLido = await leitorFoto.scanFile(arquivo, false);
-    } catch (erroHtml5Qrcode) {
-      // Segunda tentativa independente: decodifica os pixels da foto no próprio iPhone.
-      textoLido = await decodificarFotoComJsQr(arquivo);
+      // ZBar/WebAssembly é um decodificador independente e mais robusto para fotos.
+      textoLido = await decodificarFotoComZbar(arquivo);
+    } catch (erroZbar) {
+      try {
+        textoLido = await decodificarFotoComJsQr(arquivo);
+      } catch (erroJsQr) {
+        // Mantém o decodificador anterior como terceira alternativa.
+        if (!leitorFoto) throw erroJsQr;
+        textoLido = await leitorFoto.scanFile(arquivo, false);
+      }
     }
 
     if (!textoLido) {
@@ -1363,11 +1375,67 @@ async function lerQrDaFoto(arquivo) {
     );
   } finally {
     try {
-      await leitorFoto.clear();
+      if (leitorFoto) await leitorFoto.clear();
     } catch (_) {}
 
     el("fotoQrIphone").value = "";
     el("btnLer").disabled = false;
+  }
+}
+
+async function decodificarFotoComZbar(arquivo) {
+  const zbar = await import(
+    "https://cdn.jsdelivr.net/npm/@undecaf/zbar-wasm@0.11.0/dist/index.mjs"
+  );
+
+  const url = URL.createObjectURL(arquivo);
+  try {
+    const imagem = new Image();
+    imagem.src = url;
+    await imagem.decode();
+
+    const larguraOriginal = imagem.naturalWidth;
+    const alturaOriginal = imagem.naturalHeight;
+    const regioes = [
+      { x: 0, y: 0, w: 1, h: 1 },
+      { x: 0, y: 0.32, w: 1, h: 0.68 },
+      { x: 0.08, y: 0.30, w: 0.84, h: 0.70 },
+      { x: 0.15, y: 0.40, w: 0.70, h: 0.60 },
+      { x: 0, y: 0.50, w: 1, h: 0.50 }
+    ];
+
+    for (const regiao of regioes) {
+      const sx = Math.round(larguraOriginal * regiao.x);
+      const sy = Math.round(alturaOriginal * regiao.y);
+      const sw = Math.max(1, Math.round(larguraOriginal * regiao.w));
+      const sh = Math.max(1, Math.round(alturaOriginal * regiao.h));
+      const escala = Math.min(1, 2800 / Math.max(sw, sh));
+      const largura = Math.max(1, Math.round(sw * escala));
+      const altura = Math.max(1, Math.round(sh * escala));
+      const canvas = document.createElement("canvas");
+      canvas.width = largura;
+      canvas.height = altura;
+      const contexto = canvas.getContext("2d", { willReadFrequently: true });
+      contexto.fillStyle = "#fff";
+      contexto.fillRect(0, 0, largura, altura);
+      contexto.drawImage(imagem, sx, sy, sw, sh, 0, 0, largura, altura);
+
+      const simbolos = await zbar.scanImageData(
+        contexto.getImageData(0, 0, largura, altura)
+      );
+      const qr = simbolos.find(simbolo => /qr/i.test(simbolo.typeName || ""));
+      if (qr) {
+        const texto = qr.decode();
+        if (texto) return texto;
+      }
+    }
+
+    throw new Error(
+      "QR não localizado. Foto recebida: " + larguraOriginal + "×" + alturaOriginal +
+      " px; tipo " + (arquivo.type || "desconhecido") + "."
+    );
+  } finally {
+    URL.revokeObjectURL(url);
   }
 }
 
