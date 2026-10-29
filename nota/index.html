@@ -125,24 +125,6 @@
       border-radius: 9px;
     }
 
-    .linha-senha {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-top: 12px;
-      color: #526171;
-      font-size: .9rem;
-    }
-
-    .linha-senha button {
-      flex-shrink: 0;
-    }
-
-    body.ios-ios .linha-senha {
-      display: none;
-    }
-
     #areaCamera {
       display: none;
       margin-top: 16px;
@@ -398,7 +380,7 @@
   <section class="cartao" aria-labelledby="tituloLeitura">
     <h2 id="tituloLeitura">Registrar compra</h2>
 
-    <button id="btnLer" class="botao-principal" type="button">
+    <button id="btnLer" class="botao-principal" type="button" style="display:none">
       📷 Capturar
     </button>
 
@@ -440,15 +422,7 @@
         </button>
       </div>
     </div>
-
-    <div class="linha-senha">
-      <span id="estadoSenha">A senha será solicitada no primeiro uso.</span>
-
-      <button id="btnTrocarSenha" class="botao-secundario botao-pequeno" type="button">
-        Trocar senha
-      </button>
-    </div>
-  </section>
+</section>
 
   <div id="mensagem" class="mensagem" role="status" aria-live="polite"></div>
 
@@ -457,10 +431,10 @@
     <p>Deseja realizar outra captura?</p>
     <div class="pergunta-botoes">
       <button id="btnOutraCaptura" class="botao-principal" type="button">
-        Sim, capturar outra
+        Sim
       </button>
       <button id="btnConcluirCapturas" class="botao-secundario" type="button">
-        Não, concluir
+        Não
       </button>
     </div>
   </section>
@@ -524,8 +498,6 @@
 const URL_DO_MOTOR =
   "https://script.google.com/macros/s/AKfycby7bScgVxp5wJxV0KZ26kvU0Awd8az-pMZXSg8kTM137bvnQxQxvgpXJ39zutU8gC_Xew/exec";
 
-const CHAVE_SENHA = "minhasNotinhas_senha";
-
 const EH_IOS = /iPad|iPhone|iPod/i.test(navigator.userAgent) ||
   (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
@@ -536,8 +508,6 @@ const CATEGORIAS = [
   "Restaurante",
   "Outros"
 ];
-
-let senhaAtual = localStorage.getItem(CHAVE_SENHA) || "";
 
 let leitorQr = null;
 let cameraAtiva = false;
@@ -575,58 +545,6 @@ function limparMensagem() {
 }
 
 
-/* SENHA */
-
-function obterSenha() {
-  if (senhaAtual) {
-    return senhaAtual;
-  }
-
-  const informada = prompt("Digite a senha do aplicativo:");
-
-  if (informada === null || !informada.trim()) {
-    mostrarMensagem(
-      "Informe a senha para usar o aplicativo.",
-      "erro"
-    );
-
-    return "";
-  }
-
-  senhaAtual = informada.trim();
-
-  localStorage.setItem(CHAVE_SENHA, senhaAtual);
-
-  el("estadoSenha").textContent = "Senha salva neste celular.";
-
-  return senhaAtual;
-}
-
-function trocarSenha() {
-  const nova = prompt("Digite a nova senha do aplicativo:");
-
-  if (nova === null) {
-    return;
-  }
-
-  if (!nova.trim()) {
-    mostrarMensagem("A senha não pode ficar vazia.", "erro");
-    return;
-  }
-
-  senhaAtual = nova.trim();
-
-  localStorage.setItem(CHAVE_SENHA, senhaAtual);
-
-  el("estadoSenha").textContent = "Senha atualizada neste celular.";
-
-  mostrarMensagem(
-    "Senha atualizada neste celular.",
-    "sucesso"
-  );
-}
-
-
 /* COMUNICAÇÃO COM O APPS SCRIPT */
 
 function validarMotor() {
@@ -646,14 +564,7 @@ function validarMotor() {
 async function enviarMotor(dados) {
   validarMotor();
 
-  const senha = obterSenha();
-
-  if (!senha) {
-    return null;
-  }
-
   const corpo = {
-    senha: senha,
     acao: dados.acao,
     link: dados.link || "",
     loja: dados.loja || "",
@@ -701,21 +612,6 @@ async function enviarMotor(dados) {
     resultado.aviso || resultado.mensagem || ""
   );
 
-  if (
-    resultado.ok === false &&
-    /senha inválida/i.test(mensagemMotor)
-  ) {
-    senhaAtual = "";
-
-    localStorage.removeItem(CHAVE_SENHA);
-
-    el("estadoSenha").textContent =
-      "A senha precisa ser informada novamente.";
-
-    throw new Error(
-      "Senha inválida. Toque em Trocar senha e informe a senha correta."
-    );
-  }
 
   return resultado;
 }
@@ -1536,8 +1432,6 @@ el("btnLancar").addEventListener("click", () => {
   lancarLink(el("linkNota").value);
 });
 
-el("btnTrocarSenha").addEventListener("click", trocarSenha);
-
 el("categoria").addEventListener("change", salvarCategoria);
 
 el("linkNota").addEventListener("keydown", (evento) => {
@@ -1550,10 +1444,6 @@ el("linkNota").addEventListener("keydown", (evento) => {
 
 
 /* ESTADO INICIAL */
-
-el("estadoSenha").textContent = senhaAtual
-  ? "Senha salva neste celular."
-  : "A senha será solicitada no primeiro uso.";
 if (EH_IOS) {
   document.body.classList.add("ios-ios");
   el("entradaManualLink").style.display = "none";
