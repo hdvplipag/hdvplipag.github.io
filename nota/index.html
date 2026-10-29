@@ -324,11 +324,6 @@
       margin-top: 4px;
     }
 
-    .item-total {
-      font-weight: 750;
-      margin-top: 4px;
-    }
-
     .categoria-ajuda {
       color: #526171;
       font-size: .9rem;
@@ -444,13 +439,13 @@
 
     <div class="resumo">
       <div>
-        <span class="rotulo">Loja</span>
-        <div id="resLoja" class="valor-resumo">—</div>
+        <span class="rotulo">Data</span>
+        <div id="resData" class="valor-resumo">—</div>
       </div>
 
       <div>
-        <span class="rotulo">Data</span>
-        <div id="resData" class="valor-resumo">—</div>
+        <span class="rotulo">Loja</span>
+        <div id="resLoja" class="valor-resumo">—</div>
       </div>
 
       <div>
@@ -748,11 +743,6 @@ function renderizarCompra(dados) {
         item.valorUnitario ??
         item.valor_unitario;
 
-      const total =
-        item.total ??
-        item.valorTotal ??
-        item.valor_total;
-
       return `
         <article class="item">
           <div class="item-nome">
@@ -765,9 +755,6 @@ function renderizarCompra(dados) {
             · Unitário: ${escaparHtml(formatarDinheiro(unitario))}
           </div>
 
-          <div class="item-total">
-            ${escaparHtml(formatarDinheiro(total))}
-          </div>
         </article>
       `;
     }).join("");
@@ -931,6 +918,7 @@ async function pararCamera() {
     cameraAtiva = false;
     processandoLeitura = false;
     lanternaLigada = false;
+    el("btnLanterna").style.display = "none";
 
     el("btnLanterna").textContent = "🔦 Lanterna";
 
@@ -979,6 +967,19 @@ function mensagemErroCamera(erro) {
   return "Não foi possível abrir a câmera. Confira a permissão do navegador. Detalhe: " + nome;
 }
 
+function atualizarBotaoLanterna_(trilha) {
+  let disponivel = false;
+  try {
+    const capacidades = trilha && typeof trilha.getCapabilities === "function"
+      ? trilha.getCapabilities()
+      : null;
+    disponivel = Boolean(capacidades && capacidades.torch);
+  } catch (_) {
+    disponivel = false;
+  }
+  el("btnLanterna").style.display = disponivel ? "block" : "none";
+}
+
 async function iniciarLeituraAoVivoNoIphone_() {
   const pedidoCamera = navigator.mediaDevices.getUserMedia({
     audio: false,
@@ -1003,6 +1004,7 @@ async function iniciarLeituraAoVivoNoIphone_() {
   iosCameraStream = stream;
   iosZbar = zbar;
   iosQuadro = 0;
+  atualizarBotaoLanterna_(stream.getVideoTracks()[0]);
 
   const video = document.createElement("video");
   video.autoplay = true;
@@ -1309,6 +1311,11 @@ async function executarInicioCamera() {
       video.setAttribute("playsinline", "");
       video.setAttribute("webkit-playsinline", "");
       video.muted = true;
+      const stream = video.srcObject;
+      const trilha = stream && typeof stream.getVideoTracks === "function"
+        ? stream.getVideoTracks()[0]
+        : null;
+      atualizarBotaoLanterna_(trilha);
     }
     cameraAtiva = true;
 
