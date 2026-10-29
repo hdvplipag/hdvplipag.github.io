@@ -127,25 +127,80 @@
     #areaCamera { display: none; margin-top: 16px; }
     #areaCamera.aberta { display: block; }
 
-    #leitor {
+    #cameraPalco {
+      position: relative;
       width: 100%;
       max-width: 460px;
       margin: 0 auto;
       overflow: hidden;
-      border-radius: 14px;
+      border-radius: 16px;
+      background: #101820;
+      line-height: 0;
+    }
+
+    #leitor {
+      width: 100%;
+      margin: 0 auto;
+      overflow: hidden;
       background: #101820;
       min-height: 80px;
     }
 
     #leitor video {
+      display: block;
       width: 100% !important;
       height: auto !important;
       max-height: 65vh;
-      object-fit: contain !important;
+      object-fit: cover !important;
       border-radius: 12px;
     }
 
     #leitor img { max-width: 100%; }
+
+    /* Moldura visual central, no estilo de um leitor de QR de celular. */
+    #molduraLeitura {
+      position: absolute;
+      width: 76%;
+      aspect-ratio: 1 / 1;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      border: 3px solid rgba(255,255,255,.95);
+      border-radius: 22px;
+      box-shadow: 0 0 0 999px rgba(0,0,0,.28);
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    #molduraLeitura::before,
+    #molduraLeitura::after {
+      content: "";
+      position: absolute;
+      inset: -3px;
+      border-radius: 22px;
+      border: 4px solid transparent;
+      pointer-events: none;
+    }
+
+    #molduraLeitura::before {
+      border-top-color: #fff;
+      border-left-color: #fff;
+      border-top-left-radius: 22px;
+    }
+
+    #molduraLeitura::after {
+      border-right-color: #fff;
+      border-bottom-color: #fff;
+      border-bottom-right-radius: 22px;
+    }
+
+    .acoes-camera {
+      display: flex;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .acoes-camera button { flex: 1; }
 
     .dica {
       font-size: .93rem;
@@ -228,12 +283,19 @@
     <button id="btnLer" class="botao-principal" type="button">📷 Ler notinha</button>
 
     <div id="areaCamera">
-      <div id="leitor"></div>
-      <p id="estadoCamera" class="dica" aria-live="polite">Preparando câmera…</p>
-      <button id="btnFecharCamera" class="botao-secundario" type="button" style="width:100%;margin-top:12px">Fechar câmera</button>
+      <div id="cameraPalco">
+        <div id="leitor"></div>
+        <div id="molduraLeitura" aria-hidden="true"></div>
+      </div>
+      <p id="estadoCamera" class="dica" aria-live="polite">Aponte o QR Code para dentro do quadrado.</p>
+      <div class="acoes-camera">
+        <button id="btnLanterna" class="botao-secundario" type="button">🔦 Lanterna</button>
+        <button id="btnFecharCamera" class="botao-secundario" type="button">Fechar câmera</button>
+      </div>
     </div>
 
-    <div style="margin-top:20px">
+    <!-- Entrada manual do link ocultada conforme solicitado. -->
+    <div id="entradaManualLink" style="display:none">
       <label for="linkNota">Ou cole o link da nota</label>
       <div class="linha">
         <input id="linkNota" type="url" inputmode="url" autocomplete="url"
@@ -288,6 +350,7 @@
   let cameraAtiva = false;
   let processandoLeitura = false;
   let lojaAtual = "";
+  let lanternaLigada = false;
 
   const el = (id) => document.getElementById(id);
 
@@ -452,7 +515,7 @@
     mostrarMensagem("Buscando a nota…", "info");
 
     try {
-      const dados = await enviarMotor({ acao: "lançar", link: valor });
+      const dados = await enviarMotor({ acao: "lancar", link: valor });
       if (!dados) return;
 
       if (dados.aviso) {
@@ -487,6 +550,8 @@
     leitorQr = null;
     cameraAtiva = false;
     processandoLeitura = false;
+    lanternaLigada = false;
+    el("btnLanterna").textContent = "🔦 Lanterna";
     el("areaCamera").classList.remove("aberta");
     el("estadoCamera").textContent = "";
     el("btnLer").disabled = false;
@@ -537,15 +602,17 @@
     // Criado somente após o toque do usuário; ajuda a evitar falhas de inicialização.
     leitorQr = new Html5Qrcode("leitor", {
       verbose: false,
-      formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
-      useBarCodeDetectorIfSupported: true
+      // O cupom fiscal usa QR Code; limitar o formato evita tentativas desnecessárias.
+      formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE]
     });
 
+    // O qrbox é a região REAL usada para decodificar; ela acompanha a moldura visual.
+    // Mantemos uma margem para que o QR Code inteiro caiba no quadrado.
     const config = {
       fps: 12,
       qrbox: function(largura, altura) {
-        const lado = Math.floor(Math.min(largura, altura) * 0.88);
-        return { width: Math.max(180, lado), height: Math.max(180, lado) };
+        const lado = Math.floor(Math.min(largura, altura) * 0.76);
+        return { width: lado, height: lado };
       },
       aspectRatio: 1,
       disableFlip: false
@@ -563,27 +630,59 @@
     try {
       // Primeiro tenta a câmera traseira pelo rótulo; fallback para facingMode.
       try {
+        // Pede câmera traseira e uma resolução nítida como preferência.
+        // "ideal" permite que aparelhos com menos recursos também abram a câmera.
         await leitorQr.start(
-          { facingMode: "environment" },
+          {
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          },
           config,
           aoLer,
           () => {}
         );
       } catch (primeiroErro) {
-        // Algumas versões de navegador não aceitam facingMode; tenta enumerar câmeras.
-        const cameras = await Html5Qrcode.getCameras();
-        if (!cameras || !cameras.length) throw primeiroErro;
-        const traseira = cameras.find(c => /back|rear|environment|traseir|principal/i.test(c.label));
-        const cameraId = (traseira || cameras[cameras.length - 1]).id;
-        await leitorQr.start(cameraId, config, aoLer, () => {});
+        // Fallback para navegadores que não aceitam constraints de câmera.
+        try {
+          const cameras = await Html5Qrcode.getCameras();
+          if (!cameras || !cameras.length) throw primeiroErro;
+          const traseira = cameras.find(c => /back|rear|environment|traseir|principal|0,5|wide/i.test(c.label));
+          const cameraId = (traseira || cameras[cameras.length - 1]).id;
+          await leitorQr.start(cameraId, config, aoLer, () => {});
+        } catch (segundoErro) {
+          throw segundoErro || primeiroErro;
+        }
       }
 
       cameraAtiva = true;
-      el("estadoCamera").textContent = "Aponte a câmera para o QR Code inteiro. Mova o celular devagar até focar.";
+      el("estadoCamera").textContent = "Centralize o QR Code inteiro dentro do quadrado. Se estiver escuro, tente a lanterna.";
     } catch (erro) {
       const mensagem = mensagemErroCamera(erro);
       await pararCamera();
       mostrarMensagem(mensagem, "erro");
+    }
+  }
+
+  async function alternarLanterna() {
+    if (!leitorQr || !cameraAtiva) {
+      mostrarMensagem("Abra a câmera antes de tentar ligar a lanterna.", "info");
+      return;
+    }
+
+    try {
+      const proximoEstado = !lanternaLigada;
+      // A biblioteca encaminha as restrições de vídeo para a câmera ativa.
+      await leitorQr.applyVideoConstraints({
+        advanced: [{ torch: proximoEstado }]
+      });
+      lanternaLigada = proximoEstado;
+      el("btnLanterna").textContent = lanternaLigada ? "🔦 Desligar lanterna" : "🔦 Lanterna";
+      el("estadoCamera").textContent = lanternaLigada
+        ? "Lanterna ligada. Mantenha o QR Code inteiro dentro do quadrado."
+        : "Centralize o QR Code inteiro dentro do quadrado.";
+    } catch (_) {
+      mostrarMensagem("Este celular ou navegador não permite controlar a lanterna por esta página. Você ainda pode usar a câmera normalmente.", "info");
     }
   }
 
@@ -609,6 +708,7 @@
 
   el("btnLer").addEventListener("click", iniciarCamera);
   el("btnFecharCamera").addEventListener("click", pararCamera);
+  el("btnLanterna").addEventListener("click", alternarLanterna);
   el("btnLancar").addEventListener("click", () => lancarLink(el("linkNota").value));
   el("btnTrocarSenha").addEventListener("click", trocarSenha);
   el("categoria").addEventListener("change", salvarCategoria);
