@@ -3,1310 +3,628 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#176b45">
-
+  <meta name="theme-color" content="#1769aa">
   <title>Minhas Notinhas</title>
 
-  <!-- Biblioteca gratuita de leitura de QR Code.
-       Versão fixa: 2.3.8 -->
+  <!-- Biblioteca gratuita com versão fixa -->
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 
   <style>
     :root {
-      --verde: #176b45;
-      --verde-escuro: #105336;
-      --verde-claro: #e8f5ed;
-      --fundo: #f4f7f5;
-      --texto: #202923;
-      --cinza: #647067;
-      --borda: #dce5df;
-      --erro: #b42318;
-      --erro-fundo: #fff0ee;
-      --sucesso: #176b45;
-      --aviso: #8a5700;
-      --aviso-fundo: #fff6df;
+      --azul: #1769aa;
+      --azul-escuro: #104f83;
+      --fundo: #f3f6fa;
+      --texto: #17212b;
+      --borda: #d6dee8;
+      --erro: #a61b1b;
+      --sucesso: #17633a;
     }
 
-    * {
-      box-sizing: border-box;
-    }
-
-    html {
-      font-size: 18px;
-      -webkit-text-size-adjust: 100%;
-    }
+    * { box-sizing: border-box; }
 
     body {
       margin: 0;
       background: var(--fundo);
       color: var(--texto);
-      font-family: system-ui, -apple-system, BlinkMacSystemFont,
-                   "Segoe UI", sans-serif;
-      line-height: 1.5;
-    }
-
-    button,
-    input,
-    select {
-      font: inherit;
-    }
-
-    button {
-      cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    button:disabled {
-      opacity: 0.55;
-      cursor: not-allowed;
-    }
-
-    .topo {
-      background: var(--verde);
-      color: white;
-      padding: 22px 18px 25px;
-      padding-top: max(22px, env(safe-area-inset-top));
-      border-radius: 0 0 22px 22px;
-    }
-
-    .topo-conteudo {
-      max-width: 620px;
-      margin: 0 auto;
-    }
-
-    .topo-linha {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-    }
-
-    h1 {
-      margin: 0;
-      font-size: 1.65rem;
-      line-height: 1.2;
-      font-weight: 800;
-    }
-
-    .subtitulo {
-      margin: 8px 0 0;
-      font-size: 0.95rem;
-      opacity: 0.92;
-    }
-
-    .botao-trocar-senha {
-      flex-shrink: 0;
-      color: white;
-      background: transparent;
-      border: 1px solid rgba(255, 255, 255, 0.65);
-      border-radius: 10px;
-      padding: 8px 11px;
-      font-size: 0.75rem;
-      font-weight: 600;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 18px;
+      line-height: 1.45;
     }
 
     main {
-      width: 100%;
-      max-width: 620px;
+      width: min(100%, 620px);
       margin: 0 auto;
-      padding: 20px 16px 40px;
+      padding: 18px 16px calc(28px + env(safe-area-inset-bottom));
     }
+
+    h1 {
+      margin: 4px 0 6px;
+      font-size: clamp(1.8rem, 7vw, 2.3rem);
+      line-height: 1.1;
+    }
+
+    .subtitulo { margin: 0 0 22px; color: #526171; }
 
     .cartao {
-      background: white;
+      background: #fff;
       border: 1px solid var(--borda);
       border-radius: 18px;
-      padding: 20px;
-      margin-bottom: 17px;
-      box-shadow: 0 3px 12px rgba(20, 55, 35, 0.035);
+      padding: 18px;
+      margin: 14px 0;
+      box-shadow: 0 3px 12px rgba(25, 45, 70, .05);
     }
 
-    .cartao h2 {
-      margin: 0 0 12px;
-      font-size: 1.12rem;
-      line-height: 1.35;
+    label, .rotulo {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 8px;
     }
 
-    .explicacao {
-      color: var(--cinza);
-      font-size: 0.86rem;
-      margin: 0 0 16px;
+    input, select, button {
+      font: inherit;
+      border-radius: 12px;
     }
+
+    input, select {
+      width: 100%;
+      min-height: 52px;
+      padding: 12px 14px;
+      border: 1px solid #aebdcd;
+      background: #fff;
+      color: var(--texto);
+    }
+
+    input:focus, select:focus, button:focus-visible {
+      outline: 3px solid #9cccf4;
+      outline-offset: 2px;
+    }
+
+    button {
+      border: 0;
+      min-height: 54px;
+      padding: 13px 16px;
+      font-weight: 750;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    button:disabled { opacity: .6; cursor: wait; }
 
     .botao-principal {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 12px;
       width: 100%;
-      min-height: 72px;
-      border: none;
-      border-radius: 15px;
-      background: var(--verde);
-      color: white;
-      font-size: 1.18rem;
-      font-weight: 800;
-      padding: 16px;
-      box-shadow: 0 4px 0 var(--verde-escuro);
+      background: var(--azul);
+      color: #fff;
+      font-size: 1.2rem;
+      min-height: 64px;
     }
 
-    .botao-principal:active {
-      transform: translateY(2px);
-      box-shadow: 0 2px 0 var(--verde-escuro);
-    }
-
-    .icone-camera {
-      font-size: 1.7rem;
-    }
+    .botao-principal:active { background: var(--azul-escuro); }
 
     .botao-secundario {
-      width: 100%;
-      min-height: 54px;
-      border: 1px solid var(--borda);
-      border-radius: 12px;
-      background: white;
-      color: var(--texto);
-      font-weight: 700;
-      padding: 12px 16px;
+      background: #e7f1fb;
+      color: #124f80;
     }
 
-    .botao-secundario:active {
-      background: var(--verde-claro);
+    .botao-pequeno {
+      min-height: 38px;
+      padding: 7px 11px;
+      font-size: .88rem;
+      border-radius: 9px;
     }
 
-    .campo {
-      display: block;
-      width: 100%;
-      min-height: 54px;
-      padding: 13px 14px;
-      margin: 8px 0 13px;
-      border: 1px solid #cbd6ce;
-      border-radius: 11px;
-      background: white;
-      color: var(--texto);
-      font-size: 1rem;
-    }
-
-    .campo:focus {
-      outline: 3px solid rgba(23, 107, 69, 0.16);
-      border-color: var(--verde);
-    }
-
-    label {
-      display: block;
-      font-size: 0.9rem;
-      font-weight: 700;
-    }
-
-    .botao-lancar {
-      width: 100%;
-      min-height: 58px;
-      background: var(--verde);
-      color: white;
-      border: none;
-      border-radius: 12px;
-      font-size: 1.08rem;
-      font-weight: 800;
-    }
-
-    .separador {
+    .linha-senha {
       display: flex;
       align-items: center;
+      justify-content: space-between;
       gap: 12px;
-      margin: 22px 0;
-      color: var(--cinza);
-      font-size: 0.83rem;
+      margin-top: 12px;
+      color: #526171;
+      font-size: .9rem;
     }
 
-    .separador::before,
-    .separador::after {
-      content: "";
-      height: 1px;
-      flex: 1;
-      background: var(--borda);
-    }
+    .linha-senha button { flex-shrink: 0; }
 
-    #area-camera {
-      display: none;
-      margin-top: 18px;
-    }
+    #areaCamera { display: none; margin-top: 16px; }
+    #areaCamera.aberta { display: block; }
 
     #leitor {
       width: 100%;
-      max-width: 390px;
-      aspect-ratio: 1 / 1;
+      max-width: 460px;
       margin: 0 auto;
       overflow: hidden;
-      border-radius: 15px;
-      background: #111;
+      border-radius: 14px;
+      background: #101820;
+      min-height: 80px;
     }
 
     #leitor video {
+      width: 100% !important;
+      height: auto !important;
+      max-height: 65vh;
       object-fit: contain !important;
+      border-radius: 12px;
     }
 
-    #leitor img {
-      max-width: 100%;
+    #leitor img { max-width: 100%; }
+
+    .dica {
+      font-size: .93rem;
+      color: #526171;
+      margin: 12px 0 0;
     }
 
-    .instrucao-camera {
-      margin: 12px 0;
-      text-align: center;
-      color: var(--cinza);
-      font-size: 0.85rem;
+    .linha {
+      display: flex;
+      gap: 10px;
+      align-items: stretch;
     }
 
-    .botao-parar {
-      margin-top: 12px;
-      border-color: #efc9c5;
-      color: var(--erro);
-    }
+    .linha input { min-width: 0; flex: 1; }
+    .linha button { flex-shrink: 0; }
 
     .mensagem {
       display: none;
-      margin-bottom: 17px;
-      padding: 15px 16px;
+      padding: 13px 14px;
       border-radius: 12px;
-      font-size: 0.91rem;
-      overflow-wrap: anywhere;
-      white-space: pre-wrap;
-    }
-
-    .mensagem.info {
-      display: block;
-      color: #174d82;
-      background: #eaf3ff;
-      border: 1px solid #c9defb;
-    }
-
-    .mensagem.sucesso {
-      display: block;
-      color: var(--sucesso);
-      background: var(--verde-claro);
-      border: 1px solid #c3e4cf;
-    }
-
-    .mensagem.erro {
-      display: block;
-      color: var(--erro);
-      background: var(--erro-fundo);
-      border: 1px solid #f2c6c1;
-    }
-
-    .mensagem.aviso {
-      display: block;
-      color: var(--aviso);
-      background: var(--aviso-fundo);
-      border: 1px solid #f0dfa8;
-    }
-
-    .resultado {
-      display: none;
-    }
-
-    .resultado-cabecalho {
-      padding-bottom: 16px;
-      border-bottom: 1px solid var(--borda);
-      margin-bottom: 17px;
-    }
-
-    .etiqueta {
-      display: block;
-      color: var(--cinza);
-      font-size: 0.8rem;
-      margin-bottom: 4px;
-    }
-
-    .nome-loja {
-      font-size: 1.3rem;
-      font-weight: 800;
+      margin: 14px 0;
       overflow-wrap: anywhere;
     }
 
-    .total {
-      margin-top: 15px;
-      font-size: 2rem;
-      line-height: 1.2;
-      font-weight: 850;
-      color: var(--verde);
+    .mensagem.visivel { display: block; }
+    .mensagem.erro { background: #fff0f0; color: var(--erro); border: 1px solid #efb7b7; }
+    .mensagem.info { background: #eaf4ff; color: #154d7b; border: 1px solid #b8d9f7; }
+    .mensagem.sucesso { background: #eaf8ef; color: var(--sucesso); border: 1px solid #b7e0c5; }
+
+    #resultado { display: none; }
+    #resultado.visivel { display: block; }
+
+    .resumo {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 14px 0;
     }
 
-    .linha-dado {
-      margin-top: 13px;
+    .resumo > div {
+      background: #f4f7fa;
+      border-radius: 12px;
+      padding: 12px;
+      min-width: 0;
     }
 
-    .valor-dado {
-      font-size: 0.97rem;
-      font-weight: 650;
-      overflow-wrap: anywhere;
-    }
+    .resumo .rotulo { margin: 0 0 4px; font-size: .85rem; color: #526171; }
+    .valor-resumo { font-size: 1.08rem; font-weight: 750; overflow-wrap: anywhere; }
 
-    .titulo-itens {
-      font-size: 1.08rem;
-      font-weight: 800;
-      margin: 22px 0 10px;
-    }
+    h2 { font-size: 1.25rem; margin: 0 0 12px; }
+    h3 { font-size: 1.05rem; margin: 18px 0 8px; }
 
     .item {
-      border: 1px solid var(--borda);
-      border-radius: 12px;
-      padding: 14px;
-      margin-bottom: 10px;
-      background: #fcfdfc;
+      padding: 12px 0;
+      border-bottom: 1px solid #e5ebf1;
     }
+    .item:last-child { border-bottom: 0; }
+    .item-nome { font-weight: 700; overflow-wrap: anywhere; }
+    .item-detalhes { color: #526171; font-size: .92rem; margin-top: 4px; }
+    .item-total { font-weight: 750; margin-top: 4px; }
 
-    .item-nome {
-      font-weight: 750;
-      overflow-wrap: anywhere;
-    }
-
-    .item-detalhe {
-      margin-top: 5px;
-      color: var(--cinza);
-      font-size: 0.86rem;
-    }
-
-    .item-total {
-      margin-top: 7px;
-      font-size: 1.08rem;
-      font-weight: 850;
-    }
-
-    .categoria-bloco {
-      margin-top: 22px;
-      padding-top: 18px;
-      border-top: 1px solid var(--borda);
-    }
-
-    .nota-categoria {
-      font-size: 0.8rem;
-      color: var(--cinza);
-      margin: 8px 0 0;
-    }
-
-    .rodape {
-      text-align: center;
-      color: var(--cinza);
-      font-size: 0.77rem;
-      padding: 5px 10px 20px;
-    }
-
-    .oculto {
-      display: none !important;
-    }
-
-    .carregando {
-      display: inline-block;
-      width: 18px;
-      height: 18px;
-      margin-right: 8px;
-      border: 3px solid currentColor;
-      border-right-color: transparent;
-      border-radius: 50%;
-      vertical-align: middle;
-      animation: girar 0.7s linear infinite;
-    }
-
-    @keyframes girar {
-      to {
-        transform: rotate(360deg);
-      }
-    }
+    .categoria-ajuda { color: #526171; font-size: .9rem; margin: 8px 0 0; }
+    .rodape { text-align: center; color: #667586; font-size: .82rem; padding-top: 10px; }
 
     @media (max-width: 380px) {
-      html {
-        font-size: 16px;
-      }
-
-      .cartao {
-        padding: 16px;
-      }
-
-      main {
-        padding-left: 12px;
-        padding-right: 12px;
-      }
-
-      .botao-trocar-senha {
-        padding: 7px 8px;
-      }
+      main { padding-left: 11px; padding-right: 11px; }
+      .cartao { padding: 14px; }
+      .linha { flex-direction: column; }
+      .linha button { width: 100%; }
     }
   </style>
 </head>
-
 <body>
+<main>
+  <h1>Minhas Notinhas</h1>
+  <p class="subtitulo">Leia o QR Code do cupom fiscal e registre sua compra.</p>
 
-  <header class="topo">
-    <div class="topo-conteudo">
-      <div class="topo-linha">
-        <div>
-          <h1>🧾 Minhas Notinhas</h1>
-          <p class="subtitulo">Suas compras organizadas, sem complicação.</p>
-        </div>
+  <section class="cartao" aria-labelledby="tituloLeitura">
+    <h2 id="tituloLeitura">Registrar compra</h2>
+    <button id="btnLer" class="botao-principal" type="button">📷 Ler notinha</button>
 
-        <button
-          type="button"
-          class="botao-trocar-senha"
-          id="botao-trocar-senha">
-          Trocar senha
-        </button>
+    <div id="areaCamera">
+      <div id="leitor"></div>
+      <p id="estadoCamera" class="dica" aria-live="polite">Preparando câmera…</p>
+      <button id="btnFecharCamera" class="botao-secundario" type="button" style="width:100%;margin-top:12px">Fechar câmera</button>
+    </div>
+
+    <div style="margin-top:20px">
+      <label for="linkNota">Ou cole o link da nota</label>
+      <div class="linha">
+        <input id="linkNota" type="url" inputmode="url" autocomplete="url"
+               placeholder="Cole aqui o link do QR Code">
+        <button id="btnLancar" class="botao-secundario" type="button">Lançar</button>
       </div>
     </div>
-  </header>
 
-  <main>
+    <div class="linha-senha">
+      <span id="estadoSenha">Senha salva neste celular.</span>
+      <button id="btnTrocarSenha" class="botao-secundario botao-pequeno" type="button">Trocar senha</button>
+    </div>
+  </section>
 
-    <div id="mensagem" class="mensagem" role="status" aria-live="polite"></div>
+  <div id="mensagem" class="mensagem" role="status" aria-live="polite"></div>
 
-    <!-- LEITOR DE QR CODE -->
-    <section class="cartao">
-      <h2>Registrar uma compra</h2>
+  <section id="resultado" class="cartao" aria-labelledby="tituloResultado">
+    <h2 id="tituloResultado">Compra</h2>
+    <div class="resumo">
+      <div><span class="rotulo">Loja</span><div id="resLoja" class="valor-resumo">—</div></div>
+      <div><span class="rotulo">Data</span><div id="resData" class="valor-resumo">—</div></div>
+      <div><span class="rotulo">Total</span><div id="resTotal" class="valor-resumo">—</div></div>
+      <div><span class="rotulo">Pagamento</span><div id="resPagamento" class="valor-resumo">—</div></div>
+    </div>
 
-      <p class="explicacao">
-        Aponte a câmera para o QR Code que aparece no cupom fiscal.
-      </p>
+    <label for="categoria">Categoria desta loja</label>
+    <select id="categoria">
+      <option value="Mercado">Mercado</option>
+      <option value="Farmácia">Farmácia</option>
+      <option value="Combustível">Combustível</option>
+      <option value="Restaurante">Restaurante</option>
+      <option value="Outros">Outros</option>
+    </select>
+    <p class="categoria-ajuda">Ao mudar a categoria, ela será salva para esta loja.</p>
 
-      <button
-        type="button"
-        id="botao-ler"
-        class="botao-principal">
-        <span class="icone-camera">▦</span>
-        <span>Ler notinha</span>
-      </button>
+    <h3>Itens da nota</h3>
+    <div id="listaItens"></div>
+  </section>
 
-      <div id="area-camera">
-        <div id="leitor"></div>
+  <p class="rodape">Se a câmera não abrir, permita o acesso à câmera nas configurações do navegador e abra esta página por HTTPS.</p>
+</main>
 
-        <p class="instrucao-camera">
-          Enquadre o QR Code dentro da área de leitura.
-        </p>
+<script>
+  // Cole aqui o endereço completo do seu Web App do Google Apps Script.
+  const URL_DO_MOTOR = "https://script.google.com/macros/s/AKfycby7bScgVxp5wJxV0KZ26kvU0Awd8az-pMZXSg8kTM137bvnQxQxvgpXJ39zutU8gC_Xew/exec";
 
-        <button
-          type="button"
-          id="botao-parar"
-          class="botao-secundario botao-parar">
-          Fechar câmera
-        </button>
-      </div>
+  const CHAVE_SENHA = "minhasNotinhas_senha";
+  const CATEGORIAS = ["Mercado", "Farmácia", "Combustível", "Restaurante", "Outros"];
 
-      <div class="separador">OU COLE O LINK DA NOTA</div>
+  let senhaAtual = localStorage.getItem(CHAVE_SENHA) || "";
+  let leitorQr = null;
+  let cameraAtiva = false;
+  let processandoLeitura = false;
+  let lojaAtual = "";
 
-      <form id="form-link">
-        <label for="link-nota">Link do QR Code</label>
+  const el = (id) => document.getElementById(id);
 
-        <input
-          id="link-nota"
-          class="campo"
-          type="url"
-          inputmode="url"
-          autocomplete="url"
-          placeholder="http://nfce.sefaz.al.gov.br/..."
-          required>
+  function mostrarMensagem(texto, tipo = "info") {
+    const caixa = el("mensagem");
+    caixa.textContent = texto;
+    caixa.className = "mensagem visivel " + tipo;
+  }
 
-        <button
-          type="submit"
-          id="botao-lancar"
-          class="botao-lancar">
-          Lançar
-        </button>
-      </form>
-    </section>
+  function limparMensagem() {
+    el("mensagem").textContent = "";
+    el("mensagem").className = "mensagem";
+  }
 
-    <!-- RESULTADO DA CONSULTA -->
-    <section id="resultado" class="cartao resultado">
-      <div class="resultado-cabecalho">
-        <span class="etiqueta">Estabelecimento</span>
-        <div id="resultado-loja" class="nome-loja">—</div>
-
-        <div class="linha-dado">
-          <span class="etiqueta">Data da compra</span>
-          <div id="resultado-data" class="valor-dado">—</div>
-        </div>
-
-        <div class="linha-dado" id="linha-pagamento">
-          <span class="etiqueta">Forma de pagamento</span>
-          <div id="resultado-pagamento" class="valor-dado">—</div>
-        </div>
-
-        <div class="linha-dado">
-          <span class="etiqueta">Total da compra</span>
-          <div id="resultado-total" class="total">R$ 0,00</div>
-        </div>
-      </div>
-
-      <div class="titulo-itens">Produtos da compra</div>
-      <div id="lista-itens"></div>
-
-      <div class="categoria-bloco">
-        <label for="categoria">Categoria desta loja</label>
-
-        <select id="categoria" class="campo">
-          <option value="Mercado">Mercado</option>
-          <option value="Farmácia">Farmácia</option>
-          <option value="Combustível">Combustível</option>
-          <option value="Restaurante">Restaurante</option>
-          <option value="Outros">Outros</option>
-        </select>
-
-        <p class="nota-categoria">
-          A categoria é associada à loja. Ao alterá-la,
-          a preferência será atualizada no sistema.
-        </p>
-      </div>
-    </section>
-
-    <footer class="rodape">
-      Minhas Notinhas · Controle pessoal de gastos
-    </footer>
-
-  </main>
-
-  <script>
-    // ========================================================
-    // CONFIGURAÇÃO
-    // ========================================================
-
-    // COLE AQUI A URL DA IMPLANTAÇÃO DO SEU APPS SCRIPT.
-    // Exemplo:
-    // https://script.google.com/macros/s/SEU_ID/exec
-    const URL_DO_MOTOR = 'https://script.google.com/macros/s/AKfycby7bScgVxp5wJxV0KZ26kvU0Awd8az-pMZXSg8kTM137bvnQxQxvgpXJ39zutU8gC_Xew/exec';
-
-    const CHAVE_SENHA = 'minhas_notinhas_senha';
-    const CATEGORIAS = [
-      'Mercado',
-      'Farmácia',
-      'Combustível',
-      'Restaurante',
-      'Outros'
-    ];
-
-    // ========================================================
-    // ELEMENTOS DA TELA
-    // ========================================================
-
-    const elMensagem = document.getElementById('mensagem');
-    const elBotaoLer = document.getElementById('botao-ler');
-    const elBotaoParar = document.getElementById('botao-parar');
-    const elBotaoLancar = document.getElementById('botao-lancar');
-    const elAreaCamera = document.getElementById('area-camera');
-    const elFormLink = document.getElementById('form-link');
-    const elLinkNota = document.getElementById('link-nota');
-    const elResultado = document.getElementById('resultado');
-    const elCategoria = document.getElementById('categoria');
-    const elTrocarSenha = document.getElementById('botao-trocar-senha');
-
-    let senha = '';
-    let leitorQR = null;
-    let cameraAtiva = false;
-    let enviando = false;
-    let lojaAtual = '';
-    let categoriaAtual = 'Outros';
-
-    // ========================================================
-    // INICIALIZAÇÃO
-    // ========================================================
-
-    function iniciar() {
-      senha = localStorage.getItem(CHAVE_SENHA) || '';
-
-      if (!senha) {
-        solicitarSenhaInicial();
-      }
-
-      elBotaoLer.addEventListener('click', iniciarCamera);
-      elBotaoParar.addEventListener('click', pararCamera);
-      elFormLink.addEventListener('submit', enviarLinkManual);
-      elTrocarSenha.addEventListener('click', trocarSenha);
-      elCategoria.addEventListener('change', salvarCategoria);
+  function obterSenha() {
+    if (senhaAtual) return senhaAtual;
+    const informada = prompt("Digite a senha do aplicativo:");
+    if (informada === null || !informada.trim()) {
+      mostrarMensagem("Informe a senha para usar o aplicativo.", "erro");
+      return "";
     }
+    senhaAtual = informada.trim();
+    localStorage.setItem(CHAVE_SENHA, senhaAtual);
+    el("estadoSenha").textContent = "Senha salva neste celular.";
+    return senhaAtual;
+  }
 
-    function solicitarSenhaInicial() {
-      const informada = prompt(
-        'Digite a senha de acesso ao sistema:'
-      );
-
-      if (informada === null || !informada.trim()) {
-        mostrarMensagem(
-          'Você precisa informar a senha para utilizar o sistema.',
-          'aviso'
-        );
-        return;
-      }
-
-      senha = informada.trim();
-      localStorage.setItem(CHAVE_SENHA, senha);
-
-      mostrarMensagem(
-        'Senha guardada neste celular.',
-        'sucesso'
-      );
+  function trocarSenha() {
+    const nova = prompt("Digite a nova senha do aplicativo:");
+    if (nova === null) return;
+    if (!nova.trim()) {
+      mostrarMensagem("A senha não pode ficar vazia.", "erro");
+      return;
     }
+    senhaAtual = nova.trim();
+    localStorage.setItem(CHAVE_SENHA, senhaAtual);
+    el("estadoSenha").textContent = "Senha atualizada neste celular.";
+    mostrarMensagem("Senha atualizada neste celular.", "sucesso");
+  }
 
-    function trocarSenha() {
-      const nova = prompt(
-        'Digite a nova senha de acesso:',
-        ''
-      );
-
-      if (nova === null) {
-        return;
-      }
-
-      if (!nova.trim()) {
-        mostrarMensagem(
-          'A senha não pode ficar vazia.',
-          'aviso'
-        );
-        return;
-      }
-
-      senha = nova.trim();
-      localStorage.setItem(CHAVE_SENHA, senha);
-
-      mostrarMensagem(
-        'Senha alterada neste celular. Ela será usada nas próximas solicitações.',
-        'sucesso'
-      );
+  function validarMotor() {
+    if (!URL_DO_MOTOR.trim()) {
+      throw new Error("Configure URL_DO_MOTOR no início do JavaScript com o endereço do Web App do Apps Script.");
     }
-
-    // ========================================================
-    // MENSAGENS
-    // ========================================================
-
-    function mostrarMensagem(texto, tipo) {
-      elMensagem.className = 'mensagem ' + (tipo || 'info');
-      elMensagem.textContent = texto;
-      elMensagem.scrollIntoView({
-        behavior: 'smooth',
-        block: 'nearest'
-      });
+    if (!/^https:\/\/script\.google\.com\//i.test(URL_DO_MOTOR.trim())) {
+      throw new Error("URL_DO_MOTOR deve ser o endereço HTTPS do Web App do Google Apps Script.");
     }
+  }
 
-    function limparMensagem() {
-      elMensagem.className = 'mensagem';
-      elMensagem.textContent = '';
-    }
+  async function enviarMotor(dados) {
+    validarMotor();
+    const senha = obterSenha();
+    if (!senha) return null;
 
-    function exigirSenha() {
-      if (senha) {
-        return true;
-      }
-
-      solicitarSenhaInicial();
-
-      if (!senha) {
-        mostrarMensagem(
-          'Informe a senha antes de continuar.',
-          'aviso'
-        );
-        return false;
-      }
-
-      return true;
-    }
-
-    function validarConfiguracao() {
-      if (!URL_DO_MOTOR.trim()) {
-        mostrarMensagem(
-          'Falta configurar a URL_DO_MOTOR no início do JavaScript. Cole a URL do seu aplicativo da Web do Google Apps Script.',
-          'erro'
-        );
-        return false;
-      }
-
-      if (!/^https:\/\/script\.google\.com\//i.test(URL_DO_MOTOR)) {
-        mostrarMensagem(
-          'A URL_DO_MOTOR não parece ser uma URL válida de implantação do Apps Script. Confira o endereço terminado em /exec.',
-          'erro'
-        );
-        return false;
-      }
-
-      return true;
-    }
-
-    // ========================================================
-    // CÂMERA E LEITURA DO QR CODE
-    // ========================================================
-
-    async function iniciarCamera() {
-      limparMensagem();
-
-      if (!exigirSenha()) {
-        return;
-      }
-
-      if (!validarConfiguracao()) {
-        return;
-      }
-
-      if (typeof Html5Qrcode === 'undefined') {
-        mostrarMensagem(
-          'Não foi possível carregar o leitor de QR Code. Verifique sua conexão com a internet e recarregue a página.',
-          'erro'
-        );
-        return;
-      }
-
-      if (cameraAtiva) {
-        return;
-      }
-
-      elAreaCamera.style.display = 'block';
-      elBotaoLer.disabled = true;
-
-      try {
-        leitorQR = new Html5Qrcode('leitor', {
-          formatsToSupport: [
-            Html5QrcodeSupportedFormats.QR_CODE
-          ],
-          verbose: false
-        });
-
-        cameraAtiva = true;
-
-        await leitorQR.start(
-          { facingMode: 'environment' },
-          {
-           {
-  fps: 15,
-
-  qrbox: function(largura, altura) {
-    const lado = Math.floor(
-      Math.min(largura, altura) * 0.85
-    );
-
-    return {
-      width: lado,
-      height: lado
+    const corpo = {
+      senha,
+      acao: dados.acao,
+      link: dados.link || "",
+      loja: dados.loja || "",
+      categoria: dados.categoria || ""
     };
-  },
 
-  aspectRatio: 1,
-  disableFlip: false
-},
-          async function(textoLido) {
-            // O primeiro QR Code reconhecido encerra a câmera
-            // antes de começar a consulta da nota.
-            if (!cameraAtiva || enviando) {
-              return;
-            }
-
-            await pararCamera();
-            elLinkNota.value = textoLido.trim();
-
-            await consultarNota(textoLido.trim());
-          },
-          function() {
-            // Erros comuns de leitura por quadro são normais.
-            // Não mostrar alertas repetidos enquanto a câmera
-            // está tentando reconhecer o QR Code.
-          }
-        );
-
-        mostrarMensagem(
-          'Câmera ativa. Aponte para o QR Code da nota fiscal.',
-          'info'
-        );
-
-      } catch (erro) {
-        cameraAtiva = false;
-
-        if (leitorQR) {
-          try {
-            await leitorQR.clear();
-          } catch (ignorado) {
-            // Não há mais nada a limpar.
-          }
-        }
-
-        leitorQR = null;
-        elAreaCamera.style.display = 'none';
-
-        mostrarMensagem(
-          explicarErroCamera(erro),
-          'erro'
-        );
-
-      } finally {
-        elBotaoLer.disabled = false;
-      }
+    let resposta;
+    try {
+      resposta = await fetch(URL_DO_MOTOR.trim(), {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(corpo),
+        redirect: "follow"
+      });
+    } catch (erro) {
+      throw new Error("Não foi possível conectar ao motor. Confira a URL do Apps Script, a implantação como aplicativo da web e a conexão com a internet.");
     }
 
-    async function pararCamera() {
-      if (!leitorQR) {
-        cameraAtiva = false;
-        elAreaCamera.style.display = 'none';
-        return;
-      }
-
-      const leitor = leitorQR;
-
-      // Evita que uma leitura atrasada inicie outra consulta.
-      cameraAtiva = false;
-
-      try {
-        if (leitor.isScanning) {
-          await leitor.stop();
-        }
-      } catch (erro) {
-        console.warn('Aviso ao parar a câmera:', erro);
-      }
-
-      try {
-        await leitor.clear();
-      } catch (erro) {
-        console.warn('Aviso ao limpar o leitor:', erro);
-      }
-
-      leitorQR = null;
-      elAreaCamera.style.display = 'none';
+    const texto = await resposta.text();
+    let resultado;
+    try {
+      resultado = JSON.parse(texto);
+    } catch (_) {
+      throw new Error("O motor respondeu em um formato inesperado. Confirme se a URL é da implantação /exec do Apps Script.");
     }
 
-    function explicarErroCamera(erro) {
-      const nome = erro && erro.name ? erro.name : '';
-      const mensagem = erro && erro.message
-        ? erro.message
-        : String(erro || '');
+    if (!resposta.ok) {
+      throw new Error("O motor respondeu com erro HTTP " + resposta.status + ".");
+    }
+    if (resultado.ok === false && /senha inválida/i.test(String(resultado.aviso || resultado.mensagem || ""))) {
+      senhaAtual = "";
+      localStorage.removeItem(CHAVE_SENHA);
+      el("estadoSenha").textContent = "A senha precisa ser informada novamente.";
+      throw new Error("Senha inválida. Toque em Trocar senha e informe a senha correta.");
+    }
+    return resultado;
+  }
 
-      if (
-        nome === 'NotAllowedError' ||
-        nome === 'PermissionDeniedError'
-      ) {
-        return 'O acesso à câmera foi negado. Permita o uso da câmera nas configurações do navegador e tente novamente.';
-      }
+  function formatarDinheiro(valor) {
+    if (typeof valor === "number" && Number.isFinite(valor)) {
+      return valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    }
+    if (valor === null || valor === undefined || valor === "") return "—";
+    const numero = Number(valor);
+    if (Number.isFinite(numero)) {
+      return numero.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    }
+    return String(valor);
+  }
 
-      if (
-        nome === 'NotFoundError' ||
-        nome === 'DevicesNotFoundError'
-      ) {
-        return 'Não encontramos uma câmera neste aparelho.';
-      }
+  function escaparHtml(valor) {
+    return String(valor ?? "").replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[c]));
+  }
 
-      if (
-        nome === 'NotReadableError' ||
-        nome === 'TrackStartError'
-      ) {
-        return 'A câmera não pôde ser iniciada. Feche outros aplicativos que estejam usando a câmera e tente novamente.';
-      }
+  function definirCategoria(valor) {
+    const select = el("categoria");
+    const categoria = CATEGORIAS.includes(valor) ? valor : "Outros";
+    select.value = categoria;
+  }
 
-      return 'Não foi possível iniciar a câmera. Abra esta página por HTTPS e verifique as permissões do navegador. Detalhe: ' +
-        mensagem;
+  function renderizarCompra(dados) {
+    const itens = Array.isArray(dados.itens) ? dados.itens : [];
+    lojaAtual = String(dados.loja || "");
+    el("resLoja").textContent = lojaAtual || "Loja não identificada";
+    el("resData").textContent = dados.data || "—";
+    el("resTotal").textContent = formatarDinheiro(dados.total);
+    el("resPagamento").textContent = dados.formaPagamento || dados.forma_pagamento || dados.pagamento || "—";
+    definirCategoria(dados.categoria || "Outros");
+
+    const lista = el("listaItens");
+    if (!itens.length) {
+      lista.textContent = "O motor não retornou os itens desta nota.";
+    } else {
+      lista.innerHTML = itens.map((item) => {
+        const descricao = item.descricao || item.nome || "Item";
+        const quantidade = item.quantidade ?? "—";
+        const unidade = item.unidade || "";
+        const unitario = item.precoUnitario ?? item.preco_unitario ?? item.valorUnitario ?? item.valor_unitario;
+        const total = item.total ?? item.valorTotal ?? item.valor_total;
+        return `<article class="item">
+          <div class="item-nome">${escaparHtml(descricao)}</div>
+          <div class="item-detalhes">${escaparHtml(quantidade)} ${escaparHtml(unidade)} · Unitário: ${escaparHtml(formatarDinheiro(unitario))}</div>
+          <div class="item-total">Total: ${escaparHtml(formatarDinheiro(total))}</div>
+        </article>`;
+      }).join("");
+    }
+    el("resultado").classList.add("visivel");
+  }
+
+  async function lancarLink(link) {
+    const valor = String(link || "").trim();
+    if (!valor) {
+      mostrarMensagem("Leia o QR Code ou cole o link da nota antes de lançar.", "erro");
+      return;
+    }
+    if (!/^https?:\/\//i.test(valor)) {
+      mostrarMensagem("O link não parece válido. Cole o endereço completo que aparece ao ler o QR Code.", "erro");
+      return;
     }
 
-    // ========================================================
-    // ENVIO DO LINK MANUAL
-    // ========================================================
+    limparMensagem();
+    el("btnLancar").disabled = true;
+    el("btnLer").disabled = true;
+    mostrarMensagem("Buscando a nota…", "info");
 
-    async function enviarLinkManual(evento) {
-      evento.preventDefault();
+    try {
+      const dados = await enviarMotor({ acao: "lançar", link: valor });
+      if (!dados) return;
 
-      const link = elLinkNota.value.trim();
-
-      if (!link) {
-        mostrarMensagem(
-          'Cole o link do QR Code antes de lançar a nota.',
-          'aviso'
-        );
-        return;
-      }
-
-      await consultarNota(link);
-    }
-
-    // ========================================================
-    // CONSULTAR E LANÇAR A NOTA
-    // ========================================================
-
-    async function consultarNota(link) {
-      if (enviando) {
-        return;
-      }
-
-      if (!exigirSenha()) {
-        return;
-      }
-
-      if (!validarConfiguracao()) {
-        return;
-      }
-
-      if (!/^https?:\/\//i.test(link)) {
-        mostrarMensagem(
-          'O link informado não é válido. Cole o endereço completo que aparece ao abrir o QR Code da nota fiscal.',
-          'erro'
-        );
-        return;
-      }
-
-      enviando = true;
-      elBotaoLancar.disabled = true;
-      elBotaoLer.disabled = true;
-
-      elResultado.style.display = 'none';
-
-      mostrarMensagem(
-        'Buscando a nota... Aguarde enquanto consultamos a Secretaria da Fazenda.',
-        'info'
-      );
-
-      try {
-        const dados = {
-          senha: senha,
-          acao: 'lançar',
-          link: link,
-          loja: '',
-          categoria: ''
-        };
-
-        const resposta = await enviarAoMotor(dados);
-
-        if (!resposta || typeof resposta !== 'object') {
-          throw new Error(
-            'O servidor retornou uma resposta vazia ou inválida.'
-          );
-        }
-
-        if (!resposta.ok) {
-          mostrarMensagem(
-            resposta.aviso || 'Não foi possível lançar a nota.',
-            'erro'
-          );
-          return;
-        }
-
-        mostrarResultado(resposta);
-
-        if (resposta.aviso) {
-          const aviso = resposta.aviso;
-          const duplicada = /já foi lançada/i.test(aviso);
-
-          mostrarMensagem(
-            aviso,
-            duplicada ? 'aviso' : 'sucesso'
-          );
-        } else {
-          mostrarMensagem(
-            'Nota consultada com sucesso.',
-            'sucesso'
-          );
-        }
-
-      } catch (erro) {
-        console.error(erro);
-
-        mostrarMensagem(
-          mensagemErroRede_(erro),
-          'erro'
-        );
-
-      } finally {
-        enviando = false;
-        elBotaoLancar.disabled = false;
-        elBotaoLer.disabled = false;
-      }
-    }
-
-    // ========================================================
-    // COMUNICAÇÃO COM O APPS SCRIPT
-    // ========================================================
-
-    async function enviarAoMotor(dados) {
-      let resposta;
-
-      try {
-        resposta = await fetch(URL_DO_MOTOR, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'text/plain;charset=utf-8'
-          },
-          body: JSON.stringify(dados),
-          redirect: 'follow'
-        });
-
-      } catch (erro) {
-        throw new Error(
-          'Não foi possível comunicar com o Apps Script. Verifique sua conexão, a URL da implantação e as permissões do aplicativo. Se o navegador informar um erro de CORS, será necessário ajustar a comunicação entre o GitHub Pages e o Apps Script.'
-        );
-      }
-
-      let texto;
-
-      try {
-        texto = await resposta.text();
-      } catch (erro) {
-        throw new Error(
-          'O servidor respondeu, mas não foi possível ler o conteúdo da resposta.'
-        );
-      }
-
-      let resultado;
-
-      try {
-        resultado = JSON.parse(texto);
-      } catch (erro) {
-        throw new Error(
-          'A resposta do Apps Script não é um JSON válido. Verifique se a URL aponta para a implantação correta e se ela está publicada como aplicativo da Web.'
-        );
-      }
-
-      if (!resposta.ok && !resultado.aviso) {
-        throw new Error(
-          'O servidor retornou o código HTTP ' + resposta.status + '.'
-        );
-      }
-
-      return resultado;
-    }
-
-    function mensagemErroRede_(erro) {
-      const mensagem = erro && erro.message
-        ? erro.message
-        : String(erro || '');
-
-      return mensagem ||
-        'Ocorreu um erro inesperado ao consultar a nota.';
-    }
-
-    // ========================================================
-    // EXIBIR OS DADOS DA COMPRA
-    // ========================================================
-
-    function mostrarResultado(dados) {
-      elResultado.style.display = 'block';
-
-      lojaAtual = String(dados.loja || '').trim();
-      categoriaAtual = normalizarCategoria(dados.categoria);
-
-      document.getElementById('resultado-loja').textContent =
-        lojaAtual || 'Loja não identificada';
-
-      document.getElementById('resultado-data').textContent =
-        formatarData(dados.data);
-
-      document.getElementById('resultado-total').textContent =
-        formatarMoeda(dados.total);
-
-      const pagamento = String(dados.pagamento || '').trim();
-
-      document.getElementById('resultado-pagamento').textContent =
-        pagamento || 'Não informado';
-
-      document.getElementById('linha-pagamento').style.display =
-        pagamento ? 'block' : 'none';
-
-      elCategoria.value = categoriaAtual;
-
-      const lista = document.getElementById('lista-itens');
-      lista.replaceChildren();
-
-      const itens = Array.isArray(dados.itens)
-        ? dados.itens
-        : [];
-
-      if (itens.length === 0) {
-        const vazio = document.createElement('p');
-
-        vazio.className = 'explicacao';
-        vazio.textContent =
-          'Nenhum produto foi retornado pelo servidor.';
-
-        lista.appendChild(vazio);
-
+      if (dados.aviso) {
+        const tipo = dados.ok === false ? "erro" : "info";
+        mostrarMensagem(String(dados.aviso), tipo);
+      } else if (dados.ok === false) {
+        mostrarMensagem("O motor não conseguiu lançar a nota. Confira o link e tente novamente.", "erro");
       } else {
-        itens.forEach(function(item) {
-          const cartao = document.createElement('article');
-          cartao.className = 'item';
-
-          const nome = document.createElement('div');
-          nome.className = 'item-nome';
-          nome.textContent =
-            item.descricao || 'Produto sem descrição';
-
-          const detalhe = document.createElement('div');
-          detalhe.className = 'item-detalhe';
-
-          const quantidade = Number(item.quantidade);
-          const unidade = String(item.unidade || '');
-
-          detalhe.textContent =
-            'Quantidade: ' +
-            formatarNumero(quantidade) +
-            (unidade ? ' ' + unidade : '') +
-            ' · Unitário: ' +
-            formatarMoeda(item.precoUnitario);
-
-          const total = document.createElement('div');
-          total.className = 'item-total';
-          total.textContent = formatarMoeda(item.total);
-
-          cartao.appendChild(nome);
-          cartao.appendChild(detalhe);
-          cartao.appendChild(total);
-
-          lista.appendChild(cartao);
-        });
+        mostrarMensagem("Nota processada.", "sucesso");
       }
 
-      elResultado.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start'
-      });
+      if (dados.loja || dados.data || dados.total !== undefined || Array.isArray(dados.itens)) {
+        renderizarCompra(dados);
+      } else if (dados.ok !== false) {
+        mostrarMensagem("A nota foi processada, mas a resposta não trouxe os dados esperados para exibição.", "erro");
+      }
+    } catch (erro) {
+      mostrarMensagem(erro.message || "Ocorreu um erro inesperado ao lançar a nota.", "erro");
+    } finally {
+      el("btnLancar").disabled = false;
+      el("btnLer").disabled = false;
+    }
+  }
+
+  async function pararCamera() {
+    if (leitorQr && cameraAtiva) {
+      try { await leitorQr.stop(); } catch (_) {}
+    }
+    if (leitorQr) {
+      try { await leitorQr.clear(); } catch (_) {}
+    }
+    leitorQr = null;
+    cameraAtiva = false;
+    processandoLeitura = false;
+    el("areaCamera").classList.remove("aberta");
+    el("estadoCamera").textContent = "";
+    el("btnLer").disabled = false;
+  }
+
+  function mensagemErroCamera(erro) {
+    const nome = String(erro && (erro.name || erro.message) || erro || "");
+    if (!window.isSecureContext) {
+      return "A câmera só funciona em uma página segura (HTTPS). Abra o endereço do GitHub Pages começando com https://.";
+    }
+    if (/NotAllowedError|PermissionDeniedError|permission|denied/i.test(nome)) {
+      return "O acesso à câmera foi bloqueado. Toque no cadeado ao lado do endereço do site, permita a câmera e tente novamente.";
+    }
+    if (/NotFoundError|DevicesNotFoundError/i.test(nome)) {
+      return "Não encontrei uma câmera neste dispositivo.";
+    }
+    if (/NotReadableError|TrackStartError|Could not start video source/i.test(nome)) {
+      return "A câmera pode estar sendo usada por outro aplicativo. Feche outros apps que usam a câmera e tente novamente.";
+    }
+    if (/OverconstrainedError/i.test(nome)) {
+      return "Não consegui abrir a câmera traseira solicitada. Tente novamente ou use a opção de colar o link da nota.";
+    }
+    return "Não foi possível abrir a câmera. Verifique a permissão do navegador e tente novamente. Detalhe: " + nome;
+  }
+
+  async function iniciarCamera() {
+    limparMensagem();
+
+    if (!window.isSecureContext) {
+      mostrarMensagem("A câmera exige HTTPS. Abra o GitHub Pages pelo endereço https://.", "erro");
+      return;
+    }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      mostrarMensagem("Este navegador não disponibiliza acesso à câmera. Atualize o navegador ou cole o link da nota.", "erro");
+      return;
+    }
+    if (typeof Html5Qrcode === "undefined") {
+      mostrarMensagem("A biblioteca de leitura não carregou. Confira a internet e recarregue a página.", "erro");
+      return;
     }
 
-    // ========================================================
-    // ALTERAR A CATEGORIA DA LOJA
-    // ========================================================
+    if (cameraAtiva || leitorQr) await pararCamera();
 
-    async function salvarCategoria() {
-      limparMensagem();
+    el("areaCamera").classList.add("aberta");
+    el("estadoCamera").textContent = "Solicitando acesso à câmera…";
+    el("btnLer").disabled = true;
 
-      if (!lojaAtual) {
-        mostrarMensagem(
-          'Consulte uma nota antes de alterar a categoria.',
-          'aviso'
-        );
-        return;
-      }
+    // Criado somente após o toque do usuário; ajuda a evitar falhas de inicialização.
+    leitorQr = new Html5Qrcode("leitor", {
+      verbose: false,
+      formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+      useBarCodeDetectorIfSupported: true
+    });
 
-      if (!exigirSenha()) {
-        return;
-      }
+    const config = {
+      fps: 12,
+      qrbox: function(largura, altura) {
+        const lado = Math.floor(Math.min(largura, altura) * 0.88);
+        return { width: Math.max(180, lado), height: Math.max(180, lado) };
+      },
+      aspectRatio: 1,
+      disableFlip: false
+    };
 
-      if (!validarConfiguracao()) {
-        return;
-      }
+    const aoLer = async (textoLido) => {
+      if (processandoLeitura) return;
+      processandoLeitura = true;
+      el("estadoCamera").textContent = "QR Code lido. Desligando a câmera…";
+      await pararCamera();
+      el("linkNota").value = textoLido;
+      await lancarLink(textoLido);
+    };
 
-      const novaCategoria = normalizarCategoria(elCategoria.value);
-
-      const anterior = categoriaAtual;
-
-      if (novaCategoria === anterior) {
-        return;
-      }
-
-      elCategoria.disabled = true;
-
-      mostrarMensagem(
-        'Salvando a categoria da loja...',
-        'info'
-      );
-
+    try {
+      // Primeiro tenta a câmera traseira pelo rótulo; fallback para facingMode.
       try {
-        const resposta = await enviarAoMotor({
-          senha: senha,
-          acao: 'categoria',
-          loja: lojaAtual,
-          categoria: novaCategoria,
-          link: ''
-        });
-
-        if (!resposta || !resposta.ok) {
-          throw new Error(
-            resposta && resposta.aviso
-              ? resposta.aviso
-              : 'Não foi possível atualizar a categoria.'
-          );
-        }
-
-        categoriaAtual = novaCategoria;
-
-        mostrarMensagem(
-          resposta.aviso ||
-            'Categoria da loja atualizada com sucesso.',
-          'sucesso'
+        await leitorQr.start(
+          { facingMode: "environment" },
+          config,
+          aoLer,
+          () => {}
         );
-
-      } catch (erro) {
-        elCategoria.value = anterior;
-
-        mostrarMensagem(
-          'Não foi possível salvar a categoria. ' +
-          mensagemErroRede_(erro),
-          'erro'
-        );
-
-      } finally {
-        elCategoria.disabled = false;
+      } catch (primeiroErro) {
+        // Algumas versões de navegador não aceitam facingMode; tenta enumerar câmeras.
+        const cameras = await Html5Qrcode.getCameras();
+        if (!cameras || !cameras.length) throw primeiroErro;
+        const traseira = cameras.find(c => /back|rear|environment|traseir|principal/i.test(c.label));
+        const cameraId = (traseira || cameras[cameras.length - 1]).id;
+        await leitorQr.start(cameraId, config, aoLer, () => {});
       }
+
+      cameraAtiva = true;
+      el("estadoCamera").textContent = "Aponte a câmera para o QR Code inteiro. Mova o celular devagar até focar.";
+    } catch (erro) {
+      const mensagem = mensagemErroCamera(erro);
+      await pararCamera();
+      mostrarMensagem(mensagem, "erro");
     }
+  }
 
-    // ========================================================
-    // FORMATAÇÃO
-    // ========================================================
-
-    function formatarMoeda(valor) {
-      const numero = Number(valor);
-
-      if (!Number.isFinite(numero)) {
-        return 'Valor não informado';
-      }
-
-      return numero.toLocaleString('pt-BR', {
-        style: 'currency',
-        currency: 'BRL'
-      });
+  async function salvarCategoria() {
+    if (!lojaAtual) {
+      mostrarMensagem("Lance uma nota primeiro para definir a categoria da loja.", "erro");
+      return;
     }
-
-    function formatarNumero(valor) {
-      if (!Number.isFinite(valor)) {
-        return '—';
+    const categoria = el("categoria").value;
+    limparMensagem();
+    try {
+      const dados = await enviarMotor({ acao: "categoria", loja: lojaAtual, categoria });
+      if (!dados) return;
+      if (dados.ok === false) {
+        mostrarMensagem(dados.aviso || "Não foi possível salvar a categoria.", "erro");
+      } else {
+        mostrarMensagem(dados.aviso || "Categoria da loja atualizada.", "sucesso");
       }
-
-      return valor.toLocaleString('pt-BR', {
-        maximumFractionDigits: 3
-      });
+    } catch (erro) {
+      mostrarMensagem(erro.message || "Erro ao atualizar a categoria.", "erro");
     }
+  }
 
-    function formatarData(valor) {
-      if (!valor) {
-        return 'Data não informada';
-      }
+  el("btnLer").addEventListener("click", iniciarCamera);
+  el("btnFecharCamera").addEventListener("click", pararCamera);
+  el("btnLancar").addEventListener("click", () => lancarLink(el("linkNota").value));
+  el("btnTrocarSenha").addEventListener("click", trocarSenha);
+  el("categoria").addEventListener("change", salvarCategoria);
 
-      // O Apps Script pode devolver uma data serializada
-      // como string ISO ou como data em formato brasileiro.
-      const texto = String(valor).trim();
-
-      const brasileira = texto.match(
-        /^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}:\d{2}(?::\d{2})?))?$/
-      );
-
-      if (brasileira) {
-        return brasileira[1] + '/' +
-          brasileira[2] + '/' +
-          brasileira[3] +
-          (brasileira[4] ? ' às ' + brasileira[4] : '');
-      }
-
-      const data = new Date(valor);
-
-      if (Number.isNaN(data.getTime())) {
-        return texto;
-      }
-
-      return new Intl.DateTimeFormat('pt-BR', {
-        dateStyle: 'short',
-        timeStyle: 'short'
-      }).format(data);
+  el("linkNota").addEventListener("keydown", (evento) => {
+    if (evento.key === "Enter") {
+      evento.preventDefault();
+      lancarLink(el("linkNota").value);
     }
+  });
 
-    function normalizarCategoria(valor) {
-      const texto = String(valor || '').trim();
-
-      const encontrada = CATEGORIAS.find(function(categoria) {
-        return categoria.toLowerCase() === texto.toLowerCase();
-      });
-
-      return encontrada || 'Outros';
-    }
-
-    // ========================================================
-    // INICIAR A TELA
-    // ========================================================
-
-    iniciar();
-
-  </script>
-
+  // Exibe estado inicial sem pedir senha até a pessoa tentar usar o app.
+  el("estadoSenha").textContent = senhaAtual ? "Senha salva neste celular." : "A senha será solicitada no primeiro uso.";
+  window.addEventListener("pagehide", () => {
+    if (leitorQr && cameraAtiva) leitorQr.stop().catch(() => {});
+  });
+</script>
 </body>
 </html>
