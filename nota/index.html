@@ -395,12 +395,8 @@
       </p>
 
       <div class="acoes-camera">
-        <button id="btnLanterna" class="botao-secundario" type="button">
+        <button id="btnLanterna" class="botao-secundario" type="button" style="display:none">
           🔦 Lanterna
-        </button>
-
-        <button id="btnFecharCamera" class="botao-secundario" type="button">
-          Fechar câmera
         </button>
       </div>
     </div>
@@ -526,6 +522,8 @@ let iosContextoCanvas = null;
 let iosTimerLeitura = null;
 let iosZbar = null;
 let iosQuadro = 0;
+let iosCanvasAnalise = null;
+let iosContextoAnalise = null;
 
 const el = (id) => document.getElementById(id);
 
@@ -783,9 +781,12 @@ async function lancarLink(link) {
     }
 
     if (dados.aviso) {
+      const aviso = String(dados.aviso);
+      const notaDuplicada = /notinha\s+j[aá]\s+foi\s+lan[cç]ada|nota\s+j[aá]\s+foi\s+lan[cç]ada|duplicad/i.test(aviso);
+
       mostrarMensagem(
-        String(dados.aviso),
-        dados.ok === false ? "erro" : "info"
+        aviso,
+        dados.ok === false || notaDuplicada ? "erro" : "info"
       );
     } else if (dados.ok === false) {
       mostrarMensagem(
@@ -863,6 +864,9 @@ async function pararCamera() {
 
     iosCanvas = null;
     iosContextoCanvas = null;
+    iosCanvasAnalise = null;
+    iosContextoAnalise = null;
+    el("btnLanterna").style.display = "none";
 
     if (leitor) {
       if (cameraAtiva) {
@@ -959,6 +963,7 @@ async function iniciarLeituraAoVivoNoIphone_() {
   iosCameraStream = stream;
   iosZbar = zbar;
   iosQuadro = 0;
+  atualizarBotaoLanterna_(stream.getVideoTracks()[0]);
 
   const video = document.createElement("video");
   video.autoplay = true;
@@ -1005,6 +1010,57 @@ function agendarLeituraDoQuadroIphone_() {
   iosTimerLeitura = setTimeout(processarQuadroIphone_, 180);
 }
 
+function atualizarBotaoLanterna_(trilha) {
+  let temLanterna = false;
+
+  try {
+    const capacidades = trilha && trilha.getCapabilities
+      ? trilha.getCapabilities()
+      : null;
+    temLanterna = Boolean(capacidades && capacidades.torch);
+  } catch (_) {
+    temLanterna = false;
+  }
+
+  el("btnLanterna").style.display = temLanterna ? "block" : "none";
+}
+
+async function tentarDecodificarImagemIphone_(contexto, largura, altura) {
+  const pixels = contexto.getImageData(0, 0, largura, altura);
+
+  if (iosZbar) {
+    try {
+      const simbolos = await iosZbar.scanImageData(pixels);
+      const qr = simbolos.find(simbolo => /qr/i.test(simbolo.typeName || ""));
+      if (qr) return qr.decode();
+    } catch (_) {}
+  }
+
+  if (typeof jsQR === "function") {
+    const qr = jsQR(pixels.data, largura, altura, {
+      inversionAttempts: "attemptBoth"
+    });
+    if (qr) return qr.data;
+  }
+
+  return "";
+}
+
+function aumentarContrasteIphone_(pixels) {
+  const dados = pixels.data;
+  const fator = 1.45;
+
+  for (let i = 0; i < dados.length; i += 4) {
+    const cinza = 0.299 * dados[i] + 0.587 * dados[i + 1] + 0.114 * dados[i + 2];
+    const ajustado = Math.max(0, Math.min(255, (cinza - 128) * fator + 128));
+    dados[i] = ajustado;
+    dados[i + 1] = ajustado;
+    dados[i + 2] = ajustado;
+  }
+
+  return pixels;
+}
+
 async function processarQuadroIphone_() {
   iosTimerLeitura = null;
   const video = iosCameraVideo;
@@ -1019,30 +1075,79 @@ async function processarQuadroIphone_() {
   }
 
   try {
-    const escala = Math.min(1, 1600 / video.videoWidth);
+    const escala = Math.min(1, 2200 / video.videoWidth);
     const largura = Math.max(1, Math.round(video.videoWidth * escala));
     const altura = Math.max(1, Math.round(video.videoHeight * escala));
+
     if (iosCanvas.width !== largura || iosCanvas.height !== altura) {
       iosCanvas.width = largura;
       iosCanvas.height = altura;
     }
     iosContextoCanvas.drawImage(video, 0, 0, largura, altura);
-    const pixels = iosContextoCanvas.getImageData(0, 0, largura, altura);
-    let textoLido = "";
 
-    if (iosZbar) {
-      const simbolos = await iosZbar.scanImageData(pixels);
-      const qr = simbolos.find(simbolo => /qr/i.test(simbolo.typeName || ""));
-      if (qr) textoLido = qr.decode();
+    let textoLido = await tentarDecodificarImagemIphone_(
+      iosContextoCanvas,
+      largura,
+      altura
+    );
+
+    // O QR costuma ocupar só uma parte da imagem da câmera. Recorta o centro,
+    // amplia duas vezes e tenta novamente com pixels originais e realçados.
+    if (!textoLido) {
+      if (!iosCanvasAnalise) {
+        iosCanvasAnalise = document.createElement("canvas");
+        iosContextoAnalise = iosCanvasAnalise.getContext(
+          "2d",
+          { willReadFrequently: true }
+        );
+      }
+
+      const ladoBase = Math.min(largura, altura);
+      const centroX = largura / 2;
+      const centroY = altura / 2;
+      const fatoresCorte = [0.82, 0.58, 0.40];
+      const ladoDestino = 1400;
+
+      for (const fatorCorte of fatoresCorte) {
+        const ladoOrigem = Math.max(1, Math.round(ladoBase * fatorCorte));
+        const sx = Math.max(0, Math.round(centroX - ladoOrigem / 2));
+        const sy = Math.max(0, Math.round(centroY - ladoOrigem / 2));
+
+        iosCanvasAnalise.width = ladoDestino;
+        iosCanvasAnalise.height = ladoDestino;
+        iosContextoAnalise.imageSmoothingEnabled = true;
+        iosContextoAnalise.imageSmoothingQuality = "high";
+        iosContextoAnalise.drawImage(
+          iosCanvas,
+          sx, sy, ladoOrigem, ladoOrigem,
+          0, 0, ladoDestino, ladoDestino
+        );
+
+        textoLido = await tentarDecodificarImagemIphone_(
+          iosContextoAnalise,
+          ladoDestino,
+          ladoDestino
+        );
+        if (textoLido) break;
+
+        const pixels = iosContextoAnalise.getImageData(
+          0, 0, ladoDestino, ladoDestino
+        );
+        iosContextoAnalise.putImageData(
+          aumentarContrasteIphone_(pixels),
+          0,
+          0
+        );
+        textoLido = await tentarDecodificarImagemIphone_(
+          iosContextoAnalise,
+          ladoDestino,
+          ladoDestino
+        );
+        if (textoLido) break;
+      }
     }
 
     iosQuadro += 1;
-    if (!textoLido && typeof jsQR === "function" && iosQuadro % 2 === 0) {
-      const qr = jsQR(pixels.data, largura, altura, {
-        inversionAttempts: "attemptBoth"
-      });
-      if (qr) textoLido = qr.data;
-    }
 
     if (textoLido) {
       processandoLeitura = true;
@@ -1265,6 +1370,11 @@ async function executarInicioCamera() {
       video.setAttribute("playsinline", "");
       video.setAttribute("webkit-playsinline", "");
       video.muted = true;
+      const streamVideo = video.srcObject;
+      const trilha = streamVideo && streamVideo.getVideoTracks
+        ? streamVideo.getVideoTracks()[0]
+        : null;
+      atualizarBotaoLanterna_(trilha);
     }
     cameraAtiva = true;
 
@@ -1423,8 +1533,6 @@ el("btnConcluirCapturas").addEventListener("click", () => {
   el("perguntaOutra").style.display = "none";
 });
 
-
-el("btnFecharCamera").addEventListener("click", pararCamera);
 
 el("btnLanterna").addEventListener("click", alternarLanterna);
 
