@@ -331,7 +331,7 @@
 
         <button onclick="abrirModalNovaTransacao()" class="hidden md:flex px-3.5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs sm:text-sm font-semibold rounded-xl items-center gap-2 transition">
           <i class="fa-solid fa-plus"></i>
-          <span>Nova Transação</span>
+          <span>Novo Lançamento</span>
         </button>
 
         <div class="hidden lg:flex items-center gap-1.5 ml-1">
@@ -443,13 +443,13 @@
     <!-- Tabela de Lançamentos -->
     <div class="glass-panel rounded-2xl border border-slate-800 p-5 space-y-4">
       <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-        <h2 class="text-lg font-bold flex items-center gap-2 theme-text shrink-0"><i class="fa-solid fa-list text-emerald-500"></i> Histórico de Transações</h2>
+        <h2 class="text-lg font-bold flex items-center gap-2 theme-text shrink-0"><i class="fa-solid fa-list text-emerald-500"></i> Histórico de Lançamentos</h2>
         
         <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:flex-1 lg:ml-6">
           <div class="flex items-center gap-2 w-full sm:flex-1 min-w-0">
           <div class="relative flex-1 w-full min-w-0">
             <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-            <input type="text" id="filtroDescricao" oninput="gerenciarBotaoLimparBusca(); aplicarFiltroDatas();" placeholder="Pesquisar transações..." class="w-full bg-slate-900 text-white pl-8 pr-8 py-2 rounded-xl text-xs border border-slate-700 focus:outline-none">
+            <input type="text" id="filtroDescricao" oninput="gerenciarBotaoLimparBusca(); aplicarFiltroDatas();" placeholder="Pesquisar lançamentos..." class="w-full bg-slate-900 text-white pl-8 pr-8 py-2 rounded-xl text-xs border border-slate-700 focus:outline-none">
             <button id="btnLimparBusca" onclick="limparCampoBusca()" class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 text-rose-500 font-bold text-xs p-1"><i class="fa-solid fa-xmark"></i></button>
           </div>
             <div class="relative shrink-0 sm:hidden menu-ferramentas-wrap">
@@ -510,7 +510,7 @@
             </tr>
           </thead>
           <tbody id="tabelaTransacoes">
-            <tr><td colspan="7" class="text-center p-6 theme-subtext">Nenhuma transação encontrada.</td></tr>
+            <tr><td colspan="7" class="text-center p-6 theme-subtext">Nenhum lançamento encontrado.</td></tr>
           </tbody>
         </table>
       </div>
@@ -651,7 +651,7 @@
     </div>
   </div>
 
-  <!-- Modal Nova Transação -->
+  <!-- Modal Novo Lançamento -->
   <div id="modalTransacao" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
     <div class="glass-panel w-full max-w-md p-6 rounded-2xl border border-slate-700 relative max-h-[90vh] overflow-y-auto">
       <button onclick="fecharXModalTransacao()" class="absolute top-4 right-4 theme-subtext hover:text-emerald-500"><i class="fa-solid fa-xmark text-lg"></i></button>
@@ -3012,7 +3012,7 @@
 
         tabela.innerHTML = html;
       } else {
-        tabela.innerHTML = '<tr><td colspan="7" class="text-center p-6 theme-subtext">Nenhuma transação encontrada.</td></tr>';
+        tabela.innerHTML = '<tr><td colspan="7" class="text-center p-6 theme-subtext">Nenhum lançamento encontrado.</td></tr>';
       }
 
       const footerTotal = document.getElementById('totalRegistrosFooter');
@@ -3184,7 +3184,7 @@
       if (!item) return;
       if (lancamentoMesPassado(item.date)) { exibirToast(MSG_MES_PASSADO, "erro"); return; }
 
-      document.getElementById('modalTransacaoTitulo').innerText = "Editar Transação";
+      document.getElementById('modalTransacaoTitulo').innerText = "Editar Lançamento";
       document.getElementById('inputIdTransacao').value = (item.id !== undefined && item.id !== null) ? item.id : "";
       document.getElementById('inputVemDeScan').value = "false";
       document.getElementById('inputTipo').value = item.type || 'Despesa';
@@ -3767,7 +3767,7 @@
     }
 
     // ===================== RECONHECIMENTO DE VOZ =====================
-    // X da tela de comando de voz: fecha e volta para a tela Nova Transação
+    // X da tela de comando de voz: fecha e volta para a tela Novo Lançamento
     function fecharXModalVoz() {
       fecharModalVoz();
       abrirModalNovaTransacao();
