@@ -264,6 +264,58 @@
       border: 1px solid #b7e0c5;
     }
 
+    /* Indicador de carregamento: círculo girando com três pontinhos */
+    #carregando {
+      display: none;
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      width: 84px;
+      height: 84px;
+      margin: -42px 0 0 -42px;
+      z-index: 50;
+      pointer-events: none;
+    }
+
+    #carregando.visivel {
+      display: block;
+    }
+
+    #carregando .anel {
+      position: absolute;
+      inset: 0;
+      border: 6px solid #cfe0f1;
+      border-top-color: var(--azul);
+      border-radius: 50%;
+      animation: girar .9s linear infinite;
+    }
+
+    #carregando .pontos {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    #carregando .pontos i {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--azul);
+      animation: pulsar 1.2s ease-in-out infinite;
+    }
+
+    #carregando .pontos i:nth-child(2) { animation-delay: .2s; }
+    #carregando .pontos i:nth-child(3) { animation-delay: .4s; }
+
+    @keyframes girar { to { transform: rotate(360deg); } }
+    @keyframes pulsar {
+      0%, 80%, 100% { opacity: .25; transform: scale(.8); }
+      40% { opacity: 1; transform: scale(1.1); }
+    }
+
     #resultado {
       display: none;
     }
@@ -457,6 +509,11 @@
 
   <div id="mensagem" class="mensagem" role="status" aria-live="polite"></div>
 
+  <div id="carregando" aria-hidden="true">
+    <div class="anel"></div>
+    <div class="pontos"><i></i><i></i><i></i></div>
+  </div>
+
   <section id="perguntaOutra" class="cartao" style="display:none" aria-live="polite">
     <h2>Captura concluída</h2>
     <p>Deseja realizar outra captura?</p>
@@ -571,6 +628,7 @@ function mostrarMensagem(texto, tipo = "info") {
   if (tipo === "buscando") {
     caixa.textContent = String(texto || "");
     caixa.className = "mensagem visivel buscando";
+    el("carregando").classList.add("visivel");
     return;
   }
 
@@ -581,10 +639,11 @@ function mostrarMensagem(texto, tipo = "info") {
 
   caixa.textContent = String(texto || "");
   caixa.className = "mensagem visivel erro";
-
+  el("carregando").classList.remove("visivel");
 }
 
 function limparMensagem() {
+  el("carregando").classList.remove("visivel");
   el("mensagem").textContent = "";
   el("mensagem").className = "mensagem";
 }
