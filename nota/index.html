@@ -647,9 +647,9 @@
   <section id="cupons" aria-label="Notas digitalizadas">
     <div id="barraCupons" class="barra-cupons" style="display:none">
       <span id="resumoCupons"></span>
-      <button id="btnLimparCupons" class="botao-secundario botao-pequeno" type="button">Limpar lista</button>
     </div>
     <div id="listaCupons"></div>
+    <p id="fimCupons" class="dica" style="text-align:center"></p>
   </section>
 
   <p id="ajudaCamera" class="rodape">
@@ -762,6 +762,9 @@ async function enviarMotor(dados) {
     loja: dados.loja || "",
     categoria: dados.categoria || ""
   };
+
+  if (dados.offset !== undefined) corpo.offset = dados.offset;
+  if (dados.limite !== undefined) corpo.limite = dados.limite;
 
   let resposta;
 
@@ -886,29 +889,14 @@ function escaparHtml(valor) {
   })[caractere]);
 }
 
-const CHAVE_CUPONS = "plipag_notas_cupons_v1";
-const MAX_CUPONS = 50;
+const POR_PAGINA = 50;
 let cupons = [];
-
-function lerCuponsSalvos() {
-  try {
-    const bruto = localStorage.getItem(CHAVE_CUPONS);
-    const lista = bruto ? JSON.parse(bruto) : [];
-    return Array.isArray(lista) ? lista : [];
-  } catch (_) {
-    return [];
-  }
-}
-
-function salvarCupons() {
-  try {
-    localStorage.setItem(CHAVE_CUPONS, JSON.stringify(cupons));
-  } catch (_) {}
-}
-
-function chaveDoCupom(c) {
-  return c.chave || [c.loja, c.data, c.total].join("|");
-}
+let totalNotas = 0;
+let somaNotas = 0;
+let proximoOffset = 0;
+let fimDaLista = false;
+let carregandoLista = false;
+let sequenciaLista = 0;
 
 function textoPagamento(dados) {
   return dados.formaPagamento ||
@@ -985,12 +973,10 @@ function criarCartaoCupom(c) {
     c.aberto = !c.aberto;
     cartao.classList.toggle("aberto", c.aberto);
     seta.setAttribute("aria-expanded", c.aberto ? "true" : "false");
-    salvarCupons();
   });
 
   cartao.querySelector("select").addEventListener("change", (ev) => {
     c.categoria = ev.target.value;
-    salvarCupons();
     salvarCategoria(c.loja, c.categoria);
   });
 
@@ -1004,37 +990,92 @@ function renderizarCupons() {
   cupons.forEach((c) => lista.appendChild(criarCartaoCupom(c)));
 
   const barra = el("barraCupons");
-  barra.style.display = cupons.length ? "flex" : "none";
+  barra.style.display = totalNotas ? "flex" : "none";
 
-  const soma = cupons.reduce((s, c) => s + (Number(c.total) || 0), 0);
   el("resumoCupons").textContent =
-    cupons.length + (cupons.length === 1 ? " nota" : " notas") +
-    " · " + formatarDinheiro(soma);
+    totalNotas + (totalNotas === 1 ? " nota" : " notas") +
+    " · " + formatarDinheiro(somaNotas);
+
+  const rodape = el("fimCupons");
+  if (carregandoLista) {
+    rodape.textContent = "Carregando…";
+  } else if (cupons.length && !fimDaLista) {
+    rodape.textContent = "Role para ver mais";
+  } else {
+    rodape.textContent = "";
+  }
 }
 
-function renderizarCompra(dados) {
-  lojaAtual = String(dados.loja || "");
+/*
+ * A lista mostra apenas as notas que constam na planilha (aba Compras),
+ * da mais recente para a mais antiga, em lotes de 50 conforme a rolagem.
+ */
+async function carregarLista(reiniciar) {
+  if (carregandoLista && !reiniciar) return;
+  if (!reiniciar && fimDaLista) return;
 
-  const novo = {
-    chave: String(dados.chaveAcesso || ""),
-    loja: lojaAtual,
-    data: dados.data || "",
-    total: dados.total,
-    pagamento: textoPagamento(dados),
-    categoria: dados.categoria || "Outros",
-    itens: Array.isArray(dados.itens) ? dados.itens : [],
-    aberto: false
-  };
+  const minha = ++sequenciaLista;
+  const offset = reiniciar ? 0 : proximoOffset;
 
-  // Mesma nota lida de novo: atualiza e leva para o topo, sem duplicar
-  const chave = chaveDoCupom(novo);
-  cupons = cupons.filter((c) => chaveDoCupom(c) !== chave);
-  cupons.unshift(novo);
-  if (cupons.length > MAX_CUPONS) cupons.length = MAX_CUPONS;
-
-  salvarCupons();
+  carregandoLista = true;
   renderizarCupons();
+
+  try {
+    const dados = await enviarMotor({
+      acao: "listar",
+      offset: offset,
+      limite: POR_PAGINA
+    });
+
+    if (minha !== sequenciaLista) return;   // chegou uma consulta mais nova
+
+    if (!dados || dados.ok === false || !Array.isArray(dados.compras)) {
+      throw new Error((dados && dados.aviso) || "Não foi possível ler a lista de notas.");
+    }
+
+    const abertas = {};
+    cupons.forEach((c) => { if (c.aberto) abertas[c.chave] = true; });
+
+    const novos = dados.compras.map((x) => ({
+      chave: String(x.chaveAcesso || ""),
+      loja: String(x.loja || ""),
+      data: x.data || "",
+      total: x.total,
+      pagamento: String(x.pagamento || ""),
+      categoria: x.categoria || "Outros",
+      itens: Array.isArray(x.itens) ? x.itens : [],
+      aberto: !!abertas[String(x.chaveAcesso || "")]
+    }));
+
+    cupons = reiniciar ? novos : cupons.concat(novos);
+    proximoOffset = offset + dados.compras.length;
+    fimDaLista = !!dados.fim;
+    totalNotas = Number(dados.totalNotas) || 0;
+    somaNotas = Number(dados.soma) || 0;
+  } catch (erro) {
+    if (minha === sequenciaLista) {
+      mostrarMensagem(erro.message || "Erro ao carregar a lista de notas.", "erro");
+    }
+  } finally {
+    if (minha === sequenciaLista) {
+      carregandoLista = false;
+      renderizarCupons();
+    }
+  }
 }
+
+// Depois de ler uma nota, atualiza a lista a partir da planilha
+function renderizarCompra(dados) {
+  lojaAtual = String((dados && dados.loja) || "");
+  carregarLista(true);
+}
+
+window.addEventListener("scroll", () => {
+  if (carregandoLista || fimDaLista || !cupons.length) return;
+  if (window.innerHeight + window.scrollY >= document.body.scrollHeight - 400) {
+    carregarLista(false);
+  }
+});
 
 
 /* LANÇAMENTO DA NOTA */
@@ -1777,15 +1818,7 @@ el("btnLancar").addEventListener("click", () => {
   lancarLink(el("linkNota").value);
 });
 
-el("btnLimparCupons").addEventListener("click", () => {
-  if (!confirm("Remover todas as notas desta lista? (Nada é apagado da planilha.)")) return;
-  cupons = [];
-  salvarCupons();
-  renderizarCupons();
-});
-
-cupons = lerCuponsSalvos();
-renderizarCupons();
+carregarLista(true);
 
 el("linkNota").addEventListener("keydown", (evento) => {
   if (evento.key === "Enter") {
