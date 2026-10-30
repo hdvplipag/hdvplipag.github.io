@@ -2807,6 +2807,7 @@
       document.getElementById('inputVemDeScan').value = "false";
       document.getElementById('formTransacao').reset();
       definirModoVozFormulario(false);
+      formularioPorNota = false;
       document.getElementById('modalTransacao').classList.remove('hidden');
       document.getElementById('inputData').value = dataLocalISO();
       atualizarListaCategoriasForm();
@@ -2819,6 +2820,10 @@
     function definirModoVozFormulario(ativo) {
       formularioPorVoz = !!ativo;
     }
+
+    // Formulário preenchido a partir da leitura do QR Code (página de notas): ao salvar e responder "Sim" em
+    // "Deseja realizar outros lançamentos?", volta para a leitura do QR Code; "Não" fecha e mostra os lançamentos.
+    let formularioPorNota = false;
 
     function responderOutroLancamento(outro) {
       document.getElementById('modalOutroLancamento').classList.add('hidden');
@@ -2850,6 +2855,7 @@
 
     function fecharModalNovaTransacao() {
       definirModoVozFormulario(false);
+      formularioPorNota = false;
       document.getElementById('modalOutroLancamento').classList.add('hidden');
       document.getElementById('modalTransacao').classList.add('hidden');
       document.getElementById('formTransacao').reset();
@@ -3405,6 +3411,7 @@
     function salvarLancamento(event, outroLancamento) {
       if (event) event.preventDefault();
       const porVoz = formularioPorVoz;
+      const porNota = formularioPorNota;
       const ehNovo = document.getElementById('inputIdTransacao').value === "";
       if (!ehNovo && lancamentoMesPassado(document.getElementById('inputData').value)) {
         exibirToast(MSG_MES_PASSADO, "erro");
@@ -3442,7 +3449,7 @@
             fecharModalNovaTransacao();
             carregarDados();
             exibirToast("Lançamento salvo com sucesso!", "sucesso", TEMPO_MENSAGEM_SALVAR_MS);
-            if (outroLancamento === 'sim') { if (porVoz) abrirModalVoz(); else abrirModalNovaTransacao(); }
+            if (outroLancamento === 'sim') { if (porVoz) abrirModalVoz(); else if (porNota) abrirNotaScan(); else abrirModalNovaTransacao(); }
           })
           .withFailureHandler(function(err) {
             btnSalvar.disabled = false;
@@ -3470,7 +3477,7 @@
         atualizarOpcoesCategorias(listaTransacoesGlobal);
         renderizarDados(obterTransacoesFiltradas());
         exibirToast("Lançamento salvo!", "sucesso", TEMPO_MENSAGEM_SALVAR_MS);
-        if (outroLancamento === 'sim') { if (porVoz) abrirModalVoz(); else abrirModalNovaTransacao(); }
+        if (outroLancamento === 'sim') { if (porVoz) abrirModalVoz(); else if (porNota) abrirNotaScan(); else abrirModalNovaTransacao(); }
       }
     }
 
@@ -4952,6 +4959,7 @@
     function preencherLancamentoDeNota(j) {
       // garante o formulário de novo lançamento aberto
       if (document.getElementById('modalTransacao').classList.contains('hidden')) abrirModalNovaTransacao();
+      formularioPorNota = true;
       document.getElementById('inputIdTransacao').value = '';
       document.getElementById('inputTipo').value = 'Despesa';
       document.getElementById('inputDescricao').value = String(j.loja || '');
