@@ -655,13 +655,13 @@
   <div id="modalTransacao" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
     <div class="glass-panel w-full max-w-md p-6 rounded-2xl border border-slate-700 relative max-h-[90vh] overflow-y-auto">
       <button onclick="fecharXModalTransacao()" class="absolute top-4 right-4 theme-subtext hover:text-emerald-500"><i class="fa-solid fa-xmark text-lg"></i></button>
-      <h3 id="modalTransacaoTitulo" class="text-lg font-bold mb-3 theme-text">Nova Transação</h3>
-      <div id="btnDigitalizarForm" class="md:hidden flex items-center justify-center gap-2 mb-3">
-        <button type="button" onclick="abrirNotaScan()" class="px-3 py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs rounded-xl flex items-center gap-1.5 shadow-md transition">
-          <i class="fa-solid fa-camera"></i> Digitalizar
+      <h3 id="modalTransacaoTitulo" class="text-lg font-bold mb-3 theme-text">Novo Lançamento</h3>
+      <div id="btnDigitalizarForm" class="md:hidden flex items-center justify-center gap-4 mb-3">
+        <button type="button" onclick="abrirNotaScan()" aria-label="Digitalizar" title="Digitalizar" class="w-20 h-14 bg-cyan-600 hover:bg-cyan-500 text-white text-2xl rounded-2xl flex items-center justify-center shadow-md transition">
+          <i class="fa-solid fa-camera"></i>
         </button>
-        <button type="button" onclick="abrirVozDoFormulario()" class="px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs rounded-xl flex items-center gap-1.5 shadow-md transition">
-          <i class="fa-solid fa-microphone"></i> Voz
+        <button type="button" onclick="abrirVozDoFormulario()" aria-label="Voz" title="Voz" class="w-20 h-14 bg-purple-600 hover:bg-purple-500 text-white text-2xl rounded-2xl flex items-center justify-center shadow-md transition">
+          <i class="fa-solid fa-microphone"></i>
         </button>
       </div>
       <form id="formTransacao" onsubmit="salvarLancamento(event)" class="space-y-3">
@@ -670,7 +670,7 @@
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-xs font-semibold theme-subtext mb-1">Tipo</label>
-            <select id="inputTipo" onchange="aoMudarTipoLancamento()" required class="w-full bg-slate-900 text-white border border-slate-700 rounded-xl p-2.5 text-sm">
+            <select id="inputTipo" onchange="aoMudarTipoLancamento()" required class="w-full bg-white text-slate-900 border border-slate-300 rounded-xl p-2.5 text-sm">
               <option value="" selected></option>
               <option value="Receita">Receita</option>
               <option value="Despesa">Despesa</option>
@@ -680,27 +680,27 @@
             <label class="block text-xs font-semibold theme-subtext mb-1">Data</label>
             <!-- O campo real (data nativa, valor AAAA-MM-DD) fica invisível por cima; o que se vê é a data no formato DD/MM/AAAA -->
             <div class="relative" style="position: relative;">
-              <div id="dataExibida" class="w-full bg-slate-900 text-white border border-slate-700 rounded-xl p-2.5 text-sm text-left select-none" style="pointer-events: none; min-height: 2.5rem;">dd/mm/aaaa</div>
+              <div id="dataExibida" class="w-full bg-white text-slate-900 border border-slate-300 rounded-xl p-2.5 text-sm text-left select-none" style="pointer-events: none; min-height: 2.5rem;">dd/mm/aaaa</div>
               <input type="date" id="inputData" required aria-label="Data" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; min-width: 0; margin: 0; padding: 0; border: 0; box-sizing: border-box; -webkit-appearance: none; appearance: none;">
             </div>
           </div>
         </div>
         <div>
           <label class="block text-xs font-semibold theme-subtext mb-1">Descrição</label>
-          <div class="relative"><input type="text" id="inputDescricao" required class="w-full bg-slate-900 text-white border border-slate-700 rounded-xl p-2.5 pr-9 text-sm"><button type="button" onclick="limparCampoForm('inputDescricao')" tabindex="-1" aria-label="Limpar" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500"><i class="fa-solid fa-circle-xmark"></i></button></div>
+          <div class="relative"><input type="text" id="inputDescricao" required class="w-full bg-white text-slate-900 border border-slate-300 rounded-xl p-2.5 pr-9 text-sm"><button type="button" onclick="limparCampoForm('inputDescricao')" tabindex="-1" aria-label="Limpar" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500"><i class="fa-solid fa-circle-xmark"></i></button></div>
         </div>
         <div>
           <label class="block text-xs font-semibold theme-subtext mb-1">Categoria</label>
-          <div class="relative"><input type="text" id="inputCategoria" list="listaCategoriasForm" onfocus="atualizarListaCategoriasForm()" autocomplete="off" required class="w-full bg-slate-900 text-white border border-slate-700 rounded-xl p-2.5 pr-9 text-sm"><button type="button" onclick="limparCampoForm('inputCategoria')" tabindex="-1" aria-label="Limpar" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500"><i class="fa-solid fa-circle-xmark"></i></button></div><datalist id="listaCategoriasForm"></datalist>
+          <div class="relative"><input type="text" id="inputCategoria" list="listaCategoriasForm" onfocus="atualizarListaCategoriasForm()" autocomplete="off" required class="w-full bg-white text-slate-900 border border-slate-300 rounded-xl p-2.5 pr-9 text-sm"><button type="button" onclick="limparCampoForm('inputCategoria')" tabindex="-1" aria-label="Limpar" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500"><i class="fa-solid fa-circle-xmark"></i></button></div><datalist id="listaCategoriasForm"></datalist>
         </div>
         <div>
           <label id="labelValorForm" class="block text-xs font-semibold theme-subtext mb-1">Valor (R$)</label>
-          <div class="relative"><input type="number" step="0.01" inputmode="decimal" id="inputValor" oninput="atualizarRotuloValor()" required class="w-full bg-slate-900 text-white border border-slate-700 rounded-xl p-2.5 pr-9 text-sm"><button type="button" onclick="limparCampoForm('inputValor')" tabindex="-1" aria-label="Limpar" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500"><i class="fa-solid fa-circle-xmark"></i></button></div>
+          <div class="relative"><input type="number" step="0.01" inputmode="decimal" id="inputValor" oninput="atualizarRotuloValor()" required class="w-full bg-white text-slate-900 border border-slate-300 rounded-xl p-2.5 pr-9 text-sm"><button type="button" onclick="limparCampoForm('inputValor')" tabindex="-1" aria-label="Limpar" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500"><i class="fa-solid fa-circle-xmark"></i></button></div>
         </div>
         <div id="linhaPagto" class="grid grid-cols-1 gap-3">
           <div>
             <label class="block text-xs font-semibold theme-subtext mb-1">Forma de Pagamento</label>
-            <select id="inputFormaPagto" onchange="atualizarCampoParcelas()" required class="w-full bg-slate-900 text-white border border-slate-700 rounded-xl p-2.5 text-sm">
+            <select id="inputFormaPagto" onchange="atualizarCampoParcelas()" required class="w-full bg-white text-slate-900 border border-slate-300 rounded-xl p-2.5 text-sm">
               <option value="" selected></option>
               <option value="Pix">Pix</option>
               <option value="Dinheiro">Dinheiro</option>
@@ -710,13 +710,13 @@
           </div>
           <div id="blocoParcelas" class="hidden">
             <label class="block text-xs font-semibold theme-subtext mb-1">Número de parcelas</label>
-            <input type="number" id="inputParcelas" oninput="atualizarRotuloValor()" min="1" max="99" step="1" value="1" inputmode="numeric" class="w-full bg-slate-900 text-white border border-slate-700 rounded-xl p-2.5 text-sm">
+            <input type="number" id="inputParcelas" oninput="atualizarRotuloValor()" min="1" max="99" step="1" value="1" inputmode="numeric" class="w-full bg-white text-slate-900 border border-slate-300 rounded-xl p-2.5 text-sm">
             <p id="dicaParcelas" class="text-xs theme-subtext mt-1"></p>
           </div>
         </div>
         <div>
             <label class="block text-xs font-semibold theme-subtext mb-1">Instituição</label>
-            <div class="relative"><input type="text" id="inputInstituicao" class="w-full bg-slate-900 text-white border border-slate-700 rounded-xl p-2.5 pr-9 text-sm"><button type="button" onclick="limparCampoForm('inputInstituicao')" tabindex="-1" aria-label="Limpar" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500"><i class="fa-solid fa-circle-xmark"></i></button></div>
+            <div class="relative"><input type="text" id="inputInstituicao" class="w-full bg-white text-slate-900 border border-slate-300 rounded-xl p-2.5 pr-9 text-sm"><button type="button" onclick="limparCampoForm('inputInstituicao')" tabindex="-1" aria-label="Limpar" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500"><i class="fa-solid fa-circle-xmark"></i></button></div>
         </div>
         <details id="detalhesTextoCupom" class="hidden mt-3 text-xs theme-subtext">
           <summary class="cursor-pointer font-semibold">Ver texto lido do cupom</summary>
@@ -2823,7 +2823,7 @@
     }
 
     function abrirModalNovaTransacao() {
-      document.getElementById('modalTransacaoTitulo').innerText = "Nova Transação";
+      document.getElementById('modalTransacaoTitulo').innerText = "Novo Lançamento";
       document.getElementById('inputIdTransacao').value = "";
       document.getElementById('inputVemDeScan').value = "false";
       document.getElementById('formTransacao').reset();
