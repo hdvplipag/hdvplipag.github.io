@@ -308,6 +308,31 @@
       margin: 0 0 12px;
     }
 
+    .cabecalho-leitura {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .cabecalho-leitura h2 {
+      margin: 0;
+    }
+
+    .botao-camera-pequeno {
+      flex-shrink: 0;
+      width: 44px;
+      min-height: 44px;
+      height: 44px;
+      padding: 0;
+      font-size: 1.3rem;
+      line-height: 1;
+      border-radius: 12px;
+      background: var(--azul);
+      color: #fff;
+    }
+
     h3 {
       font-size: 1.05rem;
       margin: 18px 0 8px;
@@ -381,7 +406,10 @@
 <body>
 <main>
   <section class="cartao" aria-labelledby="tituloLeitura">
-    <h2 id="tituloLeitura">Registrar compra</h2>
+    <div class="cabecalho-leitura">
+      <h2 id="tituloLeitura">Registrar compra</h2>
+      <button id="btnNovaCaptura" class="botao-camera-pequeno" type="button" aria-label="Voltar para a digitalização" title="Digitalizar outra nota">📷</button>
+    </div>
 
     <button id="btnLer" class="botao-principal" type="button" style="display:none">
       📷 Capturar
@@ -1491,6 +1519,12 @@ el("btnOutraCaptura").addEventListener("click", async () => {
    * (ela inicia sozinha ao carregar).
    */
   el("perguntaOutra").style.display = "none";
+  try { await pararCamera(); } catch (_) {}
+  window.location.reload();
+});
+
+// Câmera pequena no topo: volta para a tela de digitalização (reinício limpo)
+el("btnNovaCaptura").addEventListener("click", async () => {
   try { await pararCamera(); } catch (_) {}
   window.location.reload();
 });
