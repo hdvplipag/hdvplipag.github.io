@@ -485,6 +485,12 @@
       margin-bottom: 12px;
     }
 
+    .embutido #btnModoExcluir,
+    .embutido #btnAtualizar,
+    .embutido #cupons {
+      display: none !important;
+    }
+
     .acoes-topo {
       display: flex;
       align-items: center;
@@ -722,6 +728,15 @@
 
 <script>
 "use strict";
+
+/*
+ * Quando esta página é aberta dentro do PliPag (botão Digitalizar do app principal),
+ * ela só lê o QR Code: sem botões de excluir/atualizar e sem a lista de notas.
+ */
+const EMBUTIDO = (function () {
+  try { return window.self !== window.top; } catch (_) { return true; }
+})();
+if (EMBUTIDO) document.documentElement.classList.add("embutido");
 
 /* Torna a página instalável (service worker próprio, escopo /nota/) */
 if ("serviceWorker" in navigator) {
@@ -1102,6 +1117,7 @@ function renderizarCupons() {
  * da mais recente para a mais antiga, em lotes de 50 conforme a rolagem.
  */
 async function carregarLista(reiniciar) {
+  if (EMBUTIDO) return;   // dentro do PliPag não mostra a lista de notas
   if (carregandoLista && !reiniciar) return;
   if (!reiniciar && fimDaLista) return;
 
