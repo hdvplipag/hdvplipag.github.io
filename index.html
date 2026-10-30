@@ -3455,7 +3455,8 @@
             btnSalvar.disabled = false;
             btnSalvar.innerText = "Salvar";
             const recusado = err && err.message && err.message.indexOf('mês vigente') !== -1;
-            exibirToast(recusado ? err.message : "Erro ao salvar lançamento.", "erro", TEMPO_MENSAGEM_SALVAR_MS);
+            const detalheErro = (!recusado && err && err.message && err.message !== 'Erro no servidor.' && err.message !== 'Erro no servidor') ? ' (' + escaparHtml(err.message) + ')' : '';
+            exibirToast(recusado ? err.message : "Erro ao salvar lançamento." + detalheErro, "erro", TEMPO_MENSAGEM_SALVAR_MS);
           });
         if (dados.id === null && dados.parcelas > 1) runner.importTransactions(gerarParcelas(dados));
         else runner.saveTransaction(dados);
@@ -4933,6 +4934,10 @@
 
     // Só vale a resposta de "lançar nota": tem loja, total e lista de itens (a troca de categoria não tem total)
     function receberDadosNota(j) {
+      if (j && j.ok === false && /A[cç][aã]o inv[aá]lida/i.test(String(j.aviso || ''))) {
+        exibirToast('O servidor ainda está com a versão antiga do notas.gs (sem a ação "ler"). Cole o notas.gs novo no Apps Script e publique uma Nova versão.', 'erro', 12000);
+        return;
+      }
       if (!j || typeof j !== 'object' || !j.loja || j.total === undefined || j.total === null || !Array.isArray(j.itens)) return;
       if (Date.now() - ultimaNotaRecebida < 3000) return;
       ultimaNotaRecebida = Date.now();
@@ -4974,11 +4979,9 @@
       document.getElementById('inputInstituicao').value = '';
       // só aprende a categoria da loja quando ela não é a padrão "Outros"
       document.getElementById('inputVemDeScan').value = (cat && cat.toLowerCase() !== 'outros') ? 'true' : 'false';
-      const linhas = ['Nota lida pelo QR Code.', 'Loja: ' + (j.loja || ''), 'Pagamento: ' + (j.pagamento || ''), 'Total: ' + (isFinite(total) ? total.toFixed(2) : '')];
-      (j.itens || []).forEach(function(it) {
-        linhas.push('- ' + (it.descricao || '') + ' (' + (it.quantidade || '') + ' ' + (it.unidade || '') + ') = ' + (isFinite(Number(it.total)) ? Number(it.total).toFixed(2) : ''));
-      });
-      mostrarTextoCupom(linhas.join('\n'));
+      // sem "Ver texto lido do cupom" neste fluxo
+      const detNota = document.getElementById('detalhesTextoCupom'); if (detNota) detNota.classList.add('hidden');
+      const preNota = document.getElementById('textoCupomLido'); if (preNota) preNota.innerText = '';
       if (j.ok === false) exibirToast('Essa nota já tinha sido lançada na planilha de notas. Dados preenchidos: confira antes de salvar.', 'erro', 7000);
       else exibirToast('Nota lida. Confira os dados e salve.', 'sucesso', 6000);
     }
