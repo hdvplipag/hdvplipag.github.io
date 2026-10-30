@@ -484,6 +484,8 @@
         </div>
       </div>
 
+      <div id="totalRegistrosFooter" class="text-xs theme-subtext font-medium text-left">Total de lançamentos: 0</div>
+
       <!-- Container da Tabela Adaptável -->
       <div>
         <table class="tabela-estavel text-left text-sm theme-text">
@@ -513,10 +515,7 @@
         </table>
       </div>
 
-      <div class="pt-3 border-t border-slate-800/60 flex items-center justify-end gap-3">
-        <input type="file" id="inputImportarCSV" accept=".csv,text/csv,text/plain" class="hidden" onchange="importarCSV(this)">
-        <div id="totalRegistrosFooter" class="text-xs theme-subtext font-medium">Total de registros: 0</div>
-      </div>
+      <input type="file" id="inputImportarCSV" accept=".csv,text/csv,text/plain" class="hidden" onchange="importarCSV(this)">
     </div>
 
   </main>
@@ -3018,7 +3017,7 @@
 
       const footerTotal = document.getElementById('totalRegistrosFooter');
       if (footerTotal) {
-        footerTotal.innerText = `Total de registros: ${transacoes ? transacoes.length : 0}`;
+        footerTotal.innerText = `Total de lançamentos: ${transacoes ? transacoes.length : 0}`;
       }
 
       atualizarEstilosTexto();
