@@ -1,26 +1,17 @@
-
 {
-  "short_name": "CFScan",
-  "name": "PliPag - Gestão Financeira",
-  "icons": [
-    {
-      "src": "./plipag-192x192.png",
-      "type": "image/png",
-      "sizes": "192x192",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "./plipag-512x512.png",
-      "type": "image/png",
-      "sizes": "512x512",
-      "purpose": "any maskable"
-    }
-  ],
-  "start_url": "./index.html",
-  "scope": "./",
+  "id": "/nota/",
+  "name": "PliPag Notas",
+  "short_name": "Notas",
+  "description": "Leitura de QR Code de notas fiscais",
+  "start_url": "/nota/index.html",
+  "scope": "/nota/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#FFFFFF",
-  "theme_color": "#000000",
-  "categories": ["finance", "productivity"]
+  "background_color": "#f3f6fa",
+  "theme_color": "#1769aa",
+  "icons": [
+    { "src": "nota-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "nota-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "nota-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
 }
