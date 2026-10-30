@@ -1,1 +1,1537 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1769aa">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>Compras</title>
 
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+
+  <style>
+    :root {
+      --azul: #1769aa;
+      --azul-escuro: #104f83;
+      --fundo: #f3f6fa;
+      --texto: #17212b;
+      --borda: #d6dee8;
+      --erro: #a61b1b;
+      --sucesso: #17633a;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--fundo);
+      color: var(--texto);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 18px;
+      line-height: 1.45;
+    }
+
+    main {
+      width: min(100%, 620px);
+      margin: 0 auto;
+      padding: 18px 16px calc(28px + env(safe-area-inset-bottom));
+    }
+
+    h1 {
+      margin: 4px 0 6px;
+      font-size: clamp(1.8rem, 7vw, 2.3rem);
+      line-height: 1.1;
+    }
+
+    .cartao {
+      background: #fff;
+      border: 1px solid var(--borda);
+      border-radius: 18px;
+      padding: 18px;
+      margin: 14px 0;
+      box-shadow: 0 3px 12px rgba(25, 45, 70, .05);
+    }
+
+    label,
+    .rotulo {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    input,
+    select,
+    button {
+      font: inherit;
+      border-radius: 12px;
+    }
+
+    input,
+    select {
+      width: 100%;
+      min-height: 52px;
+      padding: 12px 14px;
+      border: 1px solid #aebdcd;
+      background: #fff;
+      color: var(--texto);
+    }
+
+    input:focus,
+    select:focus,
+    button:focus-visible {
+      outline: 3px solid #9cccf4;
+      outline-offset: 2px;
+    }
+
+    button {
+      border: 0;
+      min-height: 54px;
+      padding: 13px 16px;
+      font-weight: 750;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    button:disabled {
+      opacity: .6;
+      cursor: wait;
+    }
+
+    .botao-principal {
+      width: 100%;
+      background: var(--azul);
+      color: #fff;
+      font-size: 1.2rem;
+      min-height: 64px;
+    }
+
+    .botao-principal:active {
+      background: var(--azul-escuro);
+    }
+
+    .botao-secundario {
+      background: #e7f1fb;
+      color: #124f80;
+    }
+
+    .botao-pequeno {
+      min-height: 38px;
+      padding: 7px 11px;
+      font-size: .88rem;
+      border-radius: 9px;
+    }
+
+    #areaCamera {
+      display: none;
+      margin-top: 16px;
+    }
+
+    #areaCamera.aberta {
+      display: block;
+    }
+
+    #cameraPalco {
+      position: relative;
+      width: 100%;
+      max-width: 460px;
+      margin: 0 auto;
+      overflow: hidden;
+      border-radius: 16px;
+      background: #101820;
+      line-height: 0;
+    }
+
+    #leitor {
+      width: 100%;
+      margin: 0 auto;
+      overflow: hidden;
+      background: #101820;
+      min-height: 80px;
+    }
+
+    #leitor video {
+      display: block;
+      width: 100% !important;
+      max-height: 65vh;
+      object-fit: cover !important;
+      border-radius: 12px;
+    }
+
+    #leitor img {
+      max-width: 100%;
+    }
+
+    #molduraLeitura {
+      position: absolute;
+      width: 76%;
+      aspect-ratio: 1 / 1;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      border: 3px solid rgba(255, 255, 255, .95);
+      border-radius: 22px;
+      box-shadow: 0 0 0 999px rgba(0, 0, 0, .28);
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    #molduraLeitura::before,
+    #molduraLeitura::after {
+      content: "";
+      position: absolute;
+      inset: -3px;
+      border-radius: 22px;
+      border: 4px solid transparent;
+      pointer-events: none;
+    }
+
+    #molduraLeitura::before {
+      border-top-color: #fff;
+      border-left-color: #fff;
+    }
+
+    #molduraLeitura::after {
+      border-right-color: #fff;
+      border-bottom-color: #fff;
+    }
+
+    .acoes-camera {
+      display: flex;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .acoes-camera button {
+      flex: 1;
+    }
+
+    .dica {
+      font-size: .93rem;
+      color: #526171;
+      margin: 12px 0 0;
+    }
+
+    .linha {
+      display: flex;
+      gap: 10px;
+      align-items: stretch;
+    }
+
+    .linha input {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .linha button {
+      flex-shrink: 0;
+    }
+
+    .mensagem {
+      display: none;
+      padding: 13px 14px;
+      border-radius: 12px;
+      margin: 14px 0;
+      overflow-wrap: anywhere;
+    }
+
+    .mensagem.visivel {
+      display: block;
+    }
+
+    .mensagem.erro {
+      background: #fff0f0;
+      color: var(--erro);
+      border: 1px solid #efb7b7;
+    }
+
+    .mensagem.info,
+    .mensagem.buscando {
+      background: #eaf4ff;
+      color: #154d7b;
+      border: 1px solid #b8d9f7;
+    }
+
+    .mensagem.sucesso {
+      background: #eaf8ef;
+      color: var(--sucesso);
+      border: 1px solid #b7e0c5;
+    }
+
+    #resultado {
+      display: none;
+    }
+
+    #resultado.visivel {
+      display: block;
+    }
+
+    .resumo {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px 16px;
+      margin: 14px 0;
+      padding: 14px;
+      background: #f4f7fa;
+      border-radius: 12px;
+    }
+
+    .resumo > div {
+      min-width: 0;
+    }
+
+    #campoData,
+    #campoLoja {
+      grid-column: 1 / -1;
+    }
+
+    .resumo .rotulo {
+      margin: 0 0 4px;
+      font-size: .85rem;
+      color: #526171;
+    }
+
+    .valor-resumo {
+      font-size: 1.08rem;
+      font-weight: 750;
+      overflow-wrap: anywhere;
+    }
+
+    h2 {
+      font-size: 1.25rem;
+      margin: 0 0 12px;
+    }
+
+    h3 {
+      font-size: 1.05rem;
+      margin: 18px 0 8px;
+    }
+
+    .item {
+      padding: 12px 0;
+      border-bottom: 1px solid #e5ebf1;
+    }
+
+    .item:last-child {
+      border-bottom: 0;
+    }
+
+    .item-nome {
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+
+    .item-detalhes {
+      color: #526171;
+      font-size: .92rem;
+      margin-top: 4px;
+    }
+
+    .pergunta-botoes {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .pergunta-botoes button {
+      min-height: 32px;
+      padding: 5px 10px;
+      line-height: 1.2;
+    }
+
+    .rodape {
+      display: none;
+      text-align: center;
+      color: #667586;
+      font-size: .82rem;
+      padding-top: 10px;
+    }
+
+    .rodape.visivel {
+      display: block;
+    }
+
+    @media (max-width: 380px) {
+      main {
+        padding-left: 11px;
+        padding-right: 11px;
+      }
+
+      .cartao {
+        padding: 14px;
+      }
+
+      .linha {
+        flex-direction: column;
+      }
+
+      .linha button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+<main>
+  <section class="cartao" aria-labelledby="tituloLeitura">
+    <h2 id="tituloLeitura">Registrar compra</h2>
+
+    <button id="btnLer" class="botao-principal" type="button" style="display:none">
+      📷 Capturar
+    </button>
+
+    <div id="areaCamera">
+      <div id="cameraPalco">
+        <div id="leitor"></div>
+        <div id="molduraLeitura" aria-hidden="true"></div>
+      </div>
+
+      <p id="estadoCamera" class="dica" aria-live="polite">
+        Aponte o QR Code para dentro do quadrado.
+      </p>
+
+      <div class="acoes-camera">
+        <button id="btnLanterna" class="botao-secundario" type="button">
+          🔦 Lanterna
+        </button>
+
+        <button id="btnFecharCamera" class="botao-secundario" type="button" style="display:none">
+          Fechar câmera
+        </button>
+      </div>
+    </div>
+
+    <div id="entradaManualLink" style="display:none">
+      <label for="linkNota">Ou cole o link da nota</label>
+
+      <div class="linha">
+        <input
+          id="linkNota"
+          type="url"
+          inputmode="url"
+          autocomplete="url"
+          placeholder="Cole aqui o link do QR Code"
+        >
+
+        <button id="btnLancar" class="botao-secundario" type="button">
+          Lançar
+        </button>
+      </div>
+    </div>
+</section>
+
+  <div id="mensagem" class="mensagem" role="status" aria-live="polite"></div>
+
+  <section id="perguntaOutra" class="cartao" style="display:none" aria-live="polite">
+    <h2>Captura concluída</h2>
+    <p>Deseja realizar outra captura?</p>
+    <div class="pergunta-botoes">
+      <button id="btnOutraCaptura" class="botao-principal" type="button">
+        Sim
+      </button>
+      <button id="btnConcluirCapturas" class="botao-secundario" type="button">
+        Não
+      </button>
+    </div>
+  </section>
+
+  <section id="resultado" class="cartao" aria-label="Dados da nota">
+    <div class="resumo">
+      <div id="campoData">
+        <span class="rotulo">Data</span>
+        <div id="resData" class="valor-resumo">—</div>
+      </div>
+
+      <div id="campoLoja">
+        <span class="rotulo">Loja</span>
+        <div id="resLoja" class="valor-resumo">—</div>
+      </div>
+
+      <div>
+        <span class="rotulo">Total</span>
+        <div id="resTotal" class="valor-resumo">—</div>
+      </div>
+
+      <div>
+        <span class="rotulo">Forma de pagamento</span>
+        <div id="resPagamento" class="valor-resumo">—</div>
+      </div>
+    </div>
+
+    <label for="categoria">Categoria</label>
+
+    <select id="categoria">
+      <option value="Mercado">Mercado</option>
+      <option value="Farmácia">Farmácia</option>
+      <option value="Combustível">Combustível</option>
+      <option value="Restaurante">Restaurante</option>
+      <option value="Outros">Outros</option>
+    </select>
+
+    <h3>Itens da nota</h3>
+    <div id="listaItens"></div>
+  </section>
+
+  <p id="ajudaCamera" class="rodape">
+    Se a câmera não abrir, permita o acesso à câmera nas configurações
+    do navegador e abra esta página por HTTPS.
+  </p>
+</main>
+
+<script>
+"use strict";
+
+/*
+ * ENDEREÇO DO GOOGLE APPS SCRIPT
+ * Mantido conforme o arquivo enviado.
+ */
+const URL_DO_MOTOR =
+  "https://script.google.com/macros/s/AKfycby7bScgVxp5wJxV0KZ26kvU0Awd8az-pMZXSg8kTM137bvnQxQxvgpXJ39zutU8gC_Xew/exec";
+
+const EH_IOS = /iPad|iPhone|iPod/i.test(navigator.userAgent) ||
+  (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+const CATEGORIAS = [
+  "Mercado",
+  "Farmácia",
+  "Combustível",
+  "Restaurante",
+  "Outros"
+];
+
+let leitorQr = null;
+let cameraAtiva = false;
+let cameraIniciando = false;
+let solicitouPararDuranteInicio = false;
+let processandoLeitura = false;
+let requisicaoEmAndamento = false;
+let lojaAtual = "";
+let lanternaLigada = false;
+let operacaoCamera = Promise.resolve();
+let inicioCameraPromise = null;
+let iosCameraStream = null;
+let iosCameraVideo = null;
+let iosCanvas = null;
+let iosContextoCanvas = null;
+let iosTimerLeitura = null;
+let iosZbar = null;
+let iosQuadro = 0;
+
+const el = (id) => document.getElementById(id);
+
+
+/* MENSAGENS */
+
+function mostrarMensagem(texto, tipo = "info") {
+  const caixa = el("mensagem");
+
+  // Exibe falhas/duplicidades e o andamento da consulta.
+  if (tipo === "buscando") {
+    caixa.textContent = String(texto || "");
+    caixa.className = "mensagem visivel buscando";
+    return;
+  }
+
+  if (tipo !== "erro") {
+    limparMensagem();
+    return;
+  }
+
+  caixa.textContent = String(texto || "");
+  caixa.className = "mensagem visivel erro";
+}
+
+function limparMensagem() {
+  el("mensagem").textContent = "";
+  el("mensagem").className = "mensagem";
+}
+
+
+/* COMUNICAÇÃO COM O APPS SCRIPT */
+
+function validarMotor() {
+  if (!URL_DO_MOTOR.trim()) {
+    throw new Error(
+      "O endereço do Google Apps Script não foi configurado."
+    );
+  }
+
+  if (!/^https:\/\/script\.google\.com\//i.test(URL_DO_MOTOR.trim())) {
+    throw new Error(
+      "O endereço configurado não parece ser um Web App HTTPS do Google Apps Script."
+    );
+  }
+}
+
+async function enviarMotor(dados) {
+  validarMotor();
+
+  const corpo = {
+    acao: dados.acao,
+    link: dados.link || "",
+    loja: dados.loja || "",
+    categoria: dados.categoria || ""
+  };
+
+  let resposta;
+
+  try {
+    resposta = await fetch(URL_DO_MOTOR.trim(), {
+      method: "POST",
+      headers: {
+        "Content-Type": "text/plain;charset=utf-8"
+      },
+      body: JSON.stringify(corpo),
+      redirect: "follow"
+    });
+  } catch (erro) {
+    throw new Error(
+      "Não foi possível conectar ao Google Apps Script. " +
+      "Confira a conexão com a internet, o endereço /exec e as permissões da implantação."
+    );
+  }
+
+  const texto = await resposta.text();
+
+  let resultado;
+
+  try {
+    resultado = JSON.parse(texto);
+  } catch (_) {
+    throw new Error(
+      "O Google Apps Script respondeu em formato inesperado. " +
+      "Confira se o endereço é o da implantação /exec."
+    );
+  }
+
+  if (!resposta.ok) {
+    throw new Error(
+      "O servidor respondeu com erro HTTP " + resposta.status + "."
+    );
+  }
+
+  const mensagemMotor = String(
+    resultado.aviso || resultado.mensagem || ""
+  );
+
+
+  return resultado;
+}
+
+
+/* FORMATAÇÃO E EXIBIÇÃO */
+
+function formatarDinheiro(valor) {
+  if (typeof valor === "number" && Number.isFinite(valor)) {
+    return valor.toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL"
+    });
+  }
+
+  if (valor === null || valor === undefined || valor === "") {
+    return "—";
+  }
+
+  const numero = Number(valor);
+
+  if (Number.isFinite(numero)) {
+    return numero.toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL"
+    });
+  }
+
+  return String(valor);
+}
+
+function formatarDataHora(valor) {
+  if (valor === null || valor === undefined || valor === "") return "—";
+
+  let data;
+  if (valor instanceof Date) {
+    data = valor;
+  } else if (typeof valor === "string") {
+    const texto = valor.trim();
+    const dataBrasileira = texto.match(
+      /^(\d{1,2})[\/.](\d{1,2})[\/.](\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
+    );
+    const dataISOsemFuso = texto.match(
+      /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?$/
+    );
+
+    if (dataBrasileira) {
+      data = new Date(
+        Number(dataBrasileira[3]), Number(dataBrasileira[2]) - 1,
+        Number(dataBrasileira[1]), Number(dataBrasileira[4] || 0),
+        Number(dataBrasileira[5] || 0), Number(dataBrasileira[6] || 0)
+      );
+    } else if (dataISOsemFuso) {
+      data = new Date(
+        Number(dataISOsemFuso[1]), Number(dataISOsemFuso[2]) - 1,
+        Number(dataISOsemFuso[3]), Number(dataISOsemFuso[4] || 0),
+        Number(dataISOsemFuso[5] || 0), Number(dataISOsemFuso[6] || 0)
+      );
+    } else {
+      data = new Date(texto);
+    }
+  } else {
+    data = new Date(valor);
+  }
+
+  if (!Number.isFinite(data.getTime())) return String(valor);
+
+  const doisDigitos = numero => String(numero).padStart(2, "0");
+  return `${doisDigitos(data.getDate())}/${doisDigitos(data.getMonth() + 1)}/${data.getFullYear()} ` +
+    `${doisDigitos(data.getHours())}:${doisDigitos(data.getMinutes())}:${doisDigitos(data.getSeconds())}`;
+}
+
+function escaparHtml(valor) {
+  return String(valor ?? "").replace(/[&<>"']/g, (caractere) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  })[caractere]);
+}
+
+function definirCategoria(valor) {
+  const select = el("categoria");
+
+  select.value = CATEGORIAS.includes(valor)
+    ? valor
+    : "Outros";
+}
+
+function renderizarCompra(dados) {
+  const itens = Array.isArray(dados.itens)
+    ? dados.itens
+    : [];
+
+  lojaAtual = String(dados.loja || "");
+
+  el("resLoja").textContent =
+    lojaAtual || "Loja não identificada";
+
+  el("resData").textContent =
+    formatarDataHora(dados.data);
+
+  el("resTotal").textContent =
+    formatarDinheiro(dados.total);
+
+  el("resPagamento").textContent =
+    dados.formaPagamento ||
+    dados.forma_pagamento ||
+    dados.pagamento ||
+    "—";
+
+  definirCategoria(dados.categoria || "Outros");
+
+  const lista = el("listaItens");
+
+  if (!itens.length) {
+    lista.textContent =
+      "O motor não retornou os itens desta nota.";
+  } else {
+    lista.innerHTML = itens.map((item) => {
+      const descricao =
+        item.descricao || item.nome || "Item";
+
+      const quantidade =
+        item.quantidade ?? "—";
+
+      const unidade =
+        item.unidade || "";
+
+      const unitario =
+        item.precoUnitario ??
+        item.preco_unitario ??
+        item.valorUnitario ??
+        item.valor_unitario;
+
+      return `
+        <article class="item">
+          <div class="item-nome">
+            ${escaparHtml(descricao)}
+          </div>
+
+          <div class="item-detalhes">
+            ${escaparHtml(quantidade)}
+            ${escaparHtml(unidade)}
+            · Unitário: ${escaparHtml(formatarDinheiro(unitario))}
+          </div>
+
+        </article>
+      `;
+    }).join("");
+  }
+
+  el("resultado").classList.add("visivel");
+}
+
+
+/* LANÇAMENTO DA NOTA */
+
+async function lancarLink(link) {
+  const valor = String(link || "").trim();
+
+  if (!valor) {
+    mostrarMensagem(
+      "Leia o QR Code ou cole o link da nota antes de lançar.",
+      "erro"
+    );
+    mostrarPerguntaOutraCaptura_();
+    return;
+  }
+
+  if (!/^https?:\/\//i.test(valor)) {
+    mostrarMensagem(
+      "O link não parece válido. Confira o endereço do QR Code.",
+      "erro"
+    );
+    mostrarPerguntaOutraCaptura_();
+    return;
+  }
+
+  if (requisicaoEmAndamento) {
+    return;
+  }
+
+  requisicaoEmAndamento = true;
+
+  limparMensagem();
+
+  el("btnLancar").disabled = true;
+  el("btnLer").disabled = true;
+
+  mostrarMensagem("Buscando dados da nota…", "buscando");
+
+  try {
+    const dados = await enviarMotor({
+      acao: "lancar",
+      link: valor
+    });
+
+    if (!dados) {
+      return;
+    }
+
+    if (dados.aviso) {
+      const aviso = String(dados.aviso);
+      const notaDuplicada = /notinha\s+j[aá]\s+foi\s+lan[cç]ada|nota\s+j[aá]\s+foi\s+lan[cç]ada|duplicad/i.test(aviso);
+
+      mostrarMensagem(
+        aviso,
+        dados.ok === false || notaDuplicada ? "erro" : "info"
+      );
+    } else if (dados.ok === false) {
+      mostrarMensagem(
+        "O motor não conseguiu lançar a nota. Confira o link e tente novamente.",
+        "erro"
+      );
+    } else {
+      mostrarMensagem("Nota processada.", "sucesso");
+    }
+
+    if (
+      dados.loja ||
+      dados.data ||
+      dados.total !== undefined ||
+      Array.isArray(dados.itens)
+    ) {
+      renderizarCompra(dados);
+    } else if (dados.ok !== false) {
+      mostrarMensagem(
+        "A resposta não trouxe os dados esperados da nota. Confira o Apps Script.",
+        "erro"
+      );
+    }
+  } catch (erro) {
+    mostrarMensagem(
+      erro.message || "Ocorreu um erro ao lançar a nota.",
+      "erro"
+    );
+  } finally {
+    requisicaoEmAndamento = false;
+
+    el("btnLancar").disabled = false;
+
+    if (!cameraIniciando && !cameraAtiva) {
+      el("btnLer").disabled = false;
+    }
+
+    mostrarPerguntaOutraCaptura_();
+  }
+}
+
+
+/* CONTROLE DA CÂMERA */
+
+async function pararCamera() {
+  /*
+   * Nunca tenta parar o leitor enquanto start() ainda está
+   * executando. Registra a solicitação e deixa o início terminar.
+   */
+  if (cameraIniciando) {
+    solicitouPararDuranteInicio = true;
+
+    el("estadoCamera").textContent = "Fechando câmera…";
+
+    return;
+  }
+
+  const operacao = async () => {
+    const leitor = leitorQr;
+
+    if (iosTimerLeitura) {
+      clearTimeout(iosTimerLeitura);
+      iosTimerLeitura = null;
+    }
+
+    if (iosCameraStream) {
+      iosCameraStream.getTracks().forEach(track => track.stop());
+      iosCameraStream = null;
+    }
+
+    if (iosCameraVideo) {
+      iosCameraVideo.pause();
+      iosCameraVideo.srcObject = null;
+      iosCameraVideo.remove();
+      iosCameraVideo = null;
+    }
+
+    iosCanvas = null;
+    iosContextoCanvas = null;
+
+    if (leitor) {
+      if (cameraAtiva) {
+        try {
+          await leitor.stop();
+        } catch (erro) {
+          console.warn("Aviso ao parar a câmera:", erro);
+        }
+      }
+
+      try {
+        await leitor.clear();
+      } catch (erro) {
+        console.warn("Aviso ao limpar o leitor:", erro);
+      }
+    }
+
+    if (leitorQr === leitor) {
+      leitorQr = null;
+    }
+
+    cameraAtiva = false;
+    processandoLeitura = false;
+    lanternaLigada = false;
+    el("btnLanterna").style.display = "none";
+
+    el("btnLanterna").textContent = "🔦 Lanterna";
+
+    el("areaCamera").classList.remove("aberta");
+    el("estadoCamera").textContent = "";
+
+    if (!requisicaoEmAndamento) {
+      el("btnLer").disabled = false;
+    }
+  };
+
+  operacaoCamera = operacaoCamera.then(operacao, operacao);
+
+  await operacaoCamera;
+}
+
+function mensagemErroCamera(erro) {
+  const nome = String(
+    erro && (erro.name || erro.message) || erro || ""
+  );
+
+  if (!window.isSecureContext) {
+    return "A câmera exige HTTPS. Abra o aplicativo pelo endereço seguro do GitHub Pages.";
+  }
+
+  if (/NotAllowedError|PermissionDeniedError|permission|denied/i.test(nome)) {
+    return "O acesso à câmera foi bloqueado. Permita o uso da câmera nas configurações do navegador.";
+  }
+
+  if (/NotFoundError|DevicesNotFoundError/i.test(nome)) {
+    return "Não encontrei uma câmera neste dispositivo.";
+  }
+
+  if (/NotReadableError|TrackStartError|Could not start video source/i.test(nome)) {
+    return "A câmera pode estar sendo usada por outro aplicativo. Feche outros apps que usam a câmera e tente novamente.";
+  }
+
+  if (/OverconstrainedError/i.test(nome)) {
+    return "Não foi possível abrir a câmera solicitada. Tente novamente.";
+  }
+
+  if (/already under transition|transition/i.test(nome)) {
+    return "A câmera ainda estava mudando de estado. Feche a câmera, aguarde alguns segundos e tente novamente.";
+  }
+
+  return "Não foi possível abrir a câmera. Confira a permissão do navegador. Detalhe: " + nome;
+}
+
+function atualizarBotaoLanterna_(trilha) {
+  let disponivel = false;
+  try {
+    const capacidades = trilha && typeof trilha.getCapabilities === "function"
+      ? trilha.getCapabilities()
+      : null;
+    disponivel = Boolean(capacidades && capacidades.torch);
+  } catch (_) {
+    disponivel = false;
+  }
+  el("btnLanterna").style.display = disponivel ? "block" : "none";
+}
+
+async function iniciarLeituraAoVivoNoIphone_() {
+  const pedidoCamera = navigator.mediaDevices.getUserMedia({
+    audio: false,
+    video: {
+      facingMode: { ideal: "environment" },
+      width: { ideal: 1920 },
+      height: { ideal: 1080 }
+    }
+  });
+
+  const pedidoZbar = import(
+    "https://cdn.jsdelivr.net/npm/@undecaf/zbar-wasm@0.11.0/dist/index.mjs"
+  ).catch(() => null);
+
+  const [stream, zbar] = await Promise.all([pedidoCamera, pedidoZbar]);
+
+  if (!zbar && typeof jsQR !== "function") {
+    stream.getTracks().forEach(track => track.stop());
+    throw new Error("Os leitores de QR não carregaram. Confira a internet e tente novamente.");
+  }
+
+  iosCameraStream = stream;
+  iosZbar = zbar;
+  iosQuadro = 0;
+  atualizarBotaoLanterna_(stream.getVideoTracks()[0]);
+
+  const video = document.createElement("video");
+  video.autoplay = true;
+  video.muted = true;
+  video.playsInline = true;
+  video.setAttribute("playsinline", "");
+  video.setAttribute("webkit-playsinline", "");
+  video.style.width = "100%";
+  video.style.height = "auto";
+  video.style.display = "block";
+  video.srcObject = stream;
+
+  el("leitor").replaceChildren(video);
+  iosCameraVideo = video;
+
+  await video.play();
+  if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+    await new Promise((resolve, reject) => {
+      const limite = setTimeout(
+        () => reject(new Error("A câmera abriu, mas não enviou imagem.")),
+        8000
+      );
+      video.addEventListener("loadeddata", () => {
+        clearTimeout(limite);
+        resolve();
+      }, { once: true });
+    });
+  }
+
+  iosCanvas = document.createElement("canvas");
+  iosContextoCanvas = iosCanvas.getContext("2d", { willReadFrequently: true });
+  if (!iosContextoCanvas) {
+    throw new Error("Não consegui preparar a leitura da câmera.");
+  }
+
+  cameraAtiva = true;
+  el("estadoCamera").textContent =
+    "Leitura automática ativa. Mantenha o QR Code inteiro visível.";
+  agendarLeituraDoQuadroIphone_();
+}
+
+function agendarLeituraDoQuadroIphone_() {
+  if (!cameraAtiva || !iosCameraVideo || processandoLeitura) return;
+  iosTimerLeitura = setTimeout(processarQuadroIphone_, 180);
+}
+
+async function processarQuadroIphone_() {
+  iosTimerLeitura = null;
+  const video = iosCameraVideo;
+  if (
+    !cameraAtiva ||
+    !video ||
+    video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA ||
+    processandoLeitura
+  ) {
+    agendarLeituraDoQuadroIphone_();
+    return;
+  }
+
+  try {
+    const escala = Math.min(1, 1600 / video.videoWidth);
+    const largura = Math.max(1, Math.round(video.videoWidth * escala));
+    const altura = Math.max(1, Math.round(video.videoHeight * escala));
+    if (iosCanvas.width !== largura || iosCanvas.height !== altura) {
+      iosCanvas.width = largura;
+      iosCanvas.height = altura;
+    }
+    iosContextoCanvas.drawImage(video, 0, 0, largura, altura);
+    const pixels = iosContextoCanvas.getImageData(0, 0, largura, altura);
+    let textoLido = "";
+
+    if (iosZbar) {
+      const simbolos = await iosZbar.scanImageData(pixels);
+      const qr = simbolos.find(simbolo => /qr/i.test(simbolo.typeName || ""));
+      if (qr) textoLido = qr.decode();
+    }
+
+    iosQuadro += 1;
+    if (!textoLido && typeof jsQR === "function" && iosQuadro % 2 === 0) {
+      const qr = jsQR(pixels.data, largura, altura, {
+        inversionAttempts: "attemptBoth"
+      });
+      if (qr) textoLido = qr.data;
+    }
+
+    if (textoLido) {
+      processandoLeitura = true;
+      el("estadoCamera").textContent = "QR Code lido. Abrindo a nota…";
+      el("btnLer").disabled = true;
+      await pararCamera();
+      el("linkNota").value = textoLido;
+      await lancarLink(textoLido);
+      return;
+    }
+  } catch (erro) {
+    console.warn("Falha ao analisar quadro da câmera do iPhone:", erro);
+  }
+
+  agendarLeituraDoQuadroIphone_();
+}
+
+async function iniciarCamera() {
+  /*
+   * Impede inicializações duplicadas provocadas por toques rápidos.
+   */
+  if (cameraIniciando || cameraAtiva) {
+    return;
+  }
+
+  if (inicioCameraPromise) {
+    return inicioCameraPromise;
+  }
+
+  inicioCameraPromise = executarInicioCamera();
+
+  try {
+    await inicioCameraPromise;
+  } finally {
+    inicioCameraPromise = null;
+  }
+}
+
+async function executarInicioCamera() {
+  limparMensagem();
+  el("ajudaCamera").classList.remove("visivel");
+
+  if (!window.isSecureContext) {
+    el("ajudaCamera").classList.add("visivel");
+    mostrarMensagem(
+      "A câmera exige HTTPS. Abra o GitHub Pages pelo endereço https://.",
+      "erro"
+    );
+
+    return;
+  }
+
+  if (
+    !navigator.mediaDevices ||
+    !navigator.mediaDevices.getUserMedia
+  ) {
+    el("ajudaCamera").classList.add("visivel");
+    mostrarMensagem(
+      "Este navegador não disponibiliza acesso à câmera. Atualize o navegador.",
+      "erro"
+    );
+
+    return;
+  }
+
+  if (
+    !EH_IOS && typeof Html5Qrcode === "undefined"
+  ) {
+    mostrarMensagem(
+      "A biblioteca de leitura não carregou. Confira a internet e recarregue a página.",
+      "erro"
+    );
+
+    return;
+  }
+
+  if (cameraAtiva || leitorQr) {
+    await pararCamera();
+  }
+
+  cameraIniciando = true;
+  solicitouPararDuranteInicio = false;
+
+  el("areaCamera").classList.add("aberta");
+
+  el("estadoCamera").textContent =
+    "Solicitando acesso à câmera…";
+
+  el("btnLer").disabled = true;
+
+  if (EH_IOS) {
+    try {
+      await iniciarLeituraAoVivoNoIphone_();
+    } catch (erro) {
+      cameraAtiva = false;
+      el("ajudaCamera").classList.add("visivel");
+      mostrarMensagem(mensagemErroCamera(erro), "erro");
+    } finally {
+      cameraIniciando = false;
+    }
+
+    if (solicitouPararDuranteInicio) {
+      solicitouPararDuranteInicio = false;
+      await pararCamera();
+      return;
+    }
+
+    if (!cameraAtiva) {
+      await pararCamera();
+      return;
+    }
+
+    el("btnLer").disabled = false;
+    return;
+  }
+
+  let leitorCriado = null;
+
+  try {
+    leitorCriado = new Html5Qrcode("leitor", {
+      verbose: false,
+      useBarCodeDetectorIfSupported: !EH_IOS,
+      formatsToSupport: [
+        Html5QrcodeSupportedFormats.QR_CODE
+      ]
+    });
+
+    leitorQr = leitorCriado;
+
+    const config = {
+      fps: 10,
+
+      qrbox: function(largura, altura) {
+        const lado = Math.floor(
+          Math.min(largura, altura) * 0.76
+        );
+
+        return {
+          width: lado,
+          height: lado
+        };
+      },
+
+      aspectRatio: 1,
+      disableFlip: false
+    };
+
+    /*
+     * A leitura pode ocorrer logo após o início do vídeo.
+     * O callback registra a leitura e espera o start() terminar
+     * antes de tentar desligar a câmera.
+     */
+    const aoLer = (textoLido) => {
+      if (processandoLeitura) {
+        return;
+      }
+
+      processandoLeitura = true;
+
+      el("estadoCamera").textContent =
+        "QR Code lido. Preparando a nota…";
+
+      el("btnLer").disabled = true;
+
+      Promise.resolve().then(async () => {
+        /*
+         * Se o leitor ainda estiver iniciando, solicita a parada
+         * para depois do start(), sem executar stop() em paralelo.
+         */
+        if (cameraIniciando) {
+          solicitouPararDuranteInicio = true;
+
+          while (cameraIniciando) {
+            await new Promise(resolve =>
+              setTimeout(resolve, 50)
+            );
+          }
+        }
+
+        await pararCamera();
+
+        el("linkNota").value = textoLido;
+
+        await lancarLink(textoLido);
+      }).catch((erro) => {
+        mostrarMensagem(
+          erro.message || "Erro ao processar o QR Code.",
+          "erro"
+        );
+
+        processandoLeitura = false;
+        el("btnLer").disabled = false;
+      });
+    };
+
+    if (!EH_IOS) {
+      // Mantém o caminho que já funcionava no Android.
+      try {
+        await leitorCriado.start({ facingMode: "environment" }, config, aoLer, () => {});
+      } catch (primeiroErro) {
+        if (solicitouPararDuranteInicio) throw primeiroErro;
+        const cameras = await Html5Qrcode.getCameras();
+        if (!cameras || cameras.length === 0) throw primeiroErro;
+        const traseira = cameras.find(camera =>
+          /back|rear|environment|traseir|principal|wide/i.test(camera.label)
+        );
+        await leitorCriado.start(
+          (traseira || cameras[cameras.length - 1]).id,
+          config,
+          aoLer,
+          () => {}
+        );
+      }
+    }
+
+    const video = el("leitor").querySelector("video");
+    if (video) {
+      video.setAttribute("playsinline", "");
+      video.setAttribute("webkit-playsinline", "");
+      video.muted = true;
+      const stream = video.srcObject;
+      const trilha = stream && typeof stream.getVideoTracks === "function"
+        ? stream.getVideoTracks()[0]
+        : null;
+      atualizarBotaoLanterna_(trilha);
+    }
+    cameraAtiva = true;
+
+    el("estadoCamera").textContent =
+      "Centralize o QR Code inteiro dentro do quadrado.";
+
+  } catch (erro) {
+    cameraAtiva = false;
+    el("ajudaCamera").classList.add("visivel");
+
+    mostrarMensagem(
+      mensagemErroCamera(erro),
+      "erro"
+    );
+
+    /*
+     * Não chama pararCamera() enquanto cameraIniciando for true.
+     * O finally abaixo libera o estado; depois a limpeza é feita.
+     */
+  } finally {
+    cameraIniciando = false;
+  }
+
+  /*
+   * Agora o start() terminou: é seguro executar stop() e clear().
+   */
+  if (solicitouPararDuranteInicio) {
+    solicitouPararDuranteInicio = false;
+
+    await pararCamera();
+
+    return;
+  }
+
+  if (!cameraAtiva) {
+    await pararCamera();
+    return;
+  }
+
+  el("btnLer").disabled = false;
+}
+
+
+/* LANTERNA */
+
+async function alternarLanterna() {
+  if ((!leitorQr && !iosCameraStream) || !cameraAtiva || cameraIniciando) {
+    mostrarMensagem(
+      "Abra a câmera antes de tentar ligar a lanterna.",
+      "info"
+    );
+
+    return;
+  }
+
+  try {
+    const proximoEstado = !lanternaLigada;
+
+    if (iosCameraStream) {
+      const trilha = iosCameraStream.getVideoTracks()[0];
+      await trilha.applyConstraints({ advanced: [{ torch: proximoEstado }] });
+    } else {
+      await leitorQr.applyVideoConstraints({
+        advanced: [{ torch: proximoEstado }]
+      });
+    }
+
+    lanternaLigada = proximoEstado;
+
+    el("btnLanterna").textContent = lanternaLigada
+      ? "🔦 Desligar lanterna"
+      : "🔦 Lanterna";
+
+    el("estadoCamera").textContent = lanternaLigada
+      ? "Lanterna ligada. Mantenha o QR Code inteiro dentro do quadrado."
+      : "Centralize o QR Code inteiro dentro do quadrado.";
+
+  } catch (erro) {
+    mostrarMensagem(
+      "Este celular ou navegador não permite controlar a lanterna por esta página. Você ainda pode usar a câmera normalmente.",
+      "info"
+    );
+  }
+}
+
+
+/* CATEGORIA DA LOJA */
+
+async function salvarCategoria() {
+  if (!lojaAtual) {
+    mostrarMensagem(
+      "Lance uma nota primeiro para definir a categoria da loja.",
+      "erro"
+    );
+
+    return;
+  }
+
+  const categoria = el("categoria").value;
+
+  limparMensagem();
+
+  try {
+    const dados = await enviarMotor({
+      acao: "categoria",
+      loja: lojaAtual,
+      categoria: categoria
+    });
+
+    if (!dados) {
+      return;
+    }
+
+    if (dados.ok === false) {
+      mostrarMensagem(
+        dados.aviso || "Não foi possível salvar a categoria.",
+        "erro"
+      );
+    } else {
+      mostrarMensagem(
+        dados.aviso || "Categoria da loja atualizada.",
+        "sucesso"
+      );
+    }
+
+  } catch (erro) {
+    mostrarMensagem(
+      erro.message || "Erro ao atualizar a categoria.",
+      "erro"
+    );
+  }
+}
+
+
+/* EVENTOS */
+
+function acionarLeitura() {
+  iniciarCamera();
+}
+
+function mostrarPerguntaOutraCaptura_() {
+  el("perguntaOutra").style.display = "block";
+  el("perguntaOutra").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+el("btnLer").addEventListener("click", acionarLeitura);
+
+el("btnOutraCaptura").addEventListener("click", () => {
+  el("perguntaOutra").style.display = "none";
+  el("resultado").classList.remove("visivel");
+  limparMensagem();
+  iniciarCamera();
+});
+
+el("btnConcluirCapturas").addEventListener("click", () => {
+  el("perguntaOutra").style.display = "none";
+});
+
+
+el("btnLanterna").addEventListener("click", alternarLanterna);
+
+el("btnLancar").addEventListener("click", () => {
+  lancarLink(el("linkNota").value);
+});
+
+el("categoria").addEventListener("change", salvarCategoria);
+
+el("linkNota").addEventListener("keydown", (evento) => {
+  if (evento.key === "Enter") {
+    evento.preventDefault();
+
+    lancarLink(el("linkNota").value);
+  }
+});
+
+
+/* ESTADO INICIAL */
+if (EH_IOS) {
+  document.body.classList.add("ios-ios");
+  el("entradaManualLink").style.display = "none";
+  el("btnLer").textContent = "📷 Capturar";
+}
+
+window.addEventListener("load", () => iniciarCamera(), { once: true });
+
+
+/*
+ * Ao sair da página, tenta liberar a câmera.
+ * O navegador também pode interromper o vídeo automaticamente.
+ */
+window.addEventListener("pagehide", () => {
+  if (iosTimerLeitura) {
+    clearTimeout(iosTimerLeitura);
+    iosTimerLeitura = null;
+  }
+
+  if (iosCameraStream) {
+    iosCameraStream.getTracks().forEach(track => track.stop());
+    iosCameraStream = null;
+  }
+
+  if (leitorQr && cameraAtiva && !cameraIniciando) {
+    leitorQr.stop().catch(() => {});
+  }
+});
+</script>
+</body>
+</html>
