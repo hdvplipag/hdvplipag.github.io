@@ -4896,7 +4896,18 @@
       if (!win || win.__plipagGancho || typeof win.fetch !== 'function') return;
       const original = win.fetch;
       win.__plipagGancho = true;
-      win.fetch = function() {
+      win.fetch = function(entrada, opcoes) {
+        // No PliPag a nota só é LIDA: troca "lancar" por "ler" para o servidor não gravar nas abas Compras/Itens
+        try {
+          if (opcoes && typeof opcoes.body === 'string') {
+            const corpo = JSON.parse(opcoes.body);
+            if (corpo && String(corpo.acao || '').toLowerCase() === 'lancar') {
+              corpo.acao = 'ler';
+              opcoes = Object.assign({}, opcoes, { body: JSON.stringify(corpo) });
+              arguments[1] = opcoes;
+            }
+          }
+        } catch (e) {}
         const promessa = original.apply(this, arguments);
         try {
           promessa.then(function(resp) {
@@ -4955,13 +4966,13 @@
       document.getElementById('inputInstituicao').value = '';
       // só aprende a categoria da loja quando ela não é a padrão "Outros"
       document.getElementById('inputVemDeScan').value = (cat && cat.toLowerCase() !== 'outros') ? 'true' : 'false';
-      const linhas = ['Nota lida pela página de notas.', 'Loja: ' + (j.loja || ''), 'Pagamento: ' + (j.pagamento || ''), 'Total: ' + (isFinite(total) ? total.toFixed(2) : '')];
+      const linhas = ['Nota lida pelo QR Code.', 'Loja: ' + (j.loja || ''), 'Pagamento: ' + (j.pagamento || ''), 'Total: ' + (isFinite(total) ? total.toFixed(2) : '')];
       (j.itens || []).forEach(function(it) {
         linhas.push('- ' + (it.descricao || '') + ' (' + (it.quantidade || '') + ' ' + (it.unidade || '') + ') = ' + (isFinite(Number(it.total)) ? Number(it.total).toFixed(2) : ''));
       });
       mostrarTextoCupom(linhas.join('\n'));
       if (j.ok === false) exibirToast('Essa nota já tinha sido lançada na planilha de notas. Dados preenchidos: confira antes de salvar.', 'erro', 7000);
-      else exibirToast('Nota lida e gravada na planilha de notas. Confira os dados e salve.', 'sucesso', 6000);
+      else exibirToast('Nota lida. Confira os dados e salve.', 'sucesso', 6000);
     }
 
     document.addEventListener('DOMContentLoaded', () => {
