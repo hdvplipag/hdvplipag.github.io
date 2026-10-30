@@ -1,0 +1,1339 @@
+/**
+ * CONTROLE DE GASTOS — NFC-e
+ *
+ * Planilha vinculada:
+ *   Compras: uma linha por nota fiscal.
+ *   Itens: uma linha por produto.
+ *   Categorias: associação entre loja e categoria.
+ *
+ * Requisições POST com Content-Type: text/plain
+ *
+ * Campos JSON:
+ *   acao, link, loja, categoria
+ *
+ * Ações:
+ *   lancar
+ *   categoria
+ */
+
+// ============================================================
+// CONFIGURAÇÃO
+// ============================================================
+
+const CONFIG = {
+  SPREADSHEET_ID: '1XwzU2BGRoAiqclYTer_KlwkfFxMGZF9ibnBLowbRPQU',
+  ABA_COMPRAS: 'Compras',
+  ABA_ITENS: 'Itens',
+  ABA_CATEGORIAS: 'Categorias',
+
+  URL_SEFAZ: 'https://nfce.sefaz.al.gov.br/QRCode/consultarNFCe.jsp',
+
+  CABECALHOS_COMPRAS: [
+    'Data',
+    'Loja',
+    'CNPJ',
+    'Total',
+    'Forma de pagamento',
+    'Categoria',
+    'Chave de acesso'
+  ],
+
+  CABECALHOS_ITENS: [
+    'Chave de acesso',
+    'Data',
+    'Loja',
+    'Descrição',
+    'Quantidade',
+    'Unidade',
+    'Preço unitário',
+    'Total'
+  ],
+
+  CABECALHOS_CATEGORIAS: [
+    'Loja',
+    'Categoria'
+  ]
+};
+
+
+// ============================================================
+// ENDPOINT HTTP
+// ============================================================
+
+/**
+ * Recebe os pedidos do notas (acao = lancar / categoria).
+ * Chamada pelo doPost único que fica em code.gs (roteador).
+ * Recebe as requisições POST da tela do GitHub Pages.
+ *
+ * O corpo da requisição é um JSON enviado como text/plain.
+ * Todas as respostas são JSON usando ContentService.
+ */
+function doPostNotas_(e) {
+  try {
+    // --------------------------------------------------------
+    // 1. Ler o corpo da requisição
+    // --------------------------------------------------------
+
+    if (
+      !e ||
+      !e.postData ||
+      typeof e.postData.contents !== 'string'
+    ) {
+      return respostaJSON_({
+        ok: false,
+        aviso: 'Corpo da requisição não informado.'
+      });
+    }
+
+    let dados;
+
+    try {
+      dados = JSON.parse(e.postData.contents);
+    } catch (erro) {
+      return respostaJSON_({
+        ok: false,
+        aviso: 'O corpo da requisição não contém um JSON válido.'
+      });
+    }
+
+    if (
+      !dados ||
+      typeof dados !== 'object' ||
+      Array.isArray(dados)
+    ) {
+      return respostaJSON_({
+        ok: false,
+        aviso: 'Os dados enviados são inválidos.'
+      });
+    }
+
+    // --------------------------------------------------------
+    // 2. Validar a ação
+    // --------------------------------------------------------
+
+    const acao = String(dados.acao || '')
+      .trim()
+      .toLowerCase();
+
+    if (acao === 'lancar') {
+      return lancarCompra_(dados);
+    }
+
+    if (acao === 'categoria') {
+      return alterarCategoria_(dados);
+    }
+
+    return respostaJSON_({
+      ok: false,
+      aviso: 'Ação inválida. Use "lancar" ou "categoria".'
+    });
+
+  } catch (erro) {
+    console.error(erro);
+
+    return respostaJSON_({
+      ok: false,
+      aviso: 'Erro interno ao processar a solicitação: ' +
+        mensagemErro_(erro)
+    });
+  }
+}
+
+
+// ============================================================
+// AÇÃO: LANÇAR NOTA FISCAL
+// ============================================================
+
+function lancarCompra_(dados) {
+  try {
+    // --------------------------------------------------------
+    // 1. Validar e normalizar o link
+    // --------------------------------------------------------
+
+    const linkOriginal = String(dados.link || '').trim();
+
+    if (!linkOriginal) {
+      return respostaJSON_({
+        ok: false,
+        aviso: 'O link do QR Code não foi informado.'
+      });
+    }
+
+    // Alguns leitores podem incluir um BOM no início do texto.
+    const link = linkOriginal
+      .replace(/^\uFEFF/, '')
+      .trim()
+      .replace(/\|/g, '%7C');
+
+    // Apps Script V8 não oferece URL/URLSearchParams nativamente.
+    // Validar e interpretar o endereço manualmente.
+    const partesURL = link.match(
+      /^(https?):\/\/([^\/?#]+)(\/[^?#]*)(?:\?([^#]*))?(?:#.*)?$/i
+    );
+
+    if (!partesURL) {
+      return respostaJSON_({
+        ok: false,
+        aviso: 'O link do QR Code não é uma URL válida.'
+      });
+    }
+
+    const protocolo = partesURL[1].toLowerCase();
+    const host = partesURL[2].toLowerCase();
+    const caminho = partesURL[3];
+    const queryString = partesURL[4] || '';
+
+    if (protocolo !== 'http' && protocolo !== 'https') {
+      return respostaJSON_({
+        ok: false,
+        aviso: 'O protocolo do link não é permitido.'
+      });
+    }
+
+    if (
+      host !== 'nfce.sefaz.al.gov.br' ||
+      !/^\/QRCode\/consultarNFCe\.jsp$/i.test(caminho)
+    ) {
+      return respostaJSON_({
+        ok: false,
+        aviso: 'O link não pertence à consulta NFC-e esperada de Alagoas.'
+      });
+    }
+
+    // --------------------------------------------------------
+    // 2. Extrair a chave de acesso do parâmetro p
+    // --------------------------------------------------------
+
+    let parametroP = '';
+
+    queryString.split('&').forEach(function(parte) {
+      const separador = parte.indexOf('=');
+      const nomeBruto = separador >= 0
+        ? parte.substring(0, separador)
+        : parte;
+      const valorBruto = separador >= 0
+        ? parte.substring(separador + 1)
+        : '';
+
+      let nome;
+      let valor;
+
+      try {
+        nome = decodeURIComponent(nomeBruto.replace(/\+/g, ' '));
+        valor = decodeURIComponent(valorBruto.replace(/\+/g, ' '));
+      } catch (erro) {
+        return;
+      }
+
+      if (nome === 'p' && !parametroP) {
+        parametroP = valor;
+      }
+    });
+
+    if (!parametroP) {
+      return respostaJSON_({
+        ok: false,
+        aviso: 'O link não contém o parâmetro p.'
+      });
+    }
+
+    // A chave de acesso corresponde aos primeiros 44 dígitos.
+    // O restante do parâmetro contém os dados adicionais do QR Code.
+    const chave = parametroP.match(/^(\d{44})/);
+
+    if (!chave) {
+      return respostaJSON_({
+        ok: false,
+        aviso: 'Não foi possível extrair os 44 números da chave de acesso.'
+      });
+    }
+
+    const chaveAcesso = chave[1];
+
+
+    // --------------------------------------------------------
+    // 3. Abrir a consulta da SEFAZ
+    // --------------------------------------------------------
+
+    let respostaHTTP;
+
+    try {
+      respostaHTTP = UrlFetchApp.fetch(link, {
+        method: 'get',
+        followRedirects: true,
+        muteHttpExceptions: true,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; ControleGastos/1.0)'
+        }
+      });
+    } catch (erro) {
+      return respostaJSON_({
+        ok: false,
+        aviso: 'Não foi possível acessar a SEFAZ. Verifique a conexão ou tente novamente mais tarde.'
+      });
+    }
+
+    const statusHTTP = respostaHTTP.getResponseCode();
+
+    if (statusHTTP < 200 || statusHTTP >= 300) {
+      return respostaJSON_({
+        ok: false,
+        aviso: 'A SEFAZ respondeu com o código HTTP ' +
+          statusHTTP + '. Tente novamente mais tarde.'
+      });
+    }
+
+    const html = respostaHTTP.getContentText('UTF-8');
+
+    if (!html || html.length < 100) {
+      return respostaJSON_({
+        ok: false,
+        aviso: 'A SEFAZ retornou uma página vazia ou incompleta.'
+      });
+    }
+
+    // --------------------------------------------------------
+    // 4. Extrair os dados da nota
+    // --------------------------------------------------------
+
+    const nota = extrairNota_(html);
+
+    if (!nota.loja) {
+      return respostaJSON_({
+        ok: false,
+        aviso: 'Não foi possível identificar o nome da loja. A página pode ter mudado.'
+      });
+    }
+
+    if (!nota.cnpj) {
+      return respostaJSON_({
+        ok: false,
+        aviso: 'Não foi possível identificar o CNPJ da loja.'
+      });
+    }
+
+    if (!nota.data) {
+      return respostaJSON_({
+        ok: false,
+        aviso: 'Não foi possível identificar a data de emissão da nota.'
+      });
+    }
+
+    if (
+      nota.total === null ||
+      !isFinite(nota.total)
+    ) {
+      return respostaJSON_({
+        ok: false,
+        aviso: 'Não foi possível identificar o valor total da nota.'
+      });
+    }
+
+    if (!nota.itens.length) {
+      return respostaJSON_({
+        ok: false,
+        aviso: 'Nenhum produto foi identificado. A página pode ter mudado de formato.'
+      });
+    }
+
+    // --------------------------------------------------------
+    // 5. Abrir a planilha e preparar as abas
+    // --------------------------------------------------------
+
+    const ss = obterPlanilha_();
+
+    const abaCompras = obterOuCriarAba_(
+      ss,
+      CONFIG.ABA_COMPRAS,
+      CONFIG.CABECALHOS_COMPRAS
+    );
+
+    const abaItens = obterOuCriarAba_(
+      ss,
+      CONFIG.ABA_ITENS,
+      CONFIG.CABECALHOS_ITENS
+    );
+
+    const abaCategorias = obterOuCriarAba_(
+      ss,
+      CONFIG.ABA_CATEGORIAS,
+      CONFIG.CABECALHOS_CATEGORIAS
+    );
+
+    // --------------------------------------------------------
+    // 6. Impedir lançamentos duplicados
+    // --------------------------------------------------------
+
+    if (chaveJaExiste_(abaCompras, chaveAcesso)) {
+      return respostaJSON_({
+        ok: false,
+        aviso: 'Essa notinha já foi lançada',
+        loja: nota.loja,
+        data: nota.data,
+        total: nota.total,
+        pagamento: nota.pagamento,
+        categoria: obterCategoria_(
+          abaCategorias,
+          nota.loja
+        ),
+        itens: nota.itens
+      });
+    }
+
+    // --------------------------------------------------------
+    // 7. Determinar a categoria
+    // --------------------------------------------------------
+
+    let categoria = obterCategoria_(
+      abaCategorias,
+      nota.loja
+    );
+
+    // Se a loja for nova, registrar com "Outros".
+    // Se a tela enviar uma categoria explícita para uma loja
+    // já cadastrada, atualizar a categoria dessa loja.
+    const categoriaEnviada = String(
+      dados.categoria || ''
+    ).trim();
+
+    const linhaCategoria = localizarLoja_(
+      abaCategorias,
+      nota.loja
+    );
+
+    if (!linhaCategoria) {
+      categoria = categoriaEnviada || 'Outros';
+
+      abaCategorias.appendRow([
+        nota.loja,
+        categoria
+      ]);
+
+    } else if (categoriaEnviada) {
+      categoria = categoriaEnviada;
+
+      abaCategorias.getRange(
+        linhaCategoria,
+        2
+      ).setValue(categoria);
+    }
+
+    // --------------------------------------------------------
+    // 8. Gravar a compra
+    // --------------------------------------------------------
+
+    abaCompras.appendRow([
+      nota.data,
+      nota.loja,
+      nota.cnpj,
+      nota.total,
+      nota.pagamento,
+      categoria,
+      chaveAcesso
+    ]);
+
+    // --------------------------------------------------------
+    // 9. Gravar cada produto
+    // --------------------------------------------------------
+
+    const linhasItens = nota.itens.map(function(item) {
+      return [
+        chaveAcesso,
+        nota.data,
+        nota.loja,
+        item.descricao,
+        item.quantidade,
+        item.unidade,
+        item.precoUnitario,
+        item.total
+      ];
+    });
+
+    if (linhasItens.length) {
+      const primeiraLinha = abaItens.getLastRow() + 1;
+
+      abaItens.getRange(
+        primeiraLinha,
+        1,
+        linhasItens.length,
+        CONFIG.CABECALHOS_ITENS.length
+      ).setValues(linhasItens);
+    }
+
+    // --------------------------------------------------------
+    // 10. Formatar as colunas de valores
+    // --------------------------------------------------------
+
+    const linhaCompra = abaCompras.getLastRow();
+
+    abaCompras.getRange(
+      linhaCompra,
+      1
+    ).setNumberFormat('dd/MM/yyyy HH:mm:ss');
+
+    abaCompras.getRange(
+      linhaCompra,
+      4
+    ).setNumberFormat('"R$" #,##0.00');
+
+    const ultimaLinhaItem = abaItens.getLastRow();
+
+    if (linhasItens.length) {
+      abaItens.getRange(
+        ultimaLinhaItem - linhasItens.length + 1,
+        2,
+        linhasItens.length,
+        1
+      ).setNumberFormat('dd/MM/yyyy HH:mm:ss');
+
+      abaItens.getRange(
+        ultimaLinhaItem - linhasItens.length + 1,
+        7,
+        linhasItens.length,
+        2
+      ).setNumberFormat('"R$" #,##0.00');
+    }
+
+    // --------------------------------------------------------
+    // 11. Resposta para a tela
+    // --------------------------------------------------------
+
+    return respostaJSON_({
+      ok: true,
+      aviso: 'Nota lançada com sucesso.',
+      loja: nota.loja,
+      cnpj: nota.cnpj,
+      data: nota.data,
+      total: nota.total,
+      pagamento: nota.pagamento,
+      categoria: categoria,
+      chaveAcesso: chaveAcesso,
+      itens: nota.itens
+    });
+
+  } catch (erro) {
+    console.error(erro);
+
+    return respostaJSON_({
+      ok: false,
+      aviso: 'Erro ao lançar a nota: ' + mensagemErro_(erro)
+    });
+  }
+}
+
+
+// ============================================================
+// EXTRAÇÃO DOS DADOS DA PÁGINA HTML
+// ============================================================
+
+function extrairNota_(html) {
+  // Converte o HTML em texto, preservando separações entre elementos.
+  let texto = String(html || '')
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '\n')
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, '\n')
+    .replace(/<(?:br|hr)\b[^>]*>/gi, '\n')
+    .replace(/<\/(?:div|p|tr|li|h[1-6]|td|th|section|article|header|footer|table|ul|ol|span|strong|b|label)>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ');
+
+  texto = decodificarHTML_(texto)
+    .replace(/\u00A0/g, ' ')
+    .replace(/\r/g, '\n')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/ *\n */g, '\n')
+    .replace(/\n{2,}/g, '\n')
+    .trim();
+
+  const linhas = texto.split('\n')
+    .map(function(linha) { return linha.trim(); })
+    .filter(function(linha) { return linha.length > 0; });
+
+  // CNPJ: além de extraí-lo, usamos sua posição para localizar
+  // o nome fantasia/razão social imediatamente anterior a ele.
+  let cnpj = '';
+  const mCnpj = texto.match(/\bCNPJ\s*:?\s*(\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2})/i);
+
+  if (mCnpj) {
+    const numeros = mCnpj[1].replace(/\D/g, '');
+    if (numeros.length === 14) {
+      cnpj = numeros.replace(
+        /^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,
+        '$1.$2.$3/$4-$5'
+      );
+    }
+  }
+
+  // Nome da loja: a página atual da SEFAZ pode colocar o nome e
+  // "CNPJ:" no mesmo bloco HTML, em vez de linhas separadas.
+  let loja = '';
+  if (mCnpj) {
+    let antesCnpj = texto.substring(0, mCnpj.index);
+    antesCnpj = antesCnpj.replace(
+      /DOCUMENTO AUXILIAR DA NOTA FISCAL DE CONSUMIDOR ELETR[ÔO]NICA/ig,
+      '\n'
+    );
+
+    const candidatas = antesCnpj.split('\n')
+      .map(function(linha) {
+        return linha
+          .replace(/^(?:NFC-e|NOTA FISCAL DE CONSUMIDOR ELETR[ÔO]NICA)\s*/i, '')
+          .trim();
+      })
+      .filter(function(linha) {
+        return linha &&
+          !/^(?:GERÊNCIA|SECRETARIA|CONSULTA|GOVERNO|ESTADO DE ALAGOAS|NFC-e)$/i.test(linha);
+      });
+
+    if (candidatas.length) {
+      loja = candidatas[candidatas.length - 1]
+        .replace(/\s+(?:CNPJ|CPF)\s*:?$/i, '')
+        .trim();
+    }
+  }
+
+  // Fallbacks para diferenças no HTML ou na posição do cabeçalho.
+  if (!loja) {
+    const mLoja = texto.match(
+      /DOCUMENTO AUXILIAR DA NOTA FISCAL DE CONSUMIDOR ELETR[ÔO]NICA[\s\S]{0,500}?([^\n]+?)\s+CNPJ\s*:?/i
+    );
+    if (mLoja) loja = mLoja[1].trim();
+  }
+
+  if (!loja) {
+    const indiceCnpj = localizarLinha_(linhas, /\bCNPJ\s*:/i);
+    if (indiceCnpj > 0) {
+      loja = linhas[indiceCnpj - 1].trim();
+    }
+  }
+
+  loja = loja
+    .replace(/^(?:NFC-e|DOCUMENTO AUXILIAR.*?ELETR[ÔO]NICA)\s*/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // Data e horário de emissão.
+  let data = null;
+  // A SEFAZ pode inserir tags entre "Emissão:", a data e o horário.
+  // Por isso, primeiro procuramos a data próxima ao rótulo e aceitamos
+  // pontuação/espaços/quebras de linha entre os campos.
+  let mData = texto.match(
+    /Emiss[aã]o\s*:?\s*[\s\S]{0,100}?(\d{2})\/(\d{2})\/(\d{4})(?:[\s,;-]+(\d{2}):(\d{2})(?::(\d{2}))?)?/i
+  );
+
+  // Fallback para respostas em que o rótulo "Emissão" foi omitido
+  // do texto extraído, mas a data/hora aparece perto do bloco de
+  // informações gerais da nota.
+  if (!mData) {
+    const trechoEmissao = texto.match(
+      /Informações gerais da Nota[\s\S]{0,500}?(\d{2})\/(\d{2})\/(\d{4})[\s,;-]+(\d{2}):(\d{2})(?::(\d{2}))?/i
+    );
+    if (trechoEmissao) {
+      mData = [
+        trechoEmissao[0],
+        trechoEmissao[1],
+        trechoEmissao[2],
+        trechoEmissao[3],
+        trechoEmissao[4],
+        trechoEmissao[5],
+        trechoEmissao[6] || '00'
+      ];
+    }
+  }
+
+  if (mData) {
+    const dia = Number(mData[1]);
+    const mes = Number(mData[2]);
+    const ano = Number(mData[3]);
+    const hora = Number(mData[4] || 0);
+    const minuto = Number(mData[5] || 0);
+    const segundo = Number(mData[6] || 0);
+    const dataLocal = new Date(ano, mes - 1, dia, hora, minuto, segundo);
+
+    if (
+      dataLocal.getFullYear() === ano &&
+      dataLocal.getMonth() === mes - 1 &&
+      dataLocal.getDate() === dia
+    ) {
+      data = dataLocal;
+    }
+  }
+
+    // Total da nota: prioriza o rótulo oficial; não estima pela soma dos itens.
+  let total = null;
+
+  const padraoValor = /((?:\d{1,3}(?:\.\d{3})*|\d+)[,.]\d{2})/;
+  const mTotalNota = texto.match(
+    new RegExp('\\bVALOR\\s+TOTAL\\b[\\s\\S]{0,100}?' + padraoValor.source, 'i')
+  );
+  const mValorPago = texto.match(
+    new RegExp('\\bVALOR\\s+PAGO\\b[\\s\\S]{0,100}?' + padraoValor.source, 'i')
+  );
+
+  if (mTotalNota) {
+    total = numeroBrasileiro_(mTotalNota[1]);
+  } else if (mValorPago) {
+    total = numeroBrasileiro_(mValorPago[1]);
+  }
+
+  const pagamento = extrairPagamento_(texto);
+  const itens = extrairItens_(texto);
+  return {
+    loja: loja,
+    cnpj: cnpj,
+    data: data,
+    total: total,
+    pagamento: pagamento,
+    itens: itens
+  };
+}
+
+// ============================================================
+// EXTRAIR ITENS
+// ============================================================
+
+function extrairItens_(texto) {
+  const itens = [];
+  const normalizado = String(texto || '')
+    .replace(/\u00A0/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const estados = 'AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO';
+  const padroes = [
+    /(?:^|\s)([^()]{2,160}?)\s*\(Código\s*:\s*([^)]*)\)\s*Qtde\.?\s*:\s*([\d.,]+)\s*UN\s*:\s*([^\s|]+)\s*(?:Un\.?\s*it\.?\s*:?\s*([\d.,]+)\s*)?Vl\.?\s*Unit\.?\s*:?\s*([\d.,]+)\s*(?:\|\s*)?Vl\.?\s*Total\s*:?\s*([\d.,]+)/gi,
+    /(?:^|\s)([^()]{2,160}?)\s*\(Código\s*:\s*([^)]*)\)\s*Qtde\.?\s*:\s*([\d.,]+)\s*UN\s*:\s*([^\s|]+)[\s\S]{0,100}?Vl\.?\s*Unit\.?\s*:?\s*([\d.,]+)[\s\S]{0,100}?Vl\.?\s*Total\s*:?\s*([\d.,]+)/gi
+  ];
+
+  for (let p = 0; p < padroes.length; p++) {
+    const regex = padroes[p];
+    let m;
+
+    while ((m = regex.exec(normalizado)) !== null) {
+      let descricao = m[1]
+        .replace(/^[\s*•|:-]+/, '')
+        .replace(/^(?:Descrição|Itens|Produtos)\s*/i, '')
+        .trim();
+
+      // Quando a captura começa no cabeçalho/endereço da loja, mantém
+      // somente o texto depois da sigla do estado (ex.: "AL LEITE...").
+      const temCabecalho = /DOCUMENTO AUXILIAR|DANFE|CONSUMIDOR|CNPJ\s*:|CPF\s*:|\b\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}\b|AV\.?\s|RUA\s|PETR[ÓO]POLIS|MACEI[ÓO]/i.test(descricao);
+      if (temCabecalho) {
+        const sufixoProduto = descricao.match(new RegExp('\\b(?:' + estados + ')\\s+(.+)$', 'i'));
+        if (!sufixoProduto) continue;
+        descricao = sufixoProduto[1].trim();
+      }
+
+      if (
+        !descricao ||
+        /DOCUMENTO AUXILIAR|DANFE|CONSUMIDOR|CNPJ\s*:|CPF\s*:|\b\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}\b/i.test(descricao)
+      ) {
+        continue;
+      }
+
+      const quantidade = numeroBrasileiro_(m[3]);
+      const unidade = m[4].trim();
+      const precoUnitario = p === 0
+        ? numeroBrasileiro_(m[6] || m[5])
+        : numeroBrasileiro_(m[5]);
+      const valorTotal = p === 0
+        ? numeroBrasileiro_(m[7])
+        : numeroBrasileiro_(m[6]);
+
+      if (
+        isFinite(quantidade) &&
+        isFinite(precoUnitario) &&
+        isFinite(valorTotal)
+      ) {
+        itens.push({
+          descricao: descricao,
+          codigo: m[2].trim(),
+          quantidade: quantidade,
+          unidade: unidade,
+          precoUnitario: precoUnitario,
+          total: valorTotal
+        });
+      }
+    }
+
+    if (itens.length) break;
+  }
+
+  return itens;
+}
+// ============================================================
+// EXTRAIR FORMA DE PAGAMENTO
+// ============================================================
+
+function extrairPagamento_(texto) {
+  const inicio = texto.search(/Forma de pagamento\s*:/i);
+  if (inicio < 0) return 'Não identificado';
+
+  let trecho = texto.substring(inicio);
+  const fim = trecho.search(
+    /Troco\b|Informação dos Tributos|Informações gerais da Nota|EMISSÃO NORMAL/i
+  );
+  if (fim >= 0) trecho = trecho.substring(0, fim);
+
+  trecho = trecho
+    .replace(/Forma de pagamento\s*:/i, '')
+    .replace(/Valor pago\s*R\$\s*:?/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    // Repara acentos corrompidos sem depender da codificação do editor.
+    .replace(/\u00C3\u00A3/g, '\u00E3')
+    .replace(/\u00C3\u00A9/g, '\u00E9')
+    .replace(/\u00C3\u00A1/g, '\u00E1')
+    .replace(/\u00C3\u00B3/g, '\u00F3')
+    .replace(/\u00C3\u00BA/g, '\u00FA')
+    .replace(/\u00C3\u00A7/g, '\u00E7');
+
+  if (!trecho) return 'Não identificado';
+
+  const formasConhecidas = [
+    { re: /Cart(?:\u00E3|\u00C3\u00A3)o de D(?:\u00E9|\u00C3\u00A9)bito/i, valor: 'Cart\u00E3o de D\u00E9bito' },
+    { re: /Cart(?:\u00E3|\u00C3\u00A3)o de C(?:\u00E9|\u00C3\u00A9)dito/i, valor: 'Cart\u00E3o de Cr\u00E9dito' },
+    { re: /Cart(?:\u00E3|\u00C3\u00A3)o de Loja/i, valor: 'Cart\u00E3o de Loja' },
+    { re: /Dinheiro/i, valor: 'Dinheiro' },
+    { re: /PIX/i, valor: 'PIX' },
+    { re: /Transfer(?:\u00EAn|\u00C3\u00AAn)cia/i, valor: 'Transfer\u00EAncia' },
+    { re: /Vale Alimenta(?:\u00E7|\u00C3\u00A7)\u00E3o/i, valor: 'Vale Alimenta\u00E7\u00E3o' },
+    { re: /Vale Refei(?:\u00E7|\u00C3\u00A7)\u00E3o/i, valor: 'Vale Refei\u00E7\u00E3o' },
+    { re: /Vale Presente/i, valor: 'Vale Presente' },
+    { re: /Sem pagamento/i, valor: 'Sem pagamento' },
+    { re: /Boleto/i, valor: 'Boleto' }
+  ];
+
+  for (let i = 0; i < formasConhecidas.length; i++) {
+    if (formasConhecidas[i].re.test(trecho)) return formasConhecidas[i].valor;
+  }
+  return trecho.substring(0, 100) || 'Não identificado';
+}
+
+// ============================================================
+// AÇÃO: ALTERAR CATEGORIA DE UMA LOJA
+// ============================================================
+
+function alterarCategoria_(dados) {
+  try {
+    const loja = String(dados.loja || '').trim();
+    const categoria = String(dados.categoria || '').trim();
+
+    if (!loja) {
+      return respostaJSON_({
+        ok: false,
+        aviso: 'Informe o nome da loja.'
+      });
+    }
+
+    if (!categoria) {
+      return respostaJSON_({
+        ok: false,
+        aviso: 'Informe a nova categoria.'
+      });
+    }
+
+    const ss = obterPlanilha_();
+
+    const aba = obterOuCriarAba_(
+      ss,
+      CONFIG.ABA_CATEGORIAS,
+      CONFIG.CABECALHOS_CATEGORIAS
+    );
+
+    const linha = localizarLoja_(aba, loja);
+
+    if (linha) {
+      aba.getRange(linha, 2).setValue(categoria);
+    } else {
+      aba.appendRow([
+        loja,
+        categoria
+      ]);
+    }
+
+    return respostaJSON_({
+      ok: true,
+      aviso: 'Categoria atualizada com sucesso.',
+      loja: loja,
+      categoria: categoria
+    });
+
+  } catch (erro) {
+    console.error(erro);
+
+    return respostaJSON_({
+      ok: false,
+      aviso: 'Erro ao alterar a categoria: ' + mensagemErro_(erro)
+    });
+  }
+}
+
+
+// ============================================================
+// PLANILHA E ABAS
+// ============================================================
+
+function obterPlanilha_() {
+  // Usa primeiro o ID definido na configuração do arquivo.
+  // A propriedade do script fica como alternativa para versões antigas.
+  const id = CONFIG.SPREADSHEET_ID || PropertiesService
+    .getScriptProperties()
+    .getProperty('SPREADSHEET_ID');
+
+  if (id) {
+    return SpreadsheetApp.openById(id);
+  }
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  if (!ss) {
+    throw new Error(
+      'Planilha não encontrada. Confira CONFIG.SPREADSHEET_ID ou vincule o script à planilha.'
+    );
+  }
+
+  return ss;
+}
+
+
+function obterOuCriarAba_(ss, nome, cabecalhos) {
+  let aba = ss.getSheetByName(nome);
+
+  if (!aba) {
+    aba = ss.insertSheet(nome);
+  }
+
+  if (aba.getLastRow() === 0) {
+    aba.getRange(
+      1,
+      1,
+      1,
+      cabecalhos.length
+    ).setValues([cabecalhos]);
+
+    aba.setFrozenRows(1);
+
+  } else {
+    // Não sobrescrever cabeçalhos ou dados existentes.
+    // Apenas verificar se a primeira linha corresponde ao
+    // formato esperado.
+    const atual = aba.getRange(
+      1,
+      1,
+      1,
+      cabecalhos.length
+    ).getDisplayValues()[0];
+
+    const corresponde = cabecalhos.every(function(c, i) {
+      return String(atual[i] || '').trim() === c;
+    });
+
+    if (!corresponde) {
+      throw new Error(
+        'A aba "' + nome +
+        '" já existe, mas seus cabeçalhos não correspondem ao formato esperado. Confira a primeira linha antes de continuar.'
+      );
+    }
+  }
+
+  return aba;
+}
+
+
+// ============================================================
+// VERIFICAÇÃO DE DUPLICIDADE
+// ============================================================
+
+function chaveJaExiste_(aba, chave) {
+  const ultimaLinha = aba.getLastRow();
+
+  if (ultimaLinha < 2) {
+    return false;
+  }
+
+  // A chave de acesso fica na coluna G da aba Compras.
+  const valores = aba.getRange(
+    2,
+    7,
+    ultimaLinha - 1,
+    1
+  ).getDisplayValues();
+
+  for (let i = 0; i < valores.length; i++) {
+    if (String(valores[i][0]).replace(/\s/g, '') === chave) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+
+// ============================================================
+// CATEGORIAS
+// ============================================================
+
+function localizarLoja_(aba, loja) {
+  const ultimaLinha = aba.getLastRow();
+
+  if (ultimaLinha < 2) {
+    return null;
+  }
+
+  const nomes = aba.getRange(
+    2,
+    1,
+    ultimaLinha - 1,
+    1
+  ).getDisplayValues();
+
+  const procurada = normalizarNomeLoja_(loja);
+
+  for (let i = 0; i < nomes.length; i++) {
+    if (
+      normalizarNomeLoja_(nomes[i][0]) === procurada
+    ) {
+      return i + 2;
+    }
+  }
+
+  return null;
+}
+
+
+function obterCategoria_(aba, loja) {
+  const linha = localizarLoja_(aba, loja);
+
+  if (linha) {
+    const categoria = String(
+      aba.getRange(linha, 2).getDisplayValue() || ''
+    ).trim();
+
+    return categoria || 'Outros';
+  }
+
+  return 'Outros';
+}
+
+
+function normalizarNomeLoja_(nome) {
+  return String(nome || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+
+// ============================================================
+// UTILITÁRIOS
+// ============================================================
+
+function respostaJSON_(objeto) {
+  return ContentService
+    .createTextOutput(JSON.stringify(objeto))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+
+/**
+ * Converte números brasileiros para números JavaScript.
+ *
+ * Exemplos:
+ *   "18,97"    -> 18.97
+ *   "1.234,56" -> 1234.56
+ *   "7,08"     -> 7.08
+ */
+function numeroBrasileiro_(valor) {
+  if (typeof valor === 'number') {
+    return valor;
+  }
+
+  if (valor === null || valor === undefined) {
+    return NaN;
+  }
+
+  let texto = String(valor)
+    .replace(/\s/g, '')
+    .replace(/[R$]/g, '');
+
+  if (!texto) {
+    return NaN;
+  }
+
+  if (texto.indexOf(',') >= 0) {
+    texto = texto
+      .replace(/\./g, '')
+      .replace(',', '.');
+  }
+
+  return Number(texto);
+}
+
+
+/**
+ * Decodifica as entidades HTML mais comuns e as entidades
+ * numéricas encontradas nas páginas da SEFAZ.
+ */
+function decodificarHTML_(texto) {
+  return String(texto || '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&Atilde;/gi, 'Ã')
+    .replace(/&atilde;/gi, 'ã')
+    .replace(/&Aacute;/gi, 'Á')
+    .replace(/&aacute;/gi, 'á')
+    .replace(/&Acirc;/gi, 'Â')
+    .replace(/&acirc;/gi, 'â')
+    .replace(/&Agrave;/gi, 'À')
+    .replace(/&agrave;/gi, 'à')
+    .replace(/&Eacute;/gi, 'É')
+    .replace(/&eacute;/gi, 'é')
+    .replace(/&Ecirc;/gi, 'Ê')
+    .replace(/&ecirc;/gi, 'ê')
+    .replace(/&Iacute;/gi, 'Í')
+    .replace(/&iacute;/gi, 'í')
+    .replace(/&Oacute;/gi, 'Ó')
+    .replace(/&oacute;/gi, 'ó')
+    .replace(/&Ocirc;/gi, 'Ô')
+    .replace(/&ocirc;/gi, 'ô')
+    .replace(/&Otilde;/gi, 'Õ')
+    .replace(/&otilde;/gi, 'õ')
+    .replace(/&Uacute;/gi, 'Ú')
+    .replace(/&uacute;/gi, 'ú')
+    .replace(/&Ucirc;/gi, 'Û')
+    .replace(/&ucirc;/gi, 'û')
+    .replace(/&Ccedil;/gi, 'Ç')
+    .replace(/&ccedil;/gi, 'ç')
+    .replace(/&#(\d+);/g, function(match, numero) {
+      return String.fromCharCode(Number(numero));
+    })
+    .replace(/&#x([0-9a-f]+);/gi, function(match, numero) {
+      return String.fromCharCode(parseInt(numero, 16));
+    });
+}
+
+function localizarLinha_(linhas, regex) {
+  for (let i = 0; i < linhas.length; i++) {
+    if (regex.test(linhas[i])) {
+      return i;
+    }
+  }
+
+  return -1;
+}
+
+
+function mensagemErro_(erro) {
+  if (!erro) {
+    return 'Erro desconhecido.';
+  }
+
+  return String(erro.message || erro)
+    .substring(0, 300);
+}
+
+/**
+ * TESTE DE LANÇAMENTO
+ *
+ * Cria uma compra fictícia com dois produtos e verifica
+ * se os dados foram gravados nas abas Compras e Itens.
+ *
+ * Execute testarLancamentos() pelo editor do Apps Script.
+ */
+function testarLancamentos() {
+  const ss = obterPlanilha_();
+
+  const abaCompras = obterOuCriarAba_(
+    ss,
+    CONFIG.ABA_COMPRAS,
+    CONFIG.CABECALHOS_COMPRAS
+  );
+
+  const abaItens = obterOuCriarAba_(
+    ss,
+    CONFIG.ABA_ITENS,
+    CONFIG.CABECALHOS_ITENS
+  );
+
+  const abaCategorias = obterOuCriarAba_(
+    ss,
+    CONFIG.ABA_CATEGORIAS,
+    CONFIG.CABECALHOS_CATEGORIAS
+  );
+
+  // Identificador fictício para não confundir com uma NFC-e real.
+  const chaveTeste = 'TESTE' + new Date().getTime();
+
+  const dataCompra = new Date();
+
+  const loja = 'LOJA TESTE - NAO REAL';
+  const cnpj = '00.000.000/0000-00';
+  const total = 18.97;
+  const pagamento = 'Cartão de Débito';
+  const categoria = 'Outros';
+
+  const itens = [
+    {
+      descricao: 'PRODUTO TESTE A',
+      quantidade: 2,
+      unidade: 'UN',
+      precoUnitario: 5.49,
+      total: 10.98
+    },
+    {
+      descricao: 'PRODUTO TESTE B',
+      quantidade: 1,
+      unidade: 'UN',
+      precoUnitario: 7.99,
+      total: 7.99
+    }
+  ];
+
+  // Conferir se os valores dos produtos batem com o total.
+  const somaItens = itens.reduce(function(soma, item) {
+    return soma + item.total;
+  }, 0);
+
+  if (Math.abs(somaItens - total) > 0.001) {
+    throw new Error('O total dos produtos não corresponde à compra.');
+  }
+
+  // Evitar criar duas vezes a mesma compra de teste.
+  if (chaveJaExiste_(abaCompras, chaveTeste)) {
+    throw new Error('Esta compra de teste já existe.');
+  }
+
+  // Registrar a categoria de teste se a loja ainda não existir.
+  if (!localizarLoja_(abaCategorias, loja)) {
+    abaCategorias.appendRow([loja, categoria]);
+  }
+
+  // Gravar uma linha na aba Compras.
+  abaCompras.appendRow([
+    dataCompra,
+    loja,
+    cnpj,
+    total,
+    pagamento,
+    categoria,
+    chaveTeste
+  ]);
+
+  // Gravar uma linha por produto na aba Itens.
+  const linhasItens = itens.map(function(item) {
+    return [
+      chaveTeste,
+      dataCompra,
+      loja,
+      item.descricao,
+      item.quantidade,
+      item.unidade,
+      item.precoUnitario,
+      item.total
+    ];
+  });
+
+  abaItens.getRange(
+    abaItens.getLastRow() + 1,
+    1,
+    linhasItens.length,
+    CONFIG.CABECALHOS_ITENS.length
+  ).setValues(linhasItens);
+
+  // Confirmar a gravação.
+  SpreadsheetApp.flush();
+
+  const linhaCompra = abaCompras.getLastRow();
+
+  const compraGravada = abaCompras.getRange(
+    linhaCompra,
+    1,
+    1,
+    CONFIG.CABECALHOS_COMPRAS.length
+  ).getValues()[0];
+
+  if (String(compraGravada[6]) !== chaveTeste) {
+    throw new Error('Não foi possível confirmar a gravação da compra.');
+  }
+
+  Logger.log('TESTE CONCLUÍDO COM SUCESSO.');
+  Logger.log('Loja: ' + loja);
+  Logger.log('Total: R$ ' + total.toFixed(2));
+  Logger.log('Produtos gravados: ' + linhasItens.length);
+  Logger.log('Chave de teste: ' + chaveTeste);
+  Logger.log('Planilha: ' + ss.getUrl());
+
+  return {
+    ok: true,
+    aviso: 'Teste concluído com sucesso.',
+    loja: loja,
+    total: total,
+    quantidadeItens: linhasItens.length,
+    chaveTeste: chaveTeste,
+    planilha: ss.getUrl()
+  };
+}
+
+function configurarPlanilha() {
+  const id = CONFIG.SPREADSHEET_ID;
+
+  // Verifica se a planilha pode ser aberta.
+  const planilha = SpreadsheetApp.openById(id);
+
+  // Salva o ID para as outras funções utilizarem.
+  PropertiesService
+    .getScriptProperties()
+    .setProperty('SPREADSHEET_ID', id);
+
+  Logger.log('Planilha configurada: ' + planilha.getName());
+  Logger.log('URL: ' + planilha.getUrl());
+}
+
+function diagnosticarConsultaNFCe() {
+  const link = 'https://nfce.sefaz.al.gov.br/QRCode/consultarNFCe.jsp?p=27261010840716000150651170001619381117692057%7C2%7C1%7C3%7C45B48E27BE1C1D5C17CB4CAD4419CBD221D438B6';
+
+  const resposta = UrlFetchApp.fetch(link, {
+    method: 'get',
+    followRedirects: true,
+    muteHttpExceptions: true,
+    headers: {
+      'User-Agent': 'Mozilla/5.0'
+    }
+  });
+
+  const html = resposta.getContentText('UTF-8');
+
+  const texto = decodificarHTML_(
+    html
+      .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ' ')
+      .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<[^>]+>/g, ' ')
+  ).replace(/\s+/g, ' ');
+
+  Logger.log('STATUS HTTP: ' + resposta.getResponseCode());
+  Logger.log('TAMANHO HTML: ' + html.length);
+  Logger.log('TÍTULO: ' + ((html.match(/<title[^>]*>([\s\S]*?)<\/title>/i) || [])[1] || 'Não encontrado'));
+
+  [
+    'Emissão',
+    'Informações gerais da Nota',
+    '10/10/2026',
+    '161938',
+    'parâmetros inválidos',
+    'BARROS COMERCIO'
+  ].forEach(function(termo) {
+    const posicao = texto.toLowerCase().indexOf(termo.toLowerCase());
+
+    Logger.log(
+      termo + ': ' +
+      (posicao >= 0
+        ? texto.substring(Math.max(0, posicao - 100), Math.min(texto.length, posicao + 250))
+        : 'NÃO ENCONTRADO')
+    );
+  });
+}
