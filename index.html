@@ -3294,6 +3294,20 @@
       }
     };
 
+    // Cores do gráfico de categorias: as 6 originais primeiro, depois cores distintas extras;
+    // nunca repete cor entre categorias diferentes (além da paleta, gera tons novos pelo ângulo áureo).
+    const CORES_CATEGORIAS_BASE = ['#f59e0b', '#10b981', '#3b82f6', '#ec4899', '#8b5cf6', '#06b6d4',
+      '#ef4444', '#84cc16', '#f97316', '#14b8a6', '#6366f1', '#d946ef', '#eab308', '#0ea5e9', '#22c55e', '#a855f7'];
+    function coresCategorias(qtd) {
+      const cores = CORES_CATEGORIAS_BASE.slice(0, qtd);
+      for (let i = cores.length; i < qtd; i++) {
+        const matiz = Math.round((i * 137.508) % 360);
+        const luz = 42 + (Math.floor(i / 16) % 3) * 9;
+        cores.push('hsl(' + matiz + ', 68%, ' + luz + '%)');
+      }
+      return cores;
+    }
+
     function renderizarDadosGraficos(categoriasMap, formaPagtoMap, receitas, despesas, serieRec, serieDesp, tipoFiltro) {
       const isDark = currentTheme === 'dark';
       const subtextColor = isDark ? '#94a3b8' : '#475569';
@@ -3315,7 +3329,7 @@
         type: 'doughnut',
         data: {
           labels: catLabels,
-          datasets: [{ data: catData, valoresReais: catReais, backgroundColor: temCat ? ['#f59e0b', '#10b981', '#3b82f6', '#ec4899', '#8b5cf6', '#06b6d4'] : ['#94a3b8'], borderWidth: 0 }]
+          datasets: [{ data: catData, valoresReais: catReais, backgroundColor: temCat ? coresCategorias(catLabels.length) : ['#94a3b8'], borderWidth: 0 }]
         },
         options: {
           responsive: true, maintainAspectRatio: false, animation: false,
