@@ -316,11 +316,102 @@
       40% { opacity: 1; transform: scale(1.1); }
     }
 
-    #resultado {
-      display: none;
+    .barra-cupons {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin: 14px 2px 0;
+      font-weight: 700;
+      font-size: .95rem;
+      color: #34475a;
     }
 
-    #resultado.visivel {
+    .cupom {
+      background: #fff;
+      border: 1px solid var(--borda);
+      border-radius: 18px;
+      padding: 14px;
+      margin: 12px 0;
+      box-shadow: 0 3px 12px rgba(25, 45, 70, .05);
+    }
+
+    .cupom-topo {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .cupom-loja {
+      font-weight: 800;
+      overflow-wrap: anywhere;
+    }
+
+    .cupom-data {
+      font-size: .85rem;
+      color: #526171;
+      margin-top: 2px;
+    }
+
+    .cupom-total {
+      font-size: 1.15rem;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .cupom-meta {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .cupom-meta .rotulo {
+      margin: 0 0 4px;
+      font-size: .8rem;
+      color: #526171;
+    }
+
+    .cupom-meta select {
+      min-height: 44px;
+      padding: 8px 10px;
+    }
+
+    .cupom-pagamento {
+      font-weight: 700;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+    }
+
+    .cupom-seta {
+      width: 100%;
+      margin-top: 12px;
+      min-height: 40px;
+      padding: 6px 10px;
+      background: #e7f1fb;
+      color: #124f80;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: .92rem;
+    }
+
+    .cupom-seta svg {
+      transition: transform .2s ease;
+    }
+
+    .cupom.aberto .cupom-seta svg {
+      transform: rotate(180deg);
+    }
+
+    .cupom-itens {
+      display: none;
+      margin-top: 6px;
+    }
+
+    .cupom.aberto .cupom-itens {
       display: block;
     }
 
@@ -527,41 +618,12 @@
     </div>
   </section>
 
-  <section id="resultado" class="cartao" aria-label="Dados da nota">
-    <div class="resumo">
-      <div id="campoData">
-        <span class="rotulo">Data</span>
-        <div id="resData" class="valor-resumo">—</div>
-      </div>
-
-      <div id="campoLoja">
-        <span class="rotulo">Loja</span>
-        <div id="resLoja" class="valor-resumo">—</div>
-      </div>
-
-      <div>
-        <span class="rotulo">Total</span>
-        <div id="resTotal" class="valor-resumo">—</div>
-      </div>
-
-      <div>
-        <span class="rotulo">Forma de pagamento</span>
-        <div id="resPagamento" class="valor-resumo">—</div>
-      </div>
+  <section id="cupons" aria-label="Notas digitalizadas">
+    <div id="barraCupons" class="barra-cupons" style="display:none">
+      <span id="resumoCupons"></span>
+      <button id="btnLimparCupons" class="botao-secundario botao-pequeno" type="button">Limpar lista</button>
     </div>
-
-    <label for="categoria">Categoria</label>
-
-    <select id="categoria">
-      <option value="Mercado">Mercado</option>
-      <option value="Farmácia">Farmácia</option>
-      <option value="Combustível">Combustível</option>
-      <option value="Restaurante">Restaurante</option>
-      <option value="Outros">Outros</option>
-    </select>
-
-    <h3>Itens da nota</h3>
-    <div id="listaItens"></div>
+    <div id="listaCupons"></div>
   </section>
 
   <p id="ajudaCamera" class="rodape">
@@ -798,78 +860,160 @@ function escaparHtml(valor) {
   })[caractere]);
 }
 
-function definirCategoria(valor) {
-  const select = el("categoria");
+const CHAVE_CUPONS = "plipag_notas_cupons_v1";
+const MAX_CUPONS = 50;
+let cupons = [];
 
-  select.value = CATEGORIAS.includes(valor)
-    ? valor
-    : "Outros";
+function lerCuponsSalvos() {
+  try {
+    const bruto = localStorage.getItem(CHAVE_CUPONS);
+    const lista = bruto ? JSON.parse(bruto) : [];
+    return Array.isArray(lista) ? lista : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function salvarCupons() {
+  try {
+    localStorage.setItem(CHAVE_CUPONS, JSON.stringify(cupons));
+  } catch (_) {}
+}
+
+function chaveDoCupom(c) {
+  return c.chave || [c.loja, c.data, c.total].join("|");
+}
+
+function textoPagamento(dados) {
+  return dados.formaPagamento ||
+    dados.forma_pagamento ||
+    dados.pagamento ||
+    "";
+}
+
+function itensHtml(itens) {
+  if (!itens.length) {
+    return '<div class="dica">O motor não retornou os itens desta nota.</div>';
+  }
+
+  return itens.map((item) => {
+    const descricao = item.descricao || item.nome || "Item";
+    const quantidade = item.quantidade ?? "—";
+    const unidade = item.unidade || "";
+    const unitario =
+      item.precoUnitario ??
+      item.preco_unitario ??
+      item.valorUnitario ??
+      item.valor_unitario;
+
+    return `
+      <article class="item">
+        <div class="item-nome">${escaparHtml(descricao)}</div>
+        <div class="item-detalhes">
+          ${escaparHtml(quantidade)} ${escaparHtml(unidade)}
+          · Unitário: ${escaparHtml(formatarDinheiro(unitario))}
+        </div>
+      </article>
+    `;
+  }).join("");
+}
+
+const SETA_SVG =
+  '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>';
+
+function criarCartaoCupom(c) {
+  const cartao = document.createElement("article");
+  cartao.className = "cupom" + (c.aberto ? " aberto" : "");
+
+  const opcoes = CATEGORIAS.slice();
+  if (c.categoria && !opcoes.includes(c.categoria)) opcoes.push(c.categoria);
+
+  cartao.innerHTML = `
+    <div class="cupom-topo">
+      <div>
+        <div class="cupom-loja">${escaparHtml(c.loja || "Loja não identificada")}</div>
+        <div class="cupom-data">${escaparHtml(formatarDataHora(c.data))}</div>
+      </div>
+      <div class="cupom-total">${escaparHtml(formatarDinheiro(c.total))}</div>
+    </div>
+
+    <div class="cupom-meta">
+      <div>
+        <span class="rotulo">Pagamento</span>
+        <div class="cupom-pagamento">${escaparHtml(c.pagamento || "—")}</div>
+      </div>
+      <div>
+        <span class="rotulo">Categoria</span>
+        <select aria-label="Categoria">
+          ${opcoes.map(o =>
+            `<option value="${escaparHtml(o)}"${o === (c.categoria || "Outros") ? " selected" : ""}>${escaparHtml(o)}</option>`
+          ).join("")}
+        </select>
+      </div>
+    </div>
+
+    <button type="button" class="cupom-seta" aria-expanded="${c.aberto ? "true" : "false"}">
+      <span>Itens da nota (${(c.itens || []).length})</span>
+      ${SETA_SVG}
+    </button>
+
+    <div class="cupom-itens">${itensHtml(c.itens || [])}</div>
+  `;
+
+  const seta = cartao.querySelector(".cupom-seta");
+  seta.addEventListener("click", () => {
+    c.aberto = !c.aberto;
+    cartao.classList.toggle("aberto", c.aberto);
+    seta.setAttribute("aria-expanded", c.aberto ? "true" : "false");
+    salvarCupons();
+  });
+
+  cartao.querySelector("select").addEventListener("change", (ev) => {
+    c.categoria = ev.target.value;
+    salvarCupons();
+    salvarCategoria(c.loja, c.categoria);
+  });
+
+  return cartao;
+}
+
+function renderizarCupons() {
+  const lista = el("listaCupons");
+  lista.replaceChildren();
+
+  cupons.forEach((c) => lista.appendChild(criarCartaoCupom(c)));
+
+  const barra = el("barraCupons");
+  barra.style.display = cupons.length ? "flex" : "none";
+
+  const soma = cupons.reduce((s, c) => s + (Number(c.total) || 0), 0);
+  el("resumoCupons").textContent =
+    cupons.length + (cupons.length === 1 ? " nota" : " notas") +
+    " · " + formatarDinheiro(soma);
 }
 
 function renderizarCompra(dados) {
-  const itens = Array.isArray(dados.itens)
-    ? dados.itens
-    : [];
-
   lojaAtual = String(dados.loja || "");
 
-  el("resLoja").textContent =
-    lojaAtual || "Loja não identificada";
+  const novo = {
+    chave: String(dados.chaveAcesso || ""),
+    loja: lojaAtual,
+    data: dados.data || "",
+    total: dados.total,
+    pagamento: textoPagamento(dados),
+    categoria: dados.categoria || "Outros",
+    itens: Array.isArray(dados.itens) ? dados.itens : [],
+    aberto: false
+  };
 
-  el("resData").textContent =
-    formatarDataHora(dados.data);
+  // Mesma nota lida de novo: atualiza e leva para o topo, sem duplicar
+  const chave = chaveDoCupom(novo);
+  cupons = cupons.filter((c) => chaveDoCupom(c) !== chave);
+  cupons.unshift(novo);
+  if (cupons.length > MAX_CUPONS) cupons.length = MAX_CUPONS;
 
-  el("resTotal").textContent =
-    formatarDinheiro(dados.total);
-
-  el("resPagamento").textContent =
-    dados.formaPagamento ||
-    dados.forma_pagamento ||
-    dados.pagamento ||
-    "—";
-
-  definirCategoria(dados.categoria || "Outros");
-
-  const lista = el("listaItens");
-
-  if (!itens.length) {
-    lista.textContent =
-      "O motor não retornou os itens desta nota.";
-  } else {
-    lista.innerHTML = itens.map((item) => {
-      const descricao =
-        item.descricao || item.nome || "Item";
-
-      const quantidade =
-        item.quantidade ?? "—";
-
-      const unidade =
-        item.unidade || "";
-
-      const unitario =
-        item.precoUnitario ??
-        item.preco_unitario ??
-        item.valorUnitario ??
-        item.valor_unitario;
-
-      return `
-        <article class="item">
-          <div class="item-nome">
-            ${escaparHtml(descricao)}
-          </div>
-
-          <div class="item-detalhes">
-            ${escaparHtml(quantidade)}
-            ${escaparHtml(unidade)}
-            · Unitário: ${escaparHtml(formatarDinheiro(unitario))}
-          </div>
-
-        </article>
-      `;
-    }).join("");
-  }
-
-  el("resultado").classList.add("visivel");
+  salvarCupons();
+  renderizarCupons();
 }
 
 
@@ -1513,8 +1657,8 @@ async function alternarLanterna() {
 
 /* CATEGORIA DA LOJA */
 
-async function salvarCategoria() {
-  if (!lojaAtual) {
+async function salvarCategoria(loja, categoria) {
+  if (!loja) {
     mostrarMensagem(
       "Lance uma nota primeiro para definir a categoria da loja.",
       "erro"
@@ -1523,14 +1667,12 @@ async function salvarCategoria() {
     return;
   }
 
-  const categoria = el("categoria").value;
-
   limparMensagem();
 
   try {
     const dados = await enviarMotor({
       acao: "categoria",
-      loja: lojaAtual,
+      loja: loja,
       categoria: categoria
     });
 
@@ -1600,7 +1742,15 @@ el("btnLancar").addEventListener("click", () => {
   lancarLink(el("linkNota").value);
 });
 
-el("categoria").addEventListener("change", salvarCategoria);
+el("btnLimparCupons").addEventListener("click", () => {
+  if (!confirm("Remover todas as notas desta lista? (Nada é apagado da planilha.)")) return;
+  cupons = [];
+  salvarCupons();
+  renderizarCupons();
+});
+
+cupons = lerCuponsSalvos();
+renderizarCupons();
 
 el("linkNota").addEventListener("keydown", (evento) => {
   if (evento.key === "Enter") {
