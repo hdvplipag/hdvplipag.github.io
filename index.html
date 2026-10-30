@@ -1951,6 +1951,7 @@
     }
 
     function aplicarFiltroDatas() { 
+      limparFixosTopo();
       limiteExibicaoAtual = TAMANHO_LOTE;
       renderizarDados(obterTransacoesFiltradas()); 
     }
@@ -1962,11 +1963,13 @@
       document.getElementById('filtroTipo').value = '';
       document.getElementById('filtroCategoria').value = '';
       gerenciarBotaoLimparBusca();
+      limparFixosTopo();
       limiteExibicaoAtual = TAMANHO_LOTE;
       renderizarDados(obterTransacoesFiltradas());
     }
 
     function ordenarTabela(coluna) {
+      limparFixosTopo();
       if (colunaOrdenacaoAtual === coluna) {
         ordemAscendente = !ordemAscendente;
       } else {
@@ -1976,6 +1979,11 @@
       limiteExibicaoAtual = TAMANHO_LOTE;
       renderizarDados(obterTransacoesFiltradas());
     }
+
+    // Lançamentos digitalizados (QR Code) ficam no início da lista até o usuário fazer outra ação
+    // (rolar a página, filtrar, ordenar, atualizar). Depois a ordem normal é restaurada.
+    let idsFixosTopo = [];
+    function limparFixosTopo() { idsFixosTopo = []; }
 
     function obterTransacoesFiltradas() {
       const dInicio = document.getElementById('filtroDataInicio').value;
@@ -2017,11 +2025,24 @@
         return 0;
       });
 
+      if (idsFixosTopo.length) {
+        const fixos = [];
+        idsFixosTopo.forEach(id => {
+          const k = filtradas.findIndex(t => String(t.id) === id);
+          if (k !== -1) fixos.push(filtradas.splice(k, 1)[0]);
+        });
+        filtradas = fixos.concat(filtradas);
+      }
+
       transacoesFiltradasCache = filtradas;
       return filtradas;
     }
 
     window.addEventListener('scroll', function() {
+      if (idsFixosTopo.length && window.scrollY > 60) {
+        limparFixosTopo();
+        renderizarTabelaLote(obterTransacoesFiltradas());
+      }
       if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 100) {
         if (limiteExibicaoAtual < transacoesFiltradasCache.length) {
           limiteExibicaoAtual += TAMANHO_LOTE;
@@ -2330,6 +2351,7 @@
       atualizandoDados = true;
       const icons = document.querySelectorAll('#refreshIcon, .refreshIconMobile');
       icons.forEach(icon => icon.classList.add('fa-spin'));
+      limparFixosTopo();
       limiteExibicaoAtual = TAMANHO_LOTE;
       carregarDados((ok) => {
         icons.forEach(icon => icon.classList.remove('fa-spin'));
@@ -3412,6 +3434,7 @@
       if (event) event.preventDefault();
       const porVoz = formularioPorVoz;
       const porNota = formularioPorNota;
+      const idsAntes = new Set(listaTransacoesGlobal.map(t => String(t.id)));
       const ehNovo = document.getElementById('inputIdTransacao').value === "";
       if (!ehNovo && lancamentoMesPassado(document.getElementById('inputData').value)) {
         exibirToast(MSG_MES_PASSADO, "erro");
@@ -3447,7 +3470,20 @@
             btnSalvar.disabled = false;
             btnSalvar.innerText = "Salvar";
             fecharModalNovaTransacao();
-            carregarDados();
+            if (ehNovo) {
+              // qualquer lançamento novo (digitalizado, digitado ou por voz) fica no início da lista
+              carregarDados(function() {
+                const novos = listaTransacoesGlobal.map(t => String(t.id)).filter(id => !idsAntes.has(id));
+                if (novos.length) {
+                  idsFixosTopo = novos.concat(idsFixosTopo.filter(id => novos.indexOf(id) === -1));
+                  limiteExibicaoAtual = TAMANHO_LOTE;
+                  renderizarDados(obterTransacoesFiltradas());
+                  irParaTopo();
+                }
+              });
+            } else {
+              carregarDados();
+            }
             exibirToast("Lançamento salvo com sucesso!", "sucesso", TEMPO_MENSAGEM_SALVAR_MS);
             if (outroLancamento === 'sim') { if (porVoz) abrirModalVoz(); else if (porNota) abrirNotaScan(); else abrirModalNovaTransacao(); }
           })
@@ -3472,6 +3508,7 @@
           dados.id = new Date().getTime().toString();
           listaTransacoesGlobal.unshift(dados);
         }
+        if (ehNovo) { idsFixosTopo = [String(listaTransacoesGlobal[0].id)].concat(idsFixosTopo); limiteExibicaoAtual = TAMANHO_LOTE; }
         btnSalvar.disabled = false;
         btnSalvar.innerText = "Salvar";
         fecharModalNovaTransacao();
