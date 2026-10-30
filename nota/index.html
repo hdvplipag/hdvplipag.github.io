@@ -348,10 +348,44 @@
       overflow-wrap: anywhere;
     }
 
-    .cupom-data {
-      font-size: .85rem;
+    .cupom-esq {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .cupom-cat {
+      margin-top: 10px;
+    }
+
+    .cupom-cat .rotulo,
+    .cupom-valor .rotulo {
+      margin: 0 0 4px;
+      font-size: .8rem;
       color: #526171;
-      margin-top: 2px;
+    }
+
+    .cupom-cat select {
+      min-height: 44px;
+      padding: 8px 10px;
+    }
+
+    .cupom-datahora {
+      font-size: .85rem;
+      font-weight: 700;
+      color: #526171;
+      margin-bottom: 4px;
+    }
+
+    .cupom-pagto-linha {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .cupom-valor {
+      text-align: right;
     }
 
     .cupom-total {
@@ -373,16 +407,8 @@
       color: #526171;
     }
 
-    .cupom-meta select {
-      min-height: 44px;
-      padding: 8px 10px;
-    }
-
     .cupom-pagamento {
       font-weight: 700;
-      min-height: 44px;
-      display: flex;
-      align-items: center;
     }
 
     .cupom-seta {
@@ -929,27 +955,21 @@ function criarCartaoCupom(c) {
   if (c.categoria && !opcoes.includes(c.categoria)) opcoes.push(c.categoria);
 
   cartao.innerHTML = `
-    <div class="cupom-topo">
-      <div>
-        <div class="cupom-loja">${escaparHtml(c.loja || "Loja não identificada")}</div>
-        <div class="cupom-data">${escaparHtml(formatarDataHora(c.data))}</div>
-      </div>
-      <div class="cupom-total">${escaparHtml(formatarDinheiro(c.total))}</div>
+    <div class="cupom-datahora">${escaparHtml(formatarDataHora(c.data))}</div>
+    <div class="cupom-loja">${escaparHtml(c.loja || "Loja não identificada")}</div>
+
+    <div class="cupom-cat">
+      <span class="rotulo">Categoria</span>
+      <select aria-label="Categoria">
+        ${opcoes.map(o =>
+          `<option value="${escaparHtml(o)}"${o === (c.categoria || "Outros") ? " selected" : ""}>${escaparHtml(o)}</option>`
+        ).join("")}
+      </select>
     </div>
 
-    <div class="cupom-meta">
-      <div>
-        <span class="rotulo">Pagamento</span>
-        <div class="cupom-pagamento">${escaparHtml(c.pagamento || "—")}</div>
-      </div>
-      <div>
-        <span class="rotulo">Categoria</span>
-        <select aria-label="Categoria">
-          ${opcoes.map(o =>
-            `<option value="${escaparHtml(o)}"${o === (c.categoria || "Outros") ? " selected" : ""}>${escaparHtml(o)}</option>`
-          ).join("")}
-        </select>
-      </div>
+    <div class="cupom-pagto-linha">
+      <span class="cupom-pagamento">${escaparHtml(c.pagamento || "—")}</span>
+      <span class="cupom-total">${escaparHtml(formatarDinheiro(c.total))}</span>
     </div>
 
     <button type="button" class="cupom-seta" aria-expanded="${c.aberto ? "true" : "false"}">
