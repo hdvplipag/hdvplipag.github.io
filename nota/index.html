@@ -1475,29 +1475,14 @@ function mostrarPerguntaOutraCaptura_() {
 el("btnLer").addEventListener("click", acionarLeitura);
 
 el("btnOutraCaptura").addEventListener("click", async () => {
+  /*
+   * Reinício limpo: reutilizar o leitor depois de fechado deixa o vídeo
+   * preto em alguns Androids. Recarregar a página abre a câmera do zero
+   * (ela inicia sozinha ao carregar).
+   */
   el("perguntaOutra").style.display = "none";
-  el("resultado").classList.remove("visivel");
-  limparMensagem();
-  el("linkNota").value = "";
-
-  // Volta ao topo, onde fica a câmera (a página estava rolada até a pergunta)
-  try { window.scrollTo(0, 0); } catch (_) {}
-
-  // Reinicia por completo o leitor anterior antes de abrir a câmera de novo
-  processandoLeitura = false;
-  try {
-    if (cameraAtiva || leitorQr || iosCameraStream) {
-      await pararCamera();
-    }
-  } catch (_) {}
-  el("leitor").replaceChildren();
-
-  // Dá um instante para o Android liberar a câmera
-  await new Promise(resolve => setTimeout(resolve, 350));
-
-  await iniciarCamera();
-
-  try { el("areaCamera").scrollIntoView({ behavior: "smooth", block: "start" }); } catch (_) {}
+  try { await pararCamera(); } catch (_) {}
+  window.location.reload();
 });
 
 el("btnConcluirCapturas").addEventListener("click", () => {
