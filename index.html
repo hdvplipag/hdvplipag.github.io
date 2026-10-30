@@ -654,21 +654,21 @@
   <!-- Modal Novo Lançamento -->
   <div id="modalTransacao" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
     <div class="glass-panel w-full max-w-md p-6 rounded-2xl border border-slate-700 relative max-h-[90vh] overflow-y-auto">
-      <div class="-mx-6 -mt-6 mb-5 px-6 py-4 rounded-t-2xl bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-400 flex items-center gap-3 shadow-md">
-        <div class="w-11 h-11 shrink-0 rounded-2xl bg-white/20 border border-white/30 text-white flex items-center justify-center text-xl shadow-inner">
+      <div class="-mx-6 -mt-6 mb-3 px-6 py-2.5 rounded-t-2xl bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-400 flex items-center gap-3 shadow-md">
+        <div class="w-9 h-9 shrink-0 rounded-xl bg-white/20 border border-white/30 text-white flex items-center justify-center text-base shadow-inner">
           <i class="fa-solid fa-file-invoice-dollar"></i>
         </div>
         <div class="min-w-0 flex-1 pr-8">
-          <h3 id="modalTransacaoTitulo" class="text-lg font-bold leading-tight text-white truncate">Novo Lançamento</h3>
-          <p class="text-xs font-medium text-emerald-50/90 mt-0.5">Registre uma receita ou despesa</p>
+          <h3 id="modalTransacaoTitulo" class="text-base font-bold leading-tight text-white truncate">Novo Lançamento</h3>
+          <p class="text-[11px] font-medium text-emerald-50/90 leading-tight">Registre uma receita ou despesa</p>
         </div>
-        <button type="button" onclick="fecharXModalTransacao()" aria-label="Fechar" class="absolute top-3.5 right-4 w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition"><i class="fa-solid fa-xmark"></i></button>
+        <button type="button" onclick="fecharXModalTransacao()" aria-label="Fechar" class="absolute top-2.5 right-4 w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition"><i class="fa-solid fa-xmark"></i></button>
       </div>
-      <div id="btnDigitalizarForm" class="md:hidden flex items-center justify-center gap-4 mb-3">
-        <button type="button" onclick="abrirNotaScan()" aria-label="Digitalizar" title="Digitalizar" class="w-20 h-14 bg-cyan-600 hover:bg-cyan-500 text-white text-2xl rounded-2xl flex items-center justify-center shadow-md transition">
+      <div id="btnDigitalizarForm" class="md:hidden flex items-center justify-end gap-2 mb-2">
+        <button type="button" onclick="abrirNotaScan()" aria-label="Digitalizar" title="Digitalizar" class="w-14 h-10 bg-cyan-600 hover:bg-cyan-500 text-white text-lg rounded-xl flex items-center justify-center shadow-md transition">
           <i class="fa-solid fa-camera"></i>
         </button>
-        <button type="button" onclick="abrirVozDoFormulario()" aria-label="Voz" title="Voz" class="w-20 h-14 bg-purple-600 hover:bg-purple-500 text-white text-2xl rounded-2xl flex items-center justify-center shadow-md transition">
+        <button type="button" onclick="abrirVozDoFormulario()" aria-label="Voz" title="Voz" class="w-14 h-10 bg-purple-600 hover:bg-purple-500 text-white text-lg rounded-xl flex items-center justify-center shadow-md transition">
           <i class="fa-solid fa-microphone"></i>
         </button>
       </div>
