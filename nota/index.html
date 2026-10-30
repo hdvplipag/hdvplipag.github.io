@@ -7,8 +7,6 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <title>Compras</title>
-  <link rel="manifest" href="./manifest.json">
-  <link rel="apple-touch-icon" href="./plipag-192x192.png">
 
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
@@ -1476,11 +1474,30 @@ function mostrarPerguntaOutraCaptura_() {
 
 el("btnLer").addEventListener("click", acionarLeitura);
 
-el("btnOutraCaptura").addEventListener("click", () => {
+el("btnOutraCaptura").addEventListener("click", async () => {
   el("perguntaOutra").style.display = "none";
   el("resultado").classList.remove("visivel");
   limparMensagem();
-  iniciarCamera();
+  el("linkNota").value = "";
+
+  // Volta ao topo, onde fica a câmera (a página estava rolada até a pergunta)
+  try { window.scrollTo(0, 0); } catch (_) {}
+
+  // Reinicia por completo o leitor anterior antes de abrir a câmera de novo
+  processandoLeitura = false;
+  try {
+    if (cameraAtiva || leitorQr || iosCameraStream) {
+      await pararCamera();
+    }
+  } catch (_) {}
+  el("leitor").replaceChildren();
+
+  // Dá um instante para o Android liberar a câmera
+  await new Promise(resolve => setTimeout(resolve, 350));
+
+  await iniciarCamera();
+
+  try { el("areaCamera").scrollIntoView({ behavior: "smooth", block: "start" }); } catch (_) {}
 });
 
 el("btnConcluirCapturas").addEventListener("click", () => {
@@ -1534,13 +1551,6 @@ window.addEventListener("pagehide", () => {
     leitorQr.stop().catch(() => {});
   }
 });
-</script>
-  <script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js')
-      .then(() => console.log('Service Worker Registrado com Sucesso!'))
-      .catch(err => console.log('Erro ao registrar Service Worker:', err));
-  }
 </script>
 </body>
 </html>
