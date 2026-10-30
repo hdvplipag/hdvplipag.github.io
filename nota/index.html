@@ -6,7 +6,10 @@
   <meta name="theme-color" content="#1769aa">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <title>Compras</title>
+  <title>Notas</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" href="nota-192x192.png">
+  <link rel="apple-touch-icon" href="nota-192x192.png">
 
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
@@ -484,6 +487,13 @@
 
 <script>
 "use strict";
+
+/* Torna a página instalável (service worker próprio, escopo /nota/) */
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js", { scope: "./" }).catch(() => {});
+  });
+}
 
 /*
  * ENDEREÇO DO GOOGLE APPS SCRIPT
