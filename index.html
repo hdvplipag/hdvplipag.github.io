@@ -658,7 +658,7 @@
       <button onclick="fecharXModalTransacao()" class="absolute top-4 right-4 theme-subtext hover:text-emerald-500"><i class="fa-solid fa-xmark text-lg"></i></button>
       <h3 id="modalTransacaoTitulo" class="text-lg font-bold mb-3 theme-text">Nova Transação</h3>
       <div id="btnDigitalizarForm" class="md:hidden flex items-center justify-center gap-2 mb-3">
-        <button type="button" onclick="abrirEscolhaOrigemImagem()" class="px-3 py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs rounded-xl flex items-center gap-1.5 shadow-md transition">
+        <button type="button" onclick="abrirNotaScan()" class="px-3 py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs rounded-xl flex items-center gap-1.5 shadow-md transition">
           <i class="fa-solid fa-camera"></i> Digitalizar
         </button>
         <button type="button" onclick="abrirVozDoFormulario()" class="px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs rounded-xl flex items-center gap-1.5 shadow-md transition">
@@ -784,6 +784,16 @@
         <textarea id="inputFraseVoz" rows="1" aria-label="Lançamento por voz" enterkeyhint="send" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" oninput="mostrarCampoVoz()" class="flex-1 min-w-0 bg-slate-900 text-white border border-slate-700 rounded-xl p-2.5 text-sm resize-none overflow-hidden break-words" style="max-height:8rem"></textarea>
       </form>
     </div>
+  </div>
+
+  <!-- Digitalizar nota: abre a página nota/index.html (leitura do QR Code via notas.gs) dentro do app -->
+  <div id="modalNotaScan" class="hidden fixed inset-0 flex flex-col bg-slate-900" style="z-index: 10001;">
+    <div class="shrink-0 flex items-center justify-between gap-2 px-3 bg-slate-900 text-white shadow-lg" style="height: 52px; padding-top: env(safe-area-inset-top, 0px);">
+      <button type="button" onclick="fecharNotaScan()" class="px-3 py-2 text-xs font-semibold rounded-xl bg-slate-700 flex items-center gap-1.5"><i class="fa-solid fa-xmark"></i><span>Fechar</span></button>
+      <span class="text-xs font-semibold truncate">Digitalizar nota</span>
+      <span style="width: 74px;"></span>
+    </div>
+    <iframe id="frameNota" title="Digitalizar nota" allow="camera; microphone; fullscreen" class="flex-1 w-full border-0 bg-white"></iframe>
   </div>
 
   <!-- Escolha da origem da imagem ao digitalizar: câmera ou imagem do celular -->
@@ -4851,6 +4861,107 @@
       if (extra.data) document.getElementById('inputData').value = extra.data;
       if (extra.formapagto) { document.getElementById('inputFormaPagto').value = normalizarFormaPagto(extra.formapagto); atualizarCampoParcelas(); }
       if (extra.instituicao && extra.instituicao !== 'Geral') document.getElementById('inputInstituicao').value = extra.instituicao;
+    }
+
+    // ===================== DIGITALIZAR PELA PÁGINA DE NOTAS (nota/index.html + notas.gs) =====================
+    // O botão Digitalizar abre nota/index.html dentro do app. Quando a página de notas lê o QR Code e grava na
+    // planilha (aba Compras), a resposta do servidor (loja, data, total, pagamento, categoria) é capturada aqui
+    // e usada para preencher o novo lançamento. Como a página é do mesmo site, o app acompanha a resposta dela
+    // sem precisar alterar nota/index.html. (Se a página enviar window.parent.postMessage({tipo:'plipag-nota', dados: resposta}),
+    // isso também é aceito.)
+    const NOTA_PAGINA = 'nota/index.html';
+    let ultimaNotaRecebida = 0;
+
+    function abrirNotaScan() {
+      const modal = document.getElementById('modalNotaScan');
+      const frame = document.getElementById('frameNota');
+      if (!modal || !frame) return;
+      ultimaNotaRecebida = 0;
+      frame.onload = function() {
+        try { instalarGanchoNota(frame.contentWindow); } catch (e) {}
+      };
+      modal.classList.remove('hidden');
+      frame.src = NOTA_PAGINA;
+    }
+
+    function fecharNotaScan() {
+      const modal = document.getElementById('modalNotaScan');
+      const frame = document.getElementById('frameNota');
+      if (frame) { frame.onload = null; frame.src = 'about:blank'; }   // encerra a câmera
+      if (modal) modal.classList.add('hidden');
+    }
+
+    // Observa as respostas que a página de notas recebe do servidor (sem alterar o que ela faz)
+    function instalarGanchoNota(win) {
+      if (!win || win.__plipagGancho || typeof win.fetch !== 'function') return;
+      const original = win.fetch;
+      win.__plipagGancho = true;
+      win.fetch = function() {
+        const promessa = original.apply(this, arguments);
+        try {
+          promessa.then(function(resp) {
+            try { resp.clone().json().then(receberDadosNota).catch(function() {}); } catch (e) {}
+          }).catch(function() {});
+        } catch (e) {}
+        return promessa;
+      };
+    }
+
+    window.addEventListener('message', function(ev) {
+      if (ev.origin !== location.origin) return;
+      const d = ev.data;
+      if (d && d.tipo === 'plipag-nota' && d.dados) receberDadosNota(d.dados);
+    });
+
+    // Só vale a resposta de "lançar nota": tem loja, total e lista de itens (a troca de categoria não tem total)
+    function receberDadosNota(j) {
+      if (!j || typeof j !== 'object' || !j.loja || j.total === undefined || j.total === null || !Array.isArray(j.itens)) return;
+      if (Date.now() - ultimaNotaRecebida < 3000) return;
+      ultimaNotaRecebida = Date.now();
+      setTimeout(function() { fecharNotaScan(); preencherLancamentoDeNota(j); }, 300);
+    }
+
+    function dataDeNota(v) {
+      if (!v) return dataLocalISO();
+      const d = new Date(v);
+      if (!isNaN(d.getTime())) return dataLocalISO(d);
+      const m = /^(\d{4}-\d{2}-\d{2})/.exec(String(v));
+      return m ? m[1] : dataLocalISO();
+    }
+
+    function formaPagtoDeNota(p) {
+      const s = semAcentos(String(p || '')).toLowerCase();
+      if (/debito/.test(s)) return 'Débito';
+      if (/credito/.test(s)) return 'Crédito';
+      if (/pix/.test(s)) return 'Pix';
+      if (/dinheiro/.test(s)) return 'Dinheiro';
+      return '';
+    }
+
+    function preencherLancamentoDeNota(j) {
+      // garante o formulário de novo lançamento aberto
+      if (document.getElementById('modalTransacao').classList.contains('hidden')) abrirModalNovaTransacao();
+      document.getElementById('inputIdTransacao').value = '';
+      document.getElementById('inputTipo').value = 'Despesa';
+      document.getElementById('inputDescricao').value = String(j.loja || '');
+      const cat = String(j.categoria || '').trim();
+      document.getElementById('inputCategoria').value = cat;
+      const total = Number(j.total);
+      document.getElementById('inputValor').value = (isFinite(total) && total > 0) ? total.toFixed(2) : '';
+      document.getElementById('inputData').value = dataDeNota(j.data);
+      const forma = formaPagtoDeNota(j.pagamento);
+      document.getElementById('inputFormaPagto').value = forma;
+      atualizarCampoParcelas();
+      document.getElementById('inputInstituicao').value = '';
+      // só aprende a categoria da loja quando ela não é a padrão "Outros"
+      document.getElementById('inputVemDeScan').value = (cat && cat.toLowerCase() !== 'outros') ? 'true' : 'false';
+      const linhas = ['Nota lida pela página de notas.', 'Loja: ' + (j.loja || ''), 'Pagamento: ' + (j.pagamento || ''), 'Total: ' + (isFinite(total) ? total.toFixed(2) : '')];
+      (j.itens || []).forEach(function(it) {
+        linhas.push('- ' + (it.descricao || '') + ' (' + (it.quantidade || '') + ' ' + (it.unidade || '') + ') = ' + (isFinite(Number(it.total)) ? Number(it.total).toFixed(2) : ''));
+      });
+      mostrarTextoCupom(linhas.join('\n'));
+      if (j.ok === false) exibirToast('Essa nota já tinha sido lançada na planilha de notas. Dados preenchidos: confira antes de salvar.', 'erro', 7000);
+      else exibirToast('Nota lida e gravada na planilha de notas. Confira os dados e salve.', 'sucesso', 6000);
     }
 
     document.addEventListener('DOMContentLoaded', () => {
