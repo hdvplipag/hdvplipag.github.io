@@ -1404,6 +1404,7 @@ async function iniciarCamera() {
 
 async function executarInicioCamera() {
   limparMensagem();
+  esconderPerguntaOutraCaptura_();
   el("ajudaCamera").classList.remove("visivel");
 
   if (!window.isSecureContext) {
@@ -1727,9 +1728,23 @@ function acionarLeitura() {
   iniciarCamera();
 }
 
+let timerPerguntaOutra = null;
+const TEMPO_PERGUNTA_OUTRA_MS = 12000;   // quanto tempo a pergunta fica na tela após a leitura
+
+function esconderPerguntaOutraCaptura_() {
+  if (timerPerguntaOutra) {
+    clearTimeout(timerPerguntaOutra);
+    timerPerguntaOutra = null;
+  }
+  el("perguntaOutra").style.display = "none";
+}
+
+// A pergunta só aparece logo após uma leitura e some sozinha (ou ao responder).
 function mostrarPerguntaOutraCaptura_() {
+  esconderPerguntaOutraCaptura_();
   el("perguntaOutra").style.display = "block";
   el("perguntaOutra").scrollIntoView({ behavior: "smooth", block: "center" });
+  timerPerguntaOutra = setTimeout(esconderPerguntaOutraCaptura_, TEMPO_PERGUNTA_OUTRA_MS);
 }
 
 el("btnLer").addEventListener("click", acionarLeitura);
@@ -1740,7 +1755,7 @@ el("btnOutraCaptura").addEventListener("click", async () => {
    * preto em alguns Androids. Recarregar a página abre a câmera do zero
    * (ela inicia sozinha ao carregar).
    */
-  el("perguntaOutra").style.display = "none";
+  esconderPerguntaOutraCaptura_();
   try { await pararCamera(); } catch (_) {}
   window.location.reload();
 });
@@ -1752,7 +1767,7 @@ el("btnNovaCaptura").addEventListener("click", async () => {
 });
 
 el("btnConcluirCapturas").addEventListener("click", () => {
-  el("perguntaOutra").style.display = "none";
+  esconderPerguntaOutraCaptura_();
 });
 
 
