@@ -181,7 +181,15 @@
       .print-table .print-repeat-title th { background: #ffffff; color: #0f172a; text-align: center; text-transform: none; padding: 0 0 8px 0; }
       .print-table .print-repeat-title .print-header h1 { font-size: 18px; }
     }
-    </style>
+    
+    /* Indicador de salvamento */
+    .salvando-anel { border: 6px solid rgba(255,255,255,.25); border-top-color: #34d399; animation: salvandoGirar .9s linear infinite; }
+    .salvando-ponto { display: block; width: 9px; height: 9px; border-radius: 50%; background: #34d399; animation: salvandoPulsar 1.2s ease-in-out infinite; }
+    .salvando-ponto:nth-child(2) { animation-delay: .2s; }
+    .salvando-ponto:nth-child(3) { animation-delay: .4s; }
+    @keyframes salvandoGirar { to { transform: rotate(360deg); } }
+    @keyframes salvandoPulsar { 0%, 80%, 100% { opacity: .25; transform: scale(.8); } 40% { opacity: 1; transform: scale(1.1); } }
+  </style>
 </head>
 <body id="appBody" class="light bg-slate-100/70 text-slate-900 min-h-screen font-sans pb-24 md:pb-8 transition-colors duration-300">
 
@@ -792,6 +800,17 @@
         <textarea id="inputFraseVoz" rows="1" aria-label="Lançamento por voz" enterkeyhint="send" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" oninput="mostrarCampoVoz()" class="flex-1 min-w-0 bg-slate-900 text-white border border-slate-700 rounded-xl p-2.5 text-sm resize-none overflow-hidden break-words" style="max-height:8rem"></textarea>
       </form>
     </div>
+  </div>
+
+  <!-- Indicador "Salvando..." do lançamento: círculo girando com três pontinhos, centralizado na tela -->
+  <div id="overlaySalvando" class="hidden fixed inset-0 flex flex-col items-center justify-center bg-black/55 backdrop-blur-[2px]" style="z-index: 10002;" role="status" aria-live="polite">
+    <div class="relative" style="width: 84px; height: 84px;">
+      <div class="salvando-anel absolute inset-0 rounded-full"></div>
+      <div class="absolute inset-0 flex items-center justify-center gap-1.5">
+        <i class="salvando-ponto"></i><i class="salvando-ponto"></i><i class="salvando-ponto"></i>
+      </div>
+    </div>
+    <p class="mt-4 text-white text-base font-semibold">Salvando...</p>
   </div>
 
   <!-- Digitalizar nota: abre a página nota/index.html (leitura do QR Code via notas.gs) dentro do app -->
@@ -3454,6 +3473,11 @@
       }
     }
 
+    function mostrarSalvando(ligado) {
+      const ov = document.getElementById('overlaySalvando');
+      if (ov) ov.classList.toggle('hidden', !ligado);
+    }
+
     const TEMPO_MENSAGEM_SALVAR_MS = 10000;   // quanto tempo a mensagem de gravação do lançamento fica na tela
     function salvarLancamento(event, outroLancamento) {
       if (event) event.preventDefault();
@@ -3471,7 +3495,7 @@
       }
       const btnSalvar = document.getElementById('btnSalvar');
       btnSalvar.disabled = true;
-      btnSalvar.innerText = "Salvando...";
+      mostrarSalvando(true);   // círculo girando no centro da tela; o botão continua escrito "Salvar"
 
       const idTrans = document.getElementById('inputIdTransacao').value;
       const vemDeScan = document.getElementById('inputVemDeScan').value === "true";
@@ -3494,7 +3518,7 @@
         const runner = google.script.run
           .withSuccessHandler(function() {
             btnSalvar.disabled = false;
-            btnSalvar.innerText = "Salvar";
+            btnSalvar.innerText = "Salvar"; mostrarSalvando(false);
             fecharModalNovaTransacao();
             if (ehNovo) {
               // qualquer lançamento novo (digitalizado, digitado ou por voz) fica no início da lista
@@ -3515,7 +3539,7 @@
           })
           .withFailureHandler(function(err) {
             btnSalvar.disabled = false;
-            btnSalvar.innerText = "Salvar";
+            btnSalvar.innerText = "Salvar"; mostrarSalvando(false);
             const recusado = err && err.message && err.message.indexOf('mês vigente') !== -1;
             const detalheErro = (!recusado && err && err.message && err.message !== 'Erro no servidor.' && err.message !== 'Erro no servidor') ? ' (' + escaparHtml(err.message) + ')' : '';
             exibirToast(recusado ? err.message : "Erro ao salvar lançamento." + detalheErro, "erro", TEMPO_MENSAGEM_SALVAR_MS);
@@ -3536,7 +3560,7 @@
         }
         if (ehNovo) { idsFixosTopo = [String(listaTransacoesGlobal[0].id)].concat(idsFixosTopo); limiteExibicaoAtual = TAMANHO_LOTE; }
         btnSalvar.disabled = false;
-        btnSalvar.innerText = "Salvar";
+        btnSalvar.innerText = "Salvar"; mostrarSalvando(false);
         fecharModalNovaTransacao();
         atualizarOpcoesCategorias(listaTransacoesGlobal);
         renderizarDados(obterTransacoesFiltradas());
