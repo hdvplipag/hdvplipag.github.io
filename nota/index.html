@@ -1076,6 +1076,30 @@ function escaparHtml(valor) {
 }
 
 const POR_PAGINA = 50;
+
+// Notas digitalizadas neste aparelho (guardadas no celular)
+const CHAVE_MINHAS_NOTAS = "nota_minhas_chaves";
+function lerMinhasNotas() {
+  try {
+    const v = JSON.parse(localStorage.getItem(CHAVE_MINHAS_NOTAS) || "[]");
+    return Array.isArray(v) ? v.map(String).filter(Boolean) : [];
+  } catch (_) { return []; }
+}
+function guardarMinhaNota(chave) {
+  chave = String(chave || "").replace(/\s/g, "");
+  if (!chave) return;
+  try {
+    const lista = lerMinhasNotas().filter((c) => c !== chave);
+    lista.push(chave);
+    localStorage.setItem(CHAVE_MINHAS_NOTAS, JSON.stringify(lista.slice(-2000)));
+  } catch (_) {}
+}
+function esquecerMinhasNotas(chaves) {
+  try {
+    const fora = new Set((chaves || []).map(String));
+    localStorage.setItem(CHAVE_MINHAS_NOTAS, JSON.stringify(lerMinhasNotas().filter((c) => !fora.has(c))));
+  } catch (_) {}
+}
 let cupons = [];
 let totalNotas = 0;
 let somaNotas = 0;
@@ -1232,12 +1256,23 @@ async function carregarLista(reiniciar) {
   const minha = ++sequenciaLista;
   const offset = reiniciar ? 0 : proximoOffset;
 
+  const minhas = lerMinhasNotas();
+
+  // Sem notas digitalizadas neste aparelho: não mostra nenhum registro
+  if (!minhas.length) {
+    cupons = []; totalNotas = 0; somaNotas = 0; proximoOffset = 0; fimDaLista = true;
+    carregandoLista = false;
+    renderizarCupons();
+    return;
+  }
+
   carregandoLista = true;
   renderizarCupons();
 
   try {
     const dados = await enviarMotor({
       acao: "listar",
+      chaves: minhas,
       offset: offset,
       limite: POR_PAGINA
     });
@@ -1298,7 +1333,7 @@ async function alternarSelecionarTodas() {
   botao.textContent = "Selecionando…";
 
   try {
-    const dados = await enviarMotor({ acao: "chaves" });
+    const dados = await enviarMotor({ acao: "chaves", chaves: lerMinhasNotas() });
 
     if (!dados || dados.ok === false || !Array.isArray(dados.chaves)) {
       throw new Error((dados && dados.aviso) || "Não foi possível selecionar todas as notas.");
@@ -1335,7 +1370,9 @@ function definirModoSelecao(ativo) {
 }
 
 async function excluirNotas(chaves, nomeLoja) {
-  const lista = (chaves || []).filter(Boolean);
+  // só é possível excluir notas digitalizadas neste aparelho
+  const minhas = new Set(lerMinhasNotas());
+  const lista = (chaves || []).filter((c) => c && minhas.has(String(c)));
   if (!lista.length) return;
 
   const pergunta = lista.length === 1
@@ -1361,6 +1398,7 @@ async function excluirNotas(chaves, nomeLoja) {
       }
     }
 
+    esquecerMinhasNotas(lista);
     limparMensagem();
     definirModoSelecao(false);
     await carregarLista(true);
@@ -1445,6 +1483,10 @@ async function lancarLink(link) {
       );
     } else {
       mostrarMensagem("Nota processada.", "sucesso");
+    }
+
+    if (dados.ok !== false && dados.chaveAcesso && !EMBUTIDO) {
+      guardarMinhaNota(dados.chaveAcesso);
     }
 
     if (
