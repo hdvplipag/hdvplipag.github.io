@@ -557,7 +557,11 @@
       box-shadow: 0 2px 8px rgba(25, 45, 70, .04);
     }
 
+    .produto-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
     .produto-nome { font-weight: 800; overflow-wrap: anywhere; }
+    .produto-endereco { font-size: .68rem; color: #7a8896; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .filtro-categoria { margin-top: 8px; }
+    .filtro-categoria select { width: 100%; background: #fff; }
     .produto-meta { font-size: .85rem; color: #526171; margin-top: 3px; overflow-wrap: anywhere; }
     .produto-valores {
       display: flex;
@@ -802,8 +806,11 @@
     <section class="cartao">
       <h2>Produtos</h2>
       <div class="filtro-produtos">
-        <input id="filtroProdutos" type="text" inputmode="search" autocomplete="off" placeholder="Buscar produto ou loja…" aria-label="Buscar produto">
+        <input id="filtroProdutos" type="text" inputmode="search" autocomplete="off" placeholder="Buscar produto…" aria-label="Buscar produto">
         <button id="btnLimparFiltroProdutos" type="button" aria-label="Limpar busca" style="display:none">✕</button>
+      </div>
+      <div class="filtro-categoria">
+        <select id="filtroCategoriaProdutos" aria-label="Filtrar por categoria"><option value="">Todas as categorias</option></select>
       </div>
       <div id="resumoProdutos" class="dica"></div>
     </section>
@@ -2147,14 +2154,13 @@ function criarCartaoProduto(p) {
   const cartao = document.createElement("article");
   cartao.className = "produto";
 
-  const unitario = p.precoUnitario;
   cartao.innerHTML = `
-    <div class="produto-nome">${escaparHtml(p.descricao || "Produto")}</div>
-    <div class="produto-meta">${escaparHtml(p.loja || "")} · ${escaparHtml(formatarDataHora(p.data))}</div>
-    <div class="produto-valores">
-      <span>${escaparHtml(p.quantidade ?? "—")} ${escaparHtml(p.unidade || "")} × ${escaparHtml(formatarDinheiro(unitario))}</span>
+    <div class="produto-topo">
+      <div class="produto-nome">${escaparHtml(p.descricao || "Produto")}</div>
       <span class="produto-total">${escaparHtml(formatarDinheiro(p.total))}</span>
     </div>
+    <div class="produto-meta">${escaparHtml(p.loja || "")} · ${escaparHtml(formatarDataHora(p.data))}</div>
+    ${p.endereco ? `<div class="produto-endereco">${escaparHtml(p.endereco)}</div>` : ""}
   `;
   return cartao;
 }
@@ -2189,6 +2195,7 @@ async function carregarProdutos(reiniciar) {
     const dados = await enviarMotor({
       acao: "produtos",
       busca: busca,
+      categoria: el("filtroCategoriaProdutos").value,
       offset: offset,
       limite: POR_PAGINA_PRODUTOS
     });
@@ -2203,6 +2210,7 @@ async function carregarProdutos(reiniciar) {
     proximoOffsetProdutos = offset + dados.produtos.length;
     fimProdutos = !!dados.fim;
     totalProdutos = Number(dados.total) || 0;
+    preencherCategoriasProdutos(dados.categorias);
   } catch (erro) {
     if (minha === sequenciaProdutos) {
       mostrarMensagem(erro.message || "Erro ao carregar os produtos.", "erro");
@@ -2222,6 +2230,26 @@ window.addEventListener("scroll", () => {
     carregarProdutos(false);
   }
 });
+
+function preencherCategoriasProdutos(lista) {
+  const sel = el("filtroCategoriaProdutos");
+  if (!Array.isArray(lista)) return;
+  const atual = sel.value;
+  const nomes = lista.slice();
+  if (atual && nomes.indexOf(atual) === -1) nomes.push(atual);
+  sel.innerHTML = "";
+  const todas = document.createElement("option");
+  todas.value = ""; todas.textContent = "Todas as categorias";
+  sel.appendChild(todas);
+  nomes.forEach((n) => {
+    const o = document.createElement("option");
+    o.value = n; o.textContent = n;
+    sel.appendChild(o);
+  });
+  sel.value = atual;
+}
+
+el("filtroCategoriaProdutos").addEventListener("change", () => carregarProdutos(true));
 
 el("filtroProdutos").addEventListener("input", () => {
   el("btnLimparFiltroProdutos").style.display = el("filtroProdutos").value ? "block" : "none";
