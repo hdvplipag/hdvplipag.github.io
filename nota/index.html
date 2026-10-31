@@ -486,10 +486,88 @@
     }
 
     .embutido #btnModoExcluir,
-    .embutido #btnAtualizar,
+    .embutido #btnProdutos,
     .embutido #cupons {
       display: none !important;
     }
+
+    main { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+
+    #rodapeAcoes {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 40;
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+      background: #fff;
+      border-top: 1px solid var(--borda);
+      box-shadow: 0 -4px 14px rgba(25, 45, 70, .08);
+    }
+
+    .botao-rodape {
+      flex: 1;
+      max-width: 220px;
+      min-height: 52px;
+      height: 52px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 1rem;
+    }
+
+    .botao-rodape-camera { background: var(--azul); color: #fff; padding: 0; }
+    .botao-rodape-produtos { background: #e7f1fb; color: #124f80; }
+
+    .filtro-produtos {
+      position: relative;
+      margin-top: 4px;
+    }
+
+    .filtro-produtos input {
+      padding-right: 46px;
+    }
+
+    .filtro-produtos button {
+      position: absolute;
+      right: 6px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 38px;
+      min-height: 38px;
+      height: 38px;
+      padding: 0;
+      border-radius: 50%;
+      background: #e3e9f0;
+      color: #34475a;
+      font-size: 1rem;
+    }
+
+    .produto {
+      background: #fff;
+      border: 1px solid var(--borda);
+      border-radius: 14px;
+      padding: 12px 14px;
+      margin: 10px 0;
+      box-shadow: 0 2px 8px rgba(25, 45, 70, .04);
+    }
+
+    .produto-nome { font-weight: 800; overflow-wrap: anywhere; }
+    .produto-meta { font-size: .85rem; color: #526171; margin-top: 3px; overflow-wrap: anywhere; }
+    .produto-valores {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 10px;
+      margin-top: 8px;
+      font-size: .95rem;
+    }
+    .produto-total { font-weight: 800; font-size: 1.05rem; white-space: nowrap; }
 
     .acoes-topo {
       display: flex;
@@ -506,8 +584,6 @@
       outline: 3px solid #f4b4ad;
     }
 
-    @keyframes girarbtn { to { transform: rotate(360deg); } }
-    #btnAtualizar.girando svg { animation: girarbtn .9s linear infinite; }
 
     .cupom-linha-topo {
       display: flex;
@@ -634,13 +710,12 @@
 
 <body>
 <main>
+  <div id="telaLeitura">
   <section class="cartao" aria-labelledby="tituloLeitura">
     <div class="cabecalho-leitura">
       <h2 id="tituloLeitura">Registrar compra</h2>
       <div class="acoes-topo">
-        <button id="btnNovaCaptura" class="botao-camera-pequeno" type="button" aria-label="Voltar para a digitalização" title="Digitalizar outra nota"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></button>
         <button id="btnModoExcluir" class="botao-camera-pequeno botao-perigo" type="button" aria-label="Excluir várias notas" title="Excluir várias notas"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
-        <button id="btnAtualizar" class="botao-camera-pequeno" type="button" aria-label="Atualizar lista" title="Atualizar lista"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
       </div>
     </div>
 
@@ -711,7 +786,8 @@
   <section id="cupons" aria-label="Notas digitalizadas">
     <div id="barraCupons" class="barra-cupons" style="display:none">
       <span id="resumoCupons"></span>
-      <span id="acoesSelecao" style="display:none; gap:8px;">
+      <span id="acoesSelecao" style="display:none; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+        <button id="btnSelecionarTodas" class="botao-secundario botao-pequeno" type="button">Selecionar todas</button>
         <button id="btnCancelarSelecao" class="botao-secundario botao-pequeno" type="button">Cancelar</button>
         <button id="btnExcluirSelecionadas" class="botao-pequeno botao-perigo" style="color:#fff" type="button">Excluir (0)</button>
       </span>
@@ -719,12 +795,32 @@
     <div id="listaCupons"></div>
     <p id="fimCupons" class="dica" style="text-align:center"></p>
   </section>
+  </div>
+
+  <!-- Tela de produtos (aba Itens) -->
+  <div id="telaProdutos" style="display:none">
+    <section class="cartao">
+      <h2>Produtos</h2>
+      <div class="filtro-produtos">
+        <input id="filtroProdutos" type="text" inputmode="search" autocomplete="off" placeholder="Buscar produto ou loja…" aria-label="Buscar produto">
+        <button id="btnLimparFiltroProdutos" type="button" aria-label="Limpar busca" style="display:none">✕</button>
+      </div>
+      <div id="resumoProdutos" class="dica"></div>
+    </section>
+    <div id="listaProdutos"></div>
+    <p id="fimProdutos" class="dica" style="text-align:center"></p>
+  </div>
 
   <p id="ajudaCamera" class="rodape">
     Se a câmera não abrir, permita o acesso à câmera nas configurações
     do navegador e abra esta página por HTTPS.
   </p>
 </main>
+
+<nav id="rodapeAcoes" aria-label="Ações">
+  <button id="btnNovaCaptura" class="botao-rodape botao-rodape-camera" type="button" aria-label="Voltar para a digitalização" title="Digitalizar"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></button>
+  <button id="btnProdutos" class="botao-rodape botao-rodape-produtos" type="button" aria-label="Produtos" title="Produtos"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg><span>Produtos</span></button>
+</nav>
 
 <script>
 "use strict";
@@ -843,6 +939,7 @@ async function enviarMotor(dados) {
   if (dados.offset !== undefined) corpo.offset = dados.offset;
   if (dados.limite !== undefined) corpo.limite = dados.limite;
   if (dados.chaves !== undefined) corpo.chaves = dados.chaves;
+  if (dados.busca !== undefined) corpo.busca = dados.busca;
 
   let resposta;
 
@@ -1171,11 +1268,52 @@ async function carregarLista(reiniciar) {
   }
 }
 
+let selecionandoTodas = false;
+
+// Seleciona (ou desmarca) todas as notas da planilha, não só as já carregadas na tela
+async function alternarSelecionarTodas() {
+  if (selecionandoTodas) return;
+
+  if (totalNotas > 0 && selecionadas.size >= totalNotas) {
+    selecionadas.clear();
+    atualizarBarraSelecao();
+    renderizarCupons();
+    return;
+  }
+
+  selecionandoTodas = true;
+  const botao = el("btnSelecionarTodas");
+  botao.disabled = true;
+  botao.textContent = "Selecionando…";
+
+  try {
+    const dados = await enviarMotor({ acao: "chaves" });
+
+    if (!dados || dados.ok === false || !Array.isArray(dados.chaves)) {
+      throw new Error((dados && dados.aviso) || "Não foi possível selecionar todas as notas.");
+    }
+
+    selecionadas.clear();
+    dados.chaves.forEach((c) => selecionadas.add(String(c)));
+    atualizarBarraSelecao();
+    renderizarCupons();
+  } catch (erro) {
+    mostrarMensagem(erro.message || "Erro ao selecionar as notas.", "erro");
+  } finally {
+    selecionandoTodas = false;
+    botao.disabled = false;
+    atualizarBarraSelecao();
+  }
+}
+
 function atualizarBarraSelecao() {
   el("acoesSelecao").style.display = modoSelecao ? "inline-flex" : "none";
   el("btnExcluirSelecionadas").textContent = "Excluir (" + selecionadas.size + ")";
   el("btnExcluirSelecionadas").disabled = selecionadas.size === 0;
   el("btnModoExcluir").classList.toggle("ativo", modoSelecao);
+
+  const todas = totalNotas > 0 && selecionadas.size >= totalNotas;
+  el("btnSelecionarTodas").textContent = todas ? "Desmarcar todas" : "Selecionar todas";
 }
 
 function definirModoSelecao(ativo) {
@@ -1191,17 +1329,25 @@ async function excluirNotas(chaves, nomeLoja) {
 
   const pergunta = lista.length === 1
     ? "Excluir esta nota" + (nomeLoja ? " (" + nomeLoja + ")" : "") + " da planilha?\n\nA linha em Compras e os itens em Itens serão apagados."
-    : "Excluir " + lista.length + " notas da planilha?\n\nAs linhas em Compras e os itens em Itens serão apagados.";
+    : "Excluir " + lista.length + " notas da planilha?\n\nAs linhas em Compras e os itens em Itens serão apagados. Isso não pode ser desfeito.";
 
   if (!confirm(pergunta)) return;
 
   mostrarMensagem("Excluindo…", "buscando");
 
   try {
-    const dados = await enviarMotor({ acao: "excluir", chaves: lista });
+    const LOTE = 500;
 
-    if (!dados || dados.ok === false) {
-      throw new Error((dados && dados.aviso) || "Não foi possível excluir.");
+    for (let i = 0; i < lista.length; i += LOTE) {
+      if (lista.length > LOTE) {
+        mostrarMensagem("Excluindo… " + Math.min(i + LOTE, lista.length) + " de " + lista.length, "buscando");
+      }
+
+      const dados = await enviarMotor({ acao: "excluir", chaves: lista.slice(i, i + LOTE) });
+
+      if (!dados || dados.ok === false) {
+        throw new Error((dados && dados.aviso) || "Não foi possível excluir.");
+      }
     }
 
     limparMensagem();
@@ -1212,17 +1358,6 @@ async function excluirNotas(chaves, nomeLoja) {
   }
 }
 
-async function atualizarLista() {
-  const botao = el("btnAtualizar");
-  botao.classList.add("girando");
-  limparMensagem();
-  try {
-    await carregarLista(true);
-  } finally {
-    botao.classList.remove("girando");
-  }
-}
-
 // Depois de ler uma nota, atualiza a lista a partir da planilha
 function renderizarCompra(dados) {
   lojaAtual = String((dados && dados.loja) || "");
@@ -1230,6 +1365,7 @@ function renderizarCompra(dados) {
 }
 
 window.addEventListener("scroll", () => {
+  if (telaAtual !== "leitura") return;
   if (carregandoLista || fimDaLista || !cupons.length) return;
   if (window.innerHeight + window.scrollY >= document.body.scrollHeight - 400) {
     carregarLista(false);
@@ -1977,12 +2113,138 @@ el("btnLancar").addEventListener("click", () => {
   lancarLink(el("linkNota").value);
 });
 
+
+/* TELAS: leitura e produtos */
+
+let telaAtual = "leitura";
+
+async function abrirProdutos() {
+  telaAtual = "produtos";
+  esconderPerguntaOutraCaptura_();
+  limparMensagem();
+  try { await pararCamera(); } catch (_) {}
+
+  el("telaLeitura").style.display = "none";
+  el("telaProdutos").style.display = "block";
+  el("btnProdutos").classList.add("ativo");
+  try { window.scrollTo(0, 0); } catch (_) {}
+
+  carregarProdutos(true);
+}
+
+/* PRODUTOS (aba Itens) */
+
+const POR_PAGINA_PRODUTOS = 50;
+let produtos = [];
+let totalProdutos = 0;
+let proximoOffsetProdutos = 0;
+let fimProdutos = false;
+let carregandoProdutos = false;
+let sequenciaProdutos = 0;
+let timerBuscaProdutos = null;
+
+function criarCartaoProduto(p) {
+  const cartao = document.createElement("article");
+  cartao.className = "produto";
+
+  const unitario = p.precoUnitario;
+  cartao.innerHTML = `
+    <div class="produto-nome">${escaparHtml(p.descricao || "Produto")}</div>
+    <div class="produto-meta">${escaparHtml(p.loja || "")} · ${escaparHtml(formatarDataHora(p.data))}</div>
+    <div class="produto-valores">
+      <span>${escaparHtml(p.quantidade ?? "—")} ${escaparHtml(p.unidade || "")} × ${escaparHtml(formatarDinheiro(unitario))}</span>
+      <span class="produto-total">${escaparHtml(formatarDinheiro(p.total))}</span>
+    </div>
+  `;
+  return cartao;
+}
+
+function renderizarProdutos() {
+  const lista = el("listaProdutos");
+  lista.replaceChildren();
+  produtos.forEach((p) => lista.appendChild(criarCartaoProduto(p)));
+
+  el("resumoProdutos").textContent = carregandoProdutos && !produtos.length
+    ? "Carregando…"
+    : totalProdutos + (totalProdutos === 1 ? " produto" : " produtos");
+
+  el("fimProdutos").textContent = carregandoProdutos && produtos.length
+    ? "Carregando…"
+    : (produtos.length && !fimProdutos ? "Role para ver mais" : "");
+}
+
+async function carregarProdutos(reiniciar) {
+  if (carregandoProdutos && !reiniciar) return;
+  if (!reiniciar && fimProdutos) return;
+
+  const minha = ++sequenciaProdutos;
+  const offset = reiniciar ? 0 : proximoOffsetProdutos;
+  const busca = el("filtroProdutos").value.trim();
+
+  carregandoProdutos = true;
+  if (reiniciar) { produtos = []; totalProdutos = 0; }
+  renderizarProdutos();
+
+  try {
+    const dados = await enviarMotor({
+      acao: "produtos",
+      busca: busca,
+      offset: offset,
+      limite: POR_PAGINA_PRODUTOS
+    });
+
+    if (minha !== sequenciaProdutos) return;   // chegou uma busca mais nova
+
+    if (!dados || dados.ok === false || !Array.isArray(dados.produtos)) {
+      throw new Error((dados && dados.aviso) || "Não foi possível ler a lista de produtos.");
+    }
+
+    produtos = reiniciar ? dados.produtos : produtos.concat(dados.produtos);
+    proximoOffsetProdutos = offset + dados.produtos.length;
+    fimProdutos = !!dados.fim;
+    totalProdutos = Number(dados.total) || 0;
+  } catch (erro) {
+    if (minha === sequenciaProdutos) {
+      mostrarMensagem(erro.message || "Erro ao carregar os produtos.", "erro");
+    }
+  } finally {
+    if (minha === sequenciaProdutos) {
+      carregandoProdutos = false;
+      renderizarProdutos();
+    }
+  }
+}
+
+window.addEventListener("scroll", () => {
+  if (telaAtual !== "produtos") return;
+  if (carregandoProdutos || fimProdutos || !produtos.length) return;
+  if (window.innerHeight + window.scrollY >= document.body.scrollHeight - 400) {
+    carregarProdutos(false);
+  }
+});
+
+el("filtroProdutos").addEventListener("input", () => {
+  el("btnLimparFiltroProdutos").style.display = el("filtroProdutos").value ? "block" : "none";
+  clearTimeout(timerBuscaProdutos);
+  timerBuscaProdutos = setTimeout(() => carregarProdutos(true), 350);
+});
+
+el("btnLimparFiltroProdutos").addEventListener("click", () => {
+  el("filtroProdutos").value = "";
+  el("btnLimparFiltroProdutos").style.display = "none";
+  clearTimeout(timerBuscaProdutos);
+  carregarProdutos(true);
+  el("filtroProdutos").focus();
+});
+
+el("btnProdutos").addEventListener("click", abrirProdutos);
+
 el("btnModoExcluir").addEventListener("click", () => definirModoSelecao(!modoSelecao));
+el("btnSelecionarTodas").addEventListener("click", alternarSelecionarTodas);
 el("btnCancelarSelecao").addEventListener("click", () => definirModoSelecao(false));
 el("btnExcluirSelecionadas").addEventListener("click", () => {
   excluirNotas(Array.from(selecionadas), "");
 });
-el("btnAtualizar").addEventListener("click", atualizarLista);
 
 carregarLista(true);
 
