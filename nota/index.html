@@ -559,6 +559,10 @@
 
     .produto-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
     .produto-nome { font-weight: 800; overflow-wrap: anywhere; }
+    .produto-data { font-size: .8rem; color: #526171; margin-bottom: 2px; }
+    .produto-endereco-linha { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+    .produto-endereco-linha .produto-endereco { flex: 1; min-width: 0; margin-top: 0; }
+    .produto-mapa { flex: none; text-decoration: none; color: #124f80; font-weight: 800; font-size: 1rem; padding: 0 4px; }
     .produto-endereco { font-size: .68rem; color: #7a8896; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .filtro-categoria { margin-top: 8px; }
     .filtro-categoria select { width: 100%; background: #fff; }
@@ -571,7 +575,7 @@
       margin-top: 8px;
       font-size: .95rem;
     }
-    .produto-total { font-weight: 800; font-size: 1.05rem; white-space: nowrap; }
+    .produto-total { font-weight: 800; font-size: 1.05rem; white-space: nowrap; color: #c62828; margin-top: 2px; }
 
     .acoes-topo {
       display: flex;
@@ -2154,13 +2158,18 @@ function criarCartaoProduto(p) {
   const cartao = document.createElement("article");
   cartao.className = "produto";
 
+  const dia = formatarDataHora(p.data).split(" ")[0];
+  const mapa = p.endereco
+    ? "https://www.google.com/maps/search/?api=1&query=" +
+      encodeURIComponent(p.endereco + (p.loja ? " " + p.loja : ""))
+    : "";
+
   cartao.innerHTML = `
-    <div class="produto-topo">
-      <div class="produto-nome">${escaparHtml(p.descricao || "Produto")}</div>
-      <span class="produto-total">${escaparHtml(formatarDinheiro(p.total))}</span>
-    </div>
-    <div class="produto-meta">${escaparHtml(p.loja || "")} · ${escaparHtml(formatarDataHora(p.data))}</div>
-    ${p.endereco ? `<div class="produto-endereco">${escaparHtml(p.endereco)}</div>` : ""}
+    <div class="produto-data">${escaparHtml(dia)}</div>
+    <div class="produto-nome">${escaparHtml(p.descricao || "Produto")}</div>
+    <div class="produto-meta">${escaparHtml(p.loja || "")}</div>
+    <div class="produto-total">${escaparHtml(formatarDinheiro(p.total))}</div>
+    ${p.endereco ? `<div class="produto-endereco-linha"><span class="produto-endereco">${escaparHtml(p.endereco)}</span><a class="produto-mapa" href="${mapa}" target="_blank" rel="noopener" aria-label="Abrir no Google Maps" title="Abrir no Google Maps">➜</a></div>` : ""}
   `;
   return cartao;
 }
