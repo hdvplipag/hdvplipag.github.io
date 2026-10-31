@@ -2168,7 +2168,7 @@ function criarCartaoProduto(p) {
     <div class="produto-data">${escaparHtml(dia)}</div>
     <div class="produto-nome">${escaparHtml(p.descricao || "Produto")}</div>
     <div class="produto-meta">${escaparHtml(p.loja || "")}</div>
-    <div class="produto-total">${escaparHtml(formatarDinheiro(p.total))}</div>
+    <div class="produto-total">${escaparHtml(formatarDinheiro(p.precoUnitario))}</div>
     ${p.endereco ? `<div class="produto-endereco-linha"><span class="produto-endereco">${escaparHtml(p.endereco)}</span><a class="produto-mapa" href="${mapa}" target="_blank" rel="noopener" aria-label="Abrir no Google Maps" title="Abrir no Google Maps">➜</a></div>` : ""}
   `;
   return cartao;
