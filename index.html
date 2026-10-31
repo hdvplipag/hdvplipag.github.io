@@ -2256,7 +2256,11 @@
       txt += '.';
       if (passados) txt += ` ${passados} de meses anteriores não serão alterado${passados === 1 ? '' : 's'}.`;
       document.getElementById('textoMover').innerText = txt;
-      const cats = Array.from(new Set((listaTransacoesGlobal || []).map(t => (t.category || '').trim()).filter(Boolean))).sort();
+      // Com filtro de tipo (Receita ou Despesa) só oferece categorias desse tipo; sem filtro, todas as categorias em uso
+      const tipoMover = ((document.getElementById('filtroTipo') || {}).value || '').trim().toLowerCase();
+      const cats = (tipoMover === 'receita' || tipoMover === 'despesa')
+        ? categoriasDoTipo(tipoMover)
+        : Array.from(new Set((listaTransacoesGlobal || []).map(t => (t.category || '').trim()).filter(Boolean))).sort();
       let html = '<option value="">Selecione...</option>';
       cats.forEach(c => { html += `<option value="${c.replace(/"/g, '&quot;')}">${c.replace(/</g, '&lt;')}</option>`; });
       html += '<option value="__nova__">+ Nova categoria...</option>';
