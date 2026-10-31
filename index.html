@@ -675,6 +675,7 @@
       <form id="formTransacao" onsubmit="salvarLancamento(event)" class="space-y-3">
         <input type="hidden" id="inputIdTransacao" value="">
         <input type="hidden" id="inputVemDeScan" value="false">
+        <input type="hidden" id="inputChaveNota" value="">
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-xs font-semibold theme-subtext mb-1">Tipo</label>
@@ -2834,6 +2835,7 @@
       document.getElementById('modalTransacaoTitulo').innerText = "Novo Lançamento";
       document.getElementById('inputIdTransacao').value = "";
       document.getElementById('inputVemDeScan').value = "false";
+      document.getElementById('inputChaveNota').value = '';
       document.getElementById('formTransacao').reset();
       definirModoVozFormulario(false);
       formularioPorNota = false;
@@ -2890,6 +2892,7 @@
       document.getElementById('formTransacao').reset();
       document.getElementById('inputIdTransacao').value = "";
       document.getElementById('inputVemDeScan').value = "false";
+      document.getElementById('inputChaveNota').value = '';
     }
 
     function abrirModalMeta() {
@@ -3195,6 +3198,7 @@
       document.getElementById('modalTransacaoTitulo').innerText = "Editar Lançamento";
       document.getElementById('inputIdTransacao').value = (item.id !== undefined && item.id !== null) ? item.id : "";
       document.getElementById('inputVemDeScan').value = "false";
+      document.getElementById('inputChaveNota').value = '';
       document.getElementById('inputTipo').value = item.type || 'Despesa';
       document.getElementById('inputDescricao').value = item.description || '';
       document.getElementById('inputCategoria').value = item.category || '';
@@ -3482,7 +3486,8 @@
         formapagto: document.getElementById('inputFormaPagto').value,
         instituicao: document.getElementById('inputInstituicao').value,
         parcelas: document.getElementById('inputFormaPagto').value === 'Crédito' ? (Math.min(99, Math.max(1, parseInt(document.getElementById('inputParcelas').value, 10) || 1))) : 1,
-        salvarPadraoLoja: vemDeScan
+        salvarPadraoLoja: vemDeScan,
+        chave: document.getElementById('inputChaveNota').value
       };
 
       if (typeof google !== 'undefined' && google.script && google.script.run) {
@@ -4885,6 +4890,7 @@
       atualizarCampoParcelas();
       document.getElementById('inputInstituicao').value = '';
       document.getElementById('inputVemDeScan').value = 'false';
+      document.getElementById('inputChaveNota').value = '';
       const detCupomLimpar = document.getElementById('detalhesTextoCupom');
       if (detCupomLimpar) detCupomLimpar.classList.add('hidden');
       const preCupomLimpar = document.getElementById('textoCupomLido');
@@ -5037,6 +5043,7 @@
       document.getElementById('inputInstituicao').value = '';
       // só aprende a categoria da loja quando ela não é a padrão "Outros"
       document.getElementById('inputVemDeScan').value = (cat && cat.toLowerCase() !== 'outros') ? 'true' : 'false';
+      document.getElementById('inputChaveNota').value = String(j.chaveAcesso || '');   // chave da nota vai para a coluna "chave" da planilha
       // sem "Ver texto lido do cupom" neste fluxo
       const detNota = document.getElementById('detalhesTextoCupom'); if (detNota) detNota.classList.add('hidden');
       const preNota = document.getElementById('textoCupomLido'); if (preNota) preNota.innerText = '';
