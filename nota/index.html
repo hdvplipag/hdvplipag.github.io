@@ -487,6 +487,7 @@
 
     .embutido #btnModoExcluir,
     .embutido #btnProdutos,
+    .embutido #btnLista,
     .embutido #cupons {
       display: none !important;
     }
@@ -568,6 +569,9 @@
 
     .produto-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
     .produto-nome { font-weight: 800; overflow-wrap: anywhere; }
+    .botao-rodape { position: relative; }
+    .botao-rodape.ativo { box-shadow: inset 0 0 0 2px #124f80; }
+    .contador-lista { position: absolute; top: 4px; right: 8px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: #c62828; color: #fff; font-size: .75rem; line-height: 20px; text-align: center; }
     .topo-produtos { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
     .topo-produtos h2 { margin: 0; }
     .menu-lista-ancora { position: relative; }
@@ -833,16 +837,7 @@
   <!-- Tela de produtos (aba Itens) -->
   <div id="telaProdutos" style="display:none">
     <section class="cartao">
-      <div class="topo-produtos">
-        <h2>Produtos</h2>
-        <div class="menu-lista-ancora">
-          <button id="btnImprimirLista" class="botao-camera-pequeno" type="button" style="display:none" aria-label="Imprimir ou enviar a lista" title="Imprimir ou enviar a lista"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></button>
-          <div id="menuLista" class="menu-lista" style="display:none">
-            <button id="btnImprimir" type="button">🖨️ Imprimir</button>
-            <button id="btnWhatsapp" type="button">💬 Enviar pelo WhatsApp</button>
-          </div>
-        </div>
-      </div>
+      <h2>Produtos</h2>
       <div class="filtro-produtos">
         <svg class="lupa-busca" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#6b7a89" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input id="filtroProdutos" type="text" inputmode="search" autocomplete="off" placeholder="Buscar produto…" aria-label="Buscar produto">
@@ -853,16 +848,28 @@
       </div>
       <div id="resumoProdutos" class="dica"></div>
     </section>
-    <section id="cartaoLista" class="cartao" style="display:none">
+    <div id="listaProdutos"></div>
+    <p id="fimProdutos" class="dica" style="text-align:center"></p>
+  </div>
+
+  <!-- Tela da lista de compras -->
+  <div id="telaLista" style="display:none">
+    <section id="cartaoLista" class="cartao">
       <div class="topo-produtos">
-        <h2>Minha lista</h2>
-        <button id="btnLimparLista" class="botao-link" type="button">Limpar lista</button>
+        <h2>Lista</h2>
+        <div class="menu-lista-ancora">
+          <button id="btnImprimirLista" class="botao-camera-pequeno" type="button" style="display:none" aria-label="Imprimir ou enviar a lista" title="Imprimir ou enviar a lista"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></button>
+          <div id="menuLista" class="menu-lista" style="display:none">
+            <button id="btnImprimir" type="button">🖨️ Imprimir</button>
+            <button id="btnWhatsapp" type="button">💬 Enviar pelo WhatsApp</button>
+          </div>
+        </div>
       </div>
+      <p id="listaVazia" class="dica">Nenhum produto na lista. Busque em Produtos e escolha no campo "Produtos já buscados".</p>
+      <div style="margin-top:8px"><button id="btnLimparLista" class="botao-link" type="button" style="display:none">Limpar lista</button></div>
       <div id="itensLista"></div>
       <div id="totalLista" class="total-lista"></div>
     </section>
-    <div id="listaProdutos"></div>
-    <p id="fimProdutos" class="dica" style="text-align:center"></p>
   </div>
 
   <p id="ajudaCamera" class="rodape">
@@ -874,6 +881,7 @@
 <nav id="rodapeAcoes" aria-label="Ações">
   <button id="btnNovaCaptura" class="botao-rodape botao-rodape-camera" type="button" aria-label="Voltar para a digitalização" title="Digitalizar"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></button>
   <button id="btnProdutos" class="botao-rodape botao-rodape-produtos" type="button" aria-label="Produtos" title="Produtos"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg><span>Produtos</span></button>
+  <button id="btnLista" class="botao-rodape botao-rodape-produtos" type="button" aria-label="Lista" title="Lista"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3.500" cy="6" r="1"/><circle cx="3.500" cy="12" r="1"/><circle cx="3.500" cy="18" r="1"/></svg><span>Lista</span><b id="contadorLista" class="contador-lista" style="display:none"></b></button>
 </nav>
 
 <script>
@@ -2225,12 +2233,29 @@ async function abrirProdutos() {
   try { await pararCamera(); } catch (_) {}
 
   el("telaLeitura").style.display = "none";
+  el("telaLista").style.display = "none";
+  el("btnLista").classList.remove("ativo");
   el("telaProdutos").style.display = "block";
   el("btnProdutos").classList.add("ativo");
   try { window.scrollTo(0, 0); } catch (_) {}
 
   carregarProdutos(true);
   aquecerProdutos();
+}
+
+async function abrirLista() {
+  telaAtual = "lista";
+  esconderPerguntaOutraCaptura_();
+  limparMensagem();
+  try { await pararCamera(); } catch (_) {}
+
+  el("telaLeitura").style.display = "none";
+  el("telaProdutos").style.display = "none";
+  el("btnProdutos").classList.remove("ativo");
+  el("telaLista").style.display = "block";
+  el("btnLista").classList.add("ativo");
+  try { window.scrollTo(0, 0); } catch (_) {}
+  renderizarListaCompras();
 }
 
 /* PRODUTOS (aba Itens) */
@@ -2435,9 +2460,12 @@ function renderizarBuscados() {
 }
 
 function renderizarListaCompras() {
-  const cartao = el("cartaoLista");
-  cartao.style.display = listaCompras.length ? "block" : "none";
+  el("listaVazia").style.display = listaCompras.length ? "none" : "block";
+  el("btnLimparLista").style.display = listaCompras.length ? "" : "none";
   el("btnImprimirLista").style.display = listaCompras.length ? "" : "none";
+  const cont = el("contadorLista");
+  cont.textContent = String(listaCompras.length);
+  cont.style.display = listaCompras.length ? "block" : "none";
   if (!listaCompras.length) el("menuLista").style.display = "none";
 
   const caixa = el("itensLista");
@@ -2553,6 +2581,7 @@ el("btnLimparFiltroProdutos").addEventListener("click", () => {
 });
 
 el("btnProdutos").addEventListener("click", abrirProdutos);
+el("btnLista").addEventListener("click", abrirLista);
 
 el("btnModoExcluir").addEventListener("click", () => definirModoSelecao(!modoSelecao));
 el("btnSelecionarTodas").addEventListener("click", alternarSelecionarTodas);
