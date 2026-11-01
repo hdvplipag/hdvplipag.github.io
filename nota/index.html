@@ -572,14 +572,15 @@
     .botao-rodape { position: relative; }
     .botao-rodape.ativo { box-shadow: inset 0 0 0 2px #124f80; }
     .contador-lista { position: absolute; top: 4px; right: 8px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: #c62828; color: #fff; font-size: .75rem; line-height: 20px; text-align: center; }
+    .produto { position: relative; }
+    .produto-marcar { position: absolute; top: 10px; right: 12px; display: flex; align-items: center; gap: 6px; font-size: .8rem; font-weight: 700; color: #124f80; cursor: pointer; }
+    .check-produto { width: 24px; height: 24px; min-height: 0; margin: 0; accent-color: #124f80; }
     .topo-produtos { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
     .topo-produtos h2 { margin: 0; }
     .menu-lista-ancora { position: relative; }
     .menu-lista { position: absolute; right: 0; top: 50px; z-index: 30; background: #fff; border: 1px solid #cfe0f1; border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,.15); padding: 6px; min-width: 220px; }
     .menu-lista button { display: block; width: 100%; text-align: left; background: transparent; color: #17324d; font-weight: 700; padding: 12px; border-radius: 8px; min-height: 44px; }
     .menu-lista button:active { background: #eaf4ff; }
-    .filtro-buscados { margin-top: 8px; }
-    .filtro-buscados select { width: 100%; background: #fff; }
     .botao-link { background: transparent; color: #b3261e; font-weight: 700; min-height: 36px; padding: 0 6px; }
     .item-lista { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid #e4ecf4; }
     .item-lista:first-child { border-top: 0; }
@@ -843,9 +844,6 @@
         <input id="filtroProdutos" type="text" inputmode="search" autocomplete="off" placeholder="Buscar produto…" aria-label="Buscar produto">
         <button id="btnLimparFiltroProdutos" type="button" aria-label="Limpar busca" style="display:none">✕</button>
       </div>
-      <div class="filtro-buscados" id="blocoBuscados" style="display:none">
-        <select id="selBuscados" aria-label="Produtos já buscados"></select>
-      </div>
       <div id="resumoProdutos" class="dica"></div>
     </section>
     <div id="listaProdutos"></div>
@@ -858,14 +856,14 @@
       <div class="topo-produtos">
         <h2>Lista</h2>
         <div class="menu-lista-ancora">
-          <button id="btnImprimirLista" class="botao-camera-pequeno" type="button" style="display:none" aria-label="Imprimir ou enviar a lista" title="Imprimir ou enviar a lista"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></button>
+          <button id="btnImprimirLista" class="botao-camera-pequeno" type="button" aria-label="Imprimir ou enviar a lista" title="Imprimir ou enviar a lista"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></button>
           <div id="menuLista" class="menu-lista" style="display:none">
             <button id="btnImprimir" type="button">🖨️ Imprimir</button>
             <button id="btnWhatsapp" type="button">💬 Enviar pelo WhatsApp</button>
           </div>
         </div>
       </div>
-      <p id="listaVazia" class="dica">Nenhum produto na lista. Busque em Produtos e escolha no campo "Produtos já buscados".</p>
+      <p id="listaVazia" class="dica">Nenhum produto na lista. Busque em Produtos e marque a caixa do produto para enviá-lo para a lista.</p>
       <div style="margin-top:8px"><button id="btnLimparLista" class="botao-link" type="button" style="display:none">Limpar lista</button></div>
       <div id="itensLista"></div>
       <div id="totalLista" class="total-lista"></div>
@@ -2280,12 +2278,16 @@ function criarCartaoProduto(p) {
     : "";
 
   cartao.innerHTML = `
+    <label class="produto-marcar"><input type="checkbox" class="check-produto" aria-label="Enviar para a lista"><span>Lista</span></label>
     <div class="produto-data">${escaparHtml(dia)}</div>
     <div class="produto-nome">${escaparHtml(p.descricao || "Produto")}</div>
     <div class="produto-meta">${escaparHtml(p.loja || "")}</div>
     ${p.endereco ? `<div class="produto-endereco-linha"><span class="produto-endereco">${escaparHtml(p.endereco)}</span><a class="produto-mapa" href="${mapa}" target="_blank" rel="noopener" aria-label="Abrir no Google Maps" title="Abrir no Google Maps"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7z" fill="#ea4335"/><path d="M12 2a7 7 0 0 0-7 7c0 1.2.4 2.600 1 4L12 6z" fill="#fbbc04"/><path d="M12 2a7 7 0 0 1 7 7c0 1.500-.5 3-1.200 4.400L12 6z" fill="#4285f4"/><path d="M12 22s3.200-3.800 5.200-7.800L12 9z" fill="#34a853"/><circle cx="12" cy="9" r="2.600" fill="#fff"/></svg></a></div>` : ""}
     <div class="produto-total">${escaparHtml(formatarDinheiro(p.precoUnitario))}</div>
   `;
+  const caixa = cartao.querySelector(".check-produto");
+  caixa.checked = produtoNaLista(p);
+  caixa.addEventListener("change", () => alternarProdutoNaLista(p, caixa.checked));
   return cartao;
 }
 
@@ -2373,7 +2375,6 @@ async function carregarProdutos(reiniciar) {
     }
 
     erroProdutos = false;
-    if (busca) guardarBuscados(dados.produtos);
     produtos = reiniciar ? dados.produtos : produtos.concat(dados.produtos);
     proximoOffsetProdutos = offset + dados.produtos.length;
     fimProdutos = !!dados.fim;
@@ -2400,10 +2401,8 @@ window.addEventListener("scroll", () => {
 });
 
 
-/* LISTA DE COMPRAS: produtos já buscados + lista escolhida (guardados no celular) */
-const CHAVE_BUSCADOS = "nota_buscados";
+/* LISTA DE COMPRAS: lista de produtos buscados (guardados no celular) */
 const CHAVE_LISTA = "nota_lista";
-let buscados = lerLocal(CHAVE_BUSCADOS);
 let listaCompras = lerLocal(CHAVE_LISTA);
 
 function lerLocal(chave) {
@@ -2421,52 +2420,39 @@ function chaveProduto(p) {
   return String(p.descricao || "").toLowerCase().trim() + "|" + String(p.loja || "").toLowerCase().trim();
 }
 
-function guardarBuscados(lista) {
-  let mudou = false;
-  (lista || []).forEach((p) => {
-    const item = {
-      k: chaveProduto(p),
-      descricao: String(p.descricao || ""),
-      loja: String(p.loja || ""),
-      endereco: String(p.endereco || ""),
-      preco: Number(p.precoUnitario) || 0
-    };
-    const i = buscados.findIndex((b) => b.k === item.k);
-    if (i >= 0) { buscados[i] = item; } else { buscados.push(item); }
-    mudou = true;
-  });
-  if (!mudou) return;
-  buscados.sort((a, b) => a.descricao.localeCompare(b.descricao, "pt-BR"));
-  buscados = buscados.slice(0, 300);
-  gravarLocal(CHAVE_BUSCADOS, buscados);
-  renderizarBuscados();
+function itemDaLista(p) {
+  return {
+    k: chaveProduto(p),
+    descricao: String(p.descricao || ""),
+    loja: String(p.loja || ""),
+    endereco: String(p.endereco || ""),
+    preco: Number(p.precoUnitario) || 0
+  };
 }
 
-function renderizarBuscados() {
-  const sel = el("selBuscados");
-  el("blocoBuscados").style.display = buscados.length ? "block" : "none";
-  sel.innerHTML = "";
-  const ph = document.createElement("option");
-  ph.value = "";
-  ph.textContent = "Produtos já buscados (" + buscados.length + ") — escolha para a lista";
-  sel.appendChild(ph);
-  buscados.forEach((b) => {
-    const o = document.createElement("option");
-    o.value = b.k;
-    o.textContent = b.descricao + " · " + b.loja + " · " + formatarDinheiro(b.preco);
-    sel.appendChild(o);
-  });
-  sel.value = "";
+function produtoNaLista(p) {
+  const k = chaveProduto(p);
+  return listaCompras.some((b) => b.k === k);
+}
+
+// Marcar o checkbox do produto envia para a Lista; desmarcar tira da Lista
+function alternarProdutoNaLista(p, marcado) {
+  const item = itemDaLista(p);
+  listaCompras = listaCompras.filter((b) => b.k !== item.k);
+  if (marcado) {
+    listaCompras.push(item);
+    listaCompras.sort((a, b) => a.descricao.localeCompare(b.descricao, "pt-BR"));
+  }
+  gravarLocal(CHAVE_LISTA, listaCompras);
+  renderizarListaCompras();
 }
 
 function renderizarListaCompras() {
   el("listaVazia").style.display = listaCompras.length ? "none" : "block";
   el("btnLimparLista").style.display = listaCompras.length ? "" : "none";
-  el("btnImprimirLista").style.display = listaCompras.length ? "" : "none";
   const cont = el("contadorLista");
   cont.textContent = String(listaCompras.length);
   cont.style.display = listaCompras.length ? "block" : "none";
-  if (!listaCompras.length) el("menuLista").style.display = "none";
 
   const caixa = el("itensLista");
   caixa.replaceChildren();
@@ -2484,6 +2470,7 @@ function renderizarListaCompras() {
       listaCompras = listaCompras.filter((x) => x.k !== b.k);
       gravarLocal(CHAVE_LISTA, listaCompras);
       renderizarListaCompras();
+      if (typeof renderizarProdutos === "function") renderizarProdutos();
     });
     caixa.appendChild(linha);
   });
@@ -2523,23 +2510,12 @@ function imprimirLista() {
   }, 300);
 }
 
-el("selBuscados").addEventListener("change", () => {
-  const k = el("selBuscados").value;
-  if (!k) return;
-  const item = buscados.find((b) => b.k === k);
-  if (item && !listaCompras.some((x) => x.k === k)) {
-    listaCompras.push(item);
-    gravarLocal(CHAVE_LISTA, listaCompras);
-    renderizarListaCompras();
-  }
-  el("selBuscados").value = "";
-});
-
 el("btnLimparLista").addEventListener("click", () => {
   if (!confirm("Limpar toda a lista?")) return;
   listaCompras = [];
   gravarLocal(CHAVE_LISTA, listaCompras);
   renderizarListaCompras();
+  renderizarProdutos();
 });
 
 el("btnImprimirLista").addEventListener("click", (ev) => {
@@ -2550,11 +2526,13 @@ el("btnImprimirLista").addEventListener("click", (ev) => {
 
 el("btnImprimir").addEventListener("click", () => {
   el("menuLista").style.display = "none";
+  if (!listaCompras.length) return;
   imprimirLista();
 });
 
 el("btnWhatsapp").addEventListener("click", () => {
   el("menuLista").style.display = "none";
+  if (!listaCompras.length) return;
   window.open("https://wa.me/?text=" + encodeURIComponent(textoDaLista()), "_blank", "noopener");
 });
 
@@ -2563,7 +2541,6 @@ document.addEventListener("click", (ev) => {
   if (m.style.display !== "none" && !m.contains(ev.target)) m.style.display = "none";
 });
 
-renderizarBuscados();
 renderizarListaCompras();
 
 el("filtroProdutos").addEventListener("input", () => {
