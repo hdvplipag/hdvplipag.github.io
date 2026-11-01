@@ -2327,7 +2327,7 @@ async function abrirProdutos() {
   el("btnLista").classList.add("ativo");
   try { window.scrollTo(0, 0); } catch (_) {}
 
-  carregarProdutos(true);
+  limparTelaBusca();
   aquecerProdutos();
 }
 
@@ -2365,10 +2365,10 @@ function criarCartaoProduto(p, semCheckbox) {
   caixa.checked = produtoNaLista(p);
   caixa.addEventListener("change", () => {
     if (!caixa.checked) return;
-    // Só o produto marcado sai da tela e vai para a lista; os demais ficam acumulados
+    // O produto marcado vai para a lista e a tela fica em branco para a próxima busca
     alternarProdutoNaLista(p, true);
-    tirarDosAcumulados(p);
-    renderizarProdutos();
+    limparTelaBusca();
+    try { el("filtroProdutos").focus(); } catch (_) {}
   });
   return cartao;
 }
@@ -2801,8 +2801,7 @@ el("sacolaFolha").addEventListener("click", (ev) => {
 });
 
 /* PRODUTOS DA BUSCA ATUAL (a cada nova busca a relação anterior é limpa) */
-const CHAVE_ACUMULADOS = "nota_acumulados";
-let acumulados = lerLocal(CHAVE_ACUMULADOS);
+let acumulados = [];
 
 function acumularProdutos(lista) {
   const novos = [];
@@ -2812,21 +2811,20 @@ function acumularProdutos(lista) {
   });
   // cada nova busca substitui a relação anterior
   acumulados = novos;
-  gravarLocal(CHAVE_ACUMULADOS, acumulados);
 }
 
-function nomeSemelhante(p) {
-  return String(p.descricao || "")
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase().replace(/\s+/g, " ").trim();
-}
-
-// Remove da relação o produto marcado e os semelhantes (mesma descrição em outras lojas)
-function tirarDosAcumulados(p) {
-  const nome = nomeSemelhante(p);
-  const k = chaveProduto(p);
-  acumulados = acumulados.filter((a) => chaveProduto(a) !== k && nomeSemelhante(a) !== nome);
-  gravarLocal(CHAVE_ACUMULADOS, acumulados);
+// Limpa a tela de busca: sem resultados e com o campo em branco, pronta para outro produto
+function limparTelaBusca() {
+  acumulados = [];
+  produtos = [];
+  totalProdutos = 0;
+  erroProdutos = false;
+  sequenciaProdutos++;            // descarta qualquer busca ainda em andamento
+  clearTimeout(timerBuscaProdutos);
+  el("filtroProdutos").value = "";
+  el("btnLimparFiltroProdutos").style.display = "none";
+  carregandoProdutos = false;
+  renderizarProdutos();
 }
 
 renderizarListaCompras();
