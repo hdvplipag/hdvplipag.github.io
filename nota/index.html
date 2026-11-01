@@ -1652,8 +1652,15 @@ async function pedirApelidoDaNota(dados) {
 
   const apelido = await perguntarApelido(loja);
   if (!apelido) return;
-  await salvarApelido(loja, apelido, dados.chaveAcesso, null);
-  carregarLista(true);
+
+  // círculo girando com três pontinhos até a tela mostrar a nota já com o apelido
+  el("carregando").classList.add("visivel");
+  try {
+    await salvarApelido(loja, apelido, dados.chaveAcesso, null);
+    await carregarLista(true);
+  } finally {
+    el("carregando").classList.remove("visivel");
+  }
 }
 
 
