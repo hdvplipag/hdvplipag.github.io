@@ -600,6 +600,7 @@
     .modal-fundo.visivel { display: flex; }
     #confirmacao { z-index: 70; }
     #apelidoModal { z-index: 65; align-items: center; justify-content: center; background: rgba(15, 30, 45, .55); }
+    #apelidoModal p { font-weight: 800; color: #17324d; margin-bottom: 14px; }
     #apelidoModal .modal-caixa { border-top: 6px solid #f5b301; animation: surgirAviso .2s ease-out; }
     @keyframes surgirAviso { from { transform: scale(.94); opacity: 0; } to { transform: scale(1); opacity: 1; } }
     .modal-caixa { width: 100%; max-width: 340px; background: #fff; border-radius: 20px; padding: 22px 20px 18px; text-align: center; box-shadow: 0 18px 50px rgba(0,0,0,.3); }
@@ -916,9 +917,10 @@
 <div id="apelidoModal" class="modal-fundo" role="dialog" aria-modal="true" aria-labelledby="apelidoTitulo">
   <div class="modal-caixa">
     <div class="modal-icone" style="background:#e7f1fb"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#124f80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l1-5h16l1 5"/><path d="M4 9v11h16V9"/><path d="M9 20v-6h6v6"/></svg></div>
-    <h3 id="apelidoTitulo">Apelido da loja</h3>
+    <h3 id="apelidoTitulo">Informe o apelido da loja</h3>
     <p id="apelidoTexto"></p>
-    <input id="apelidoEntrada" type="text" maxlength="60" autocomplete="off" aria-label="Apelido da loja" style="width:100%;min-height:48px;margin:-6px 0 16px;background:#fff">
+    <label for="apelidoEntrada" style="display:block;text-align:left;font-size:.85rem;font-weight:700;color:#526171;margin:0 0 4px">Apelido</label>
+    <input id="apelidoEntrada" type="text" maxlength="60" autocomplete="off" style="width:100%;min-height:48px;margin:0 0 16px;background:#fff">
     <div class="modal-botoes">
       <button id="apelidoPular" class="modal-cancelar" type="button">Agora não</button>
       <button id="apelidoSalvar" class="modal-confirmar" type="button" style="background:#124f80">Salvar</button>
@@ -1590,7 +1592,7 @@ function perguntarApelido(loja) {
   return new Promise((resolver) => {
     const caixa = el("apelidoModal");
     const entrada = el("apelidoEntrada");
-    el("apelidoTexto").textContent = "Como você quer chamar \"" + loja + "\"?";
+    el("apelidoTexto").textContent = loja;
     entrada.value = "";
     function fechar(valor) {
       caixa.classList.remove("visivel");
@@ -1638,11 +1640,15 @@ async function pedirApelidoDaNota(dados) {
   const loja = String((dados && dados.loja) || "").trim();
   if (!loja || EMBUTIDO) return;
   if (dados.ok === false || !dados.chaveAcesso) return;   // falha ou nota repetida
-  if (String(dados.apelido || "").trim()) {                // a loja já tem apelido
-    lembrarApelido(loja, String(dados.apelido).trim());
-    return;
+
+  if (Object.prototype.hasOwnProperty.call(dados, "apelido")) {
+    // o servidor (planilha) é quem sabe: com apelido não pergunta; vazio, pergunta
+    const doServidor = String(dados.apelido || "").trim();
+    lembrarApelido(loja, doServidor);
+    if (doServidor) return;
+  } else if (lojaTemApelido(loja)) {
+    return;                                                 // servidor antigo: usa o que o celular lembra
   }
-  if (lojaTemApelido(loja)) return;                         // já informado antes: não pergunta
 
   const apelido = await perguntarApelido(loja);
   if (!apelido) return;
