@@ -2378,11 +2378,14 @@ function criarCartaoProduto(p, semCheckbox) {
   // Maps: primeiro o bairro, depois o apelido e o endereço (rua, número, cidade),
   // para não cair numa rua de mesmo nome em outro bairro
   const partesEnd = String(p.endereco || "").split(" - ");
-  const ruaECidade = (partesEnd.length > 1 ? partesEnd.slice(1).join(" - ") : partesEnd[0])
-    .replace(/(?:^|,\s*)S\/N\b/i, "")
+  const bairroMapa = p.bairro || (partesEnd.length > 1 ? partesEnd[0].trim() : "");
+  let ruaECidade = (partesEnd.length > 1 ? partesEnd.slice(1).join(" - ") : partesEnd[0])
+    // número zerado ou 1 é só preenchimento do cadastro da nota: não ajuda o Maps
+    .replace(/,\s*(?:S\/N|0+|1)(?=\s*(?:,|$))/i, "")
     .replace(/^[\s,]+/, "");
-  const consultaMapa = [p.bairro, p.apelido, ruaECidade]
-    .filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
+  ruaECidade = ruaECidade.replace(/,?\s*AL$/i, "").trim();
+  const consultaMapa = [bairroMapa, p.apelido, ruaECidade, "AL"]
+    .filter(Boolean).join(", ").replace(/\s+/g, " ").trim();
   const mapa = consultaMapa
     ? "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(consultaMapa)
     : "";
