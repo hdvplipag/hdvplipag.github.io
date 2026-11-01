@@ -599,7 +599,9 @@
     .modal-fundo { position: fixed; inset: 0; z-index: 60; background: rgba(15, 30, 45, .55); display: none; align-items: center; justify-content: center; padding: 20px; }
     .modal-fundo.visivel { display: flex; }
     #confirmacao { z-index: 70; }
-    #apelidoModal { z-index: 65; }
+    #apelidoModal { z-index: 65; align-items: center; justify-content: center; background: rgba(15, 30, 45, .55); }
+    #apelidoModal .modal-caixa { border-top: 6px solid #f5b301; animation: surgirAviso .2s ease-out; }
+    @keyframes surgirAviso { from { transform: scale(.94); opacity: 0; } to { transform: scale(1); opacity: 1; } }
     .modal-caixa { width: 100%; max-width: 340px; background: #fff; border-radius: 20px; padding: 22px 20px 18px; text-align: center; box-shadow: 0 18px 50px rgba(0,0,0,.3); }
     .modal-icone { width: 56px; height: 56px; margin: 0 auto 12px; border-radius: 50%; background: #fdeceb; display: flex; align-items: center; justify-content: center; }
     .modal-caixa h3 { margin: 0 0 6px; font-size: 1.15rem; color: #17324d; }
