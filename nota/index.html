@@ -371,6 +371,9 @@
       background: #fff;
     }
 
+    .apelido-status { display: block; min-height: 16px; margin-top: 3px; font-size: .78rem; color: #1b7a43; }
+    .apelido-status.erro { color: #b3261e; font-weight: 700; }
+
     .cupom-cat select {
       min-height: 44px;
       padding: 8px 10px;
@@ -1278,7 +1281,8 @@ function criarCartaoCupom(c) {
 
     <div class="cupom-cat cupom-apelido">
       <span class="rotulo">Apelido</span>
-      <input type="text" class="campo-apelido" maxlength="60" autocomplete="off" placeholder="Ex.: Mercadinho do bairro" aria-label="Apelido da loja" data-loja="${escaparHtml(c.loja || "")}" value="${escaparHtml(c.apelido || "")}">
+      <input type="text" class="campo-apelido" maxlength="60" autocomplete="off" aria-label="Apelido da loja" data-loja="${escaparHtml(c.loja || "")}" value="${escaparHtml(c.apelido || "")}">
+      <span class="apelido-status" aria-live="polite"></span>
     </div>
 
     <div class="cupom-cat">
@@ -1328,10 +1332,26 @@ function criarCartaoCupom(c) {
   }
 
   const campoApelido = cartao.querySelector(".campo-apelido");
-  campoApelido.addEventListener("change", () => {
+  const avisoApelido = cartao.querySelector(".apelido-status");
+  let ultimoSalvo = c.apelido || "";
+  let timerApelido = null;
+  function gravarApelido() {
+    clearTimeout(timerApelido);
     const novo = campoApelido.value.replace(/\s+/g, " ").trim();
-    campoApelido.value = novo;
-    salvarApelido(c.loja, novo);
+    if (novo === ultimoSalvo) return;
+    ultimoSalvo = novo;
+    c.apelido = novo;
+    salvarApelido(c.loja, novo, c.chave, avisoApelido);
+  }
+  // salva sozinho 1 segundo depois de parar de digitar, ao sair do campo e ao confirmar
+  campoApelido.addEventListener("input", () => {
+    clearTimeout(timerApelido);
+    timerApelido = setTimeout(gravarApelido, 1000);
+  });
+  campoApelido.addEventListener("change", gravarApelido);
+  campoApelido.addEventListener("blur", gravarApelido);
+  campoApelido.addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter") { ev.preventDefault(); campoApelido.blur(); }
   });
 
   cartao.querySelector("select").addEventListener("change", (ev) => {
@@ -2193,20 +2213,28 @@ async function alternarLanterna() {
 /* CATEGORIA DA LOJA */
 
 // Grava o apelido da loja (vale para todas as notas dela) e atualiza os outros cartões
-async function salvarApelido(loja, apelido) {
-  if (!loja) return;
+async function salvarApelido(loja, apelido, chave, aviso) {
+  if (!loja && !chave) return;
+  const mostrar = (txt, erro) => {
+    if (!aviso) return;
+    aviso.textContent = txt;
+    aviso.className = "apelido-status" + (erro ? " erro" : "");
+  };
+  mostrar("Salvando…");
   try {
-    const dados = await enviarMotor({ acao: "apelido", loja: loja, apelido: apelido });
+    const dados = await enviarMotor({ acao: "apelido", loja: loja, apelido: apelido, chaves: chave ? [chave] : undefined });
     if (!dados || dados.ok === false) {
-      mostrarMensagem((dados && dados.aviso) || "Não foi possível salvar o apelido.", "erro");
+      mostrar((dados && dados.aviso) || "Não foi possível salvar o apelido.", true);
       return;
     }
+    mostrar("✓ Salvo na planilha");
+    setTimeout(() => { if (aviso && aviso.textContent.indexOf("Salvo") >= 0) aviso.textContent = ""; }, 2500);
     cupons.forEach((x) => { if (x.loja === loja) x.apelido = apelido; });
     document.querySelectorAll(".campo-apelido").forEach((campo) => {
       if (campo.dataset.loja === loja) campo.value = apelido;
     });
   } catch (erro) {
-    mostrarMensagem(erro.message || "Erro ao salvar o apelido.", "erro");
+    mostrar(erro.message || "Erro ao salvar o apelido.", true);
   }
 }
 
