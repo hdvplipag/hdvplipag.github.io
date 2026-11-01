@@ -568,6 +568,7 @@
 
     .produto-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
     .produto-nome { font-weight: 800; overflow-wrap: anywhere; }
+    .produto-nao-achado { color: #c62828 !important; font-weight: 700; }
     .produto-data { font-size: .8rem; color: #526171; margin-bottom: 2px; }
     .produto-endereco-linha { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
     .produto-endereco-linha .produto-endereco { flex: 1; min-width: 0; margin-top: 0; }
@@ -2232,6 +2233,7 @@ function criarCartaoProduto(p) {
 }
 
 let spinnerProdutosAtivo = false;
+let erroProdutos = false;
 let ultimoAquecimento = 0;
 
 function temConsultaProdutos() {
@@ -2265,11 +2267,15 @@ function renderizarProdutos() {
     spinnerProdutosAtivo = false;
   }
 
+  const naoAchou = temConsultaProdutos() && !carregandoProdutos && !produtos.length && !erroProdutos;
   el("resumoProdutos").textContent = girando
     ? ""
     : (!temConsultaProdutos()
         ? "Digite o nome de um produto para buscar."
-        : totalProdutos + (totalProdutos === 1 ? " produto" : " produtos"));
+        : (naoAchou
+            ? "Produto não localizado."
+            : totalProdutos + (totalProdutos === 1 ? " produto" : " produtos")));
+  el("resumoProdutos").classList.toggle("produto-nao-achado", naoAchou);
 
   el("fimProdutos").textContent = carregandoProdutos && produtos.length
     ? "Carregando…"
@@ -2311,6 +2317,7 @@ async function carregarProdutos(reiniciar) {
       throw new Error((dados && dados.aviso) || "Não foi possível ler a lista de produtos.");
     }
 
+    erroProdutos = false;
     produtos = reiniciar ? dados.produtos : produtos.concat(dados.produtos);
     proximoOffsetProdutos = offset + dados.produtos.length;
     fimProdutos = !!dados.fim;
@@ -2318,6 +2325,7 @@ async function carregarProdutos(reiniciar) {
     preencherCategoriasProdutos(dados.categorias);
   } catch (erro) {
     if (minha === sequenciaProdutos) {
+      erroProdutos = true;
       mostrarMensagem(erro.message || "Erro ao carregar os produtos.", "erro");
     }
   } finally {
