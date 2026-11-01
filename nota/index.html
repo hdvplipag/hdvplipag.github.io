@@ -2287,7 +2287,16 @@ function criarCartaoProduto(p) {
   `;
   const caixa = cartao.querySelector(".check-produto");
   caixa.checked = produtoNaLista(p);
-  caixa.addEventListener("change", () => alternarProdutoNaLista(p, caixa.checked));
+  caixa.addEventListener("change", () => {
+    alternarProdutoNaLista(p, caixa.checked);
+    if (!caixa.checked) return;
+    // Só o produto marcado vai para a lista; a tela é limpa para uma nova busca
+    el("filtroProdutos").value = "";
+    el("btnLimparFiltroProdutos").style.display = "none";
+    clearTimeout(timerBuscaProdutos);
+    carregarProdutos(true);
+    try { window.scrollTo(0, 0); el("filtroProdutos").focus(); } catch (_) {}
+  });
   return cartao;
 }
 
