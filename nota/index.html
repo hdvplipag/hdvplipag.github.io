@@ -364,6 +364,13 @@
       color: #526171;
     }
 
+    .cupom-cat input {
+      width: 100%;
+      min-height: 44px;
+      padding: 8px 10px;
+      background: #fff;
+    }
+
     .cupom-cat select {
       min-height: 44px;
       padding: 8px 10px;
@@ -487,6 +494,7 @@
 
     .embutido #btnModoExcluir,
     .embutido #btnProdutos,
+    .embutido #btnLista,
     .embutido #cupons {
       display: none !important;
     }
@@ -857,7 +865,7 @@
   <div id="telaProdutos" style="display:none">
     <section class="cartao">
       <div class="topo-produtos">
-        <h2>Produtos</h2>
+        <h2>Lista</h2>
         <button id="btnSacola" class="botao-camera-pequeno botao-sacola" type="button" aria-label="Produtos selecionados" title="Produtos selecionados"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8h12l1 13H5z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg><b id="contadorSacola" class="contador-lista" style="display:none"></b></button>
       </div>
       <div class="filtro-produtos">
@@ -869,6 +877,21 @@
     </section>
     <div id="listaProdutos"></div>
     <p id="fimProdutos" class="dica" style="text-align:center"></p>
+  </div>
+
+  <!-- Tela Produtos: todos os produtos cadastrados, em ordem alfabética -->
+  <div id="telaTodos" style="display:none">
+    <section class="cartao">
+      <h2>Produtos</h2>
+      <div class="filtro-produtos">
+        <svg class="lupa-busca" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#6b7a89" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="filtroTodos" type="text" inputmode="search" autocomplete="off" placeholder="Buscar produto…" aria-label="Buscar produto">
+        <button id="btnLimparFiltroTodos" type="button" aria-label="Limpar busca" style="display:none">✕</button>
+      </div>
+      <div id="resumoTodos" class="dica"></div>
+    </section>
+    <div id="listaTodos"></div>
+    <p id="fimTodos" class="dica" style="text-align:center"></p>
   </div>
 
   <div id="confirmacao" class="modal-fundo" role="dialog" aria-modal="true" aria-labelledby="confTitulo">
@@ -914,6 +937,7 @@
 <nav id="rodapeAcoes" aria-label="Ações">
   <button id="btnNovaCaptura" class="botao-rodape botao-rodape-camera" type="button" aria-label="Voltar para a digitalização" title="Digitalizar"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></button>
   <button id="btnProdutos" class="botao-rodape botao-rodape-produtos" type="button" aria-label="Produtos" title="Produtos"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg><span>Produtos</span></button>
+  <button id="btnLista" class="botao-rodape botao-rodape-produtos" type="button" aria-label="Lista" title="Lista"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3.5" cy="6" r="1"/><circle cx="3.5" cy="12" r="1"/><circle cx="3.5" cy="18" r="1"/></svg><span>Lista</span><b id="contadorRodape" class="contador-lista" style="display:none"></b></button>
 </nav>
 
 <script>
@@ -1033,7 +1057,9 @@ async function enviarMotor(dados) {
   if (dados.offset !== undefined) corpo.offset = dados.offset;
   if (dados.limite !== undefined) corpo.limite = dados.limite;
   if (dados.chaves !== undefined) corpo.chaves = dados.chaves;
+  if (dados.apelido !== undefined) corpo.apelido = dados.apelido;
   if (dados.busca !== undefined) corpo.busca = dados.busca;
+  if (dados.todos) corpo.todos = true;
 
   let resposta;
 
@@ -1250,6 +1276,11 @@ function criarCartaoCupom(c) {
     </div>
     <div class="cupom-loja">${escaparHtml(c.loja || "Loja não identificada")}</div>
 
+    <div class="cupom-cat cupom-apelido">
+      <span class="rotulo">Apelido</span>
+      <input type="text" class="campo-apelido" maxlength="60" autocomplete="off" placeholder="Ex.: Mercadinho do bairro" aria-label="Apelido da loja" data-loja="${escaparHtml(c.loja || "")}" value="${escaparHtml(c.apelido || "")}">
+    </div>
+
     <div class="cupom-cat">
       <span class="rotulo">Categoria</span>
       <select aria-label="Categoria">
@@ -1295,6 +1326,13 @@ function criarCartaoCupom(c) {
       atualizarBarraSelecao();
     });
   }
+
+  const campoApelido = cartao.querySelector(".campo-apelido");
+  campoApelido.addEventListener("change", () => {
+    const novo = campoApelido.value.replace(/\s+/g, " ").trim();
+    campoApelido.value = novo;
+    salvarApelido(c.loja, novo);
+  });
 
   cartao.querySelector("select").addEventListener("change", (ev) => {
     c.categoria = ev.target.value;
@@ -1381,6 +1419,7 @@ async function carregarLista(reiniciar) {
       pagamento: String(x.pagamento || ""),
       categoria: x.categoria || "Outros",
       itens: Array.isArray(x.itens) ? x.itens : [],
+      apelido: String(x.apelido || ""),
       aberto: !!abertas[String(x.chaveAcesso || "")]
     }));
 
@@ -2153,6 +2192,24 @@ async function alternarLanterna() {
 
 /* CATEGORIA DA LOJA */
 
+// Grava o apelido da loja (vale para todas as notas dela) e atualiza os outros cartões
+async function salvarApelido(loja, apelido) {
+  if (!loja) return;
+  try {
+    const dados = await enviarMotor({ acao: "apelido", loja: loja, apelido: apelido });
+    if (!dados || dados.ok === false) {
+      mostrarMensagem((dados && dados.aviso) || "Não foi possível salvar o apelido.", "erro");
+      return;
+    }
+    cupons.forEach((x) => { if (x.loja === loja) x.apelido = apelido; });
+    document.querySelectorAll(".campo-apelido").forEach((campo) => {
+      if (campo.dataset.loja === loja) campo.value = apelido;
+    });
+  } catch (erro) {
+    mostrarMensagem(erro.message || "Erro ao salvar o apelido.", "erro");
+  }
+}
+
 async function salvarCategoria(loja, categoria) {
   if (!loja) {
     mostrarMensagem(
@@ -2265,7 +2322,9 @@ async function abrirProdutos() {
 
   el("telaLeitura").style.display = "none";
   el("telaProdutos").style.display = "block";
-  el("btnProdutos").classList.add("ativo");
+  el("telaTodos").style.display = "none";
+  el("btnProdutos").classList.remove("ativo");
+  el("btnLista").classList.add("ativo");
   try { window.scrollTo(0, 0); } catch (_) {}
 
   carregarProdutos(true);
@@ -2283,7 +2342,7 @@ let carregandoProdutos = false;
 let sequenciaProdutos = 0;
 let timerBuscaProdutos = null;
 
-function criarCartaoProduto(p) {
+function criarCartaoProduto(p, semCheckbox) {
   const cartao = document.createElement("article");
   cartao.className = "produto";
 
@@ -2294,7 +2353,7 @@ function criarCartaoProduto(p) {
     : "";
 
   cartao.innerHTML = `
-    <label class="produto-marcar"><input type="checkbox" class="check-produto" aria-label="Enviar para a lista"></label>
+    ${semCheckbox ? "" : '<label class="produto-marcar"><input type="checkbox" class="check-produto" aria-label="Enviar para a lista"></label>'}
     <div class="produto-data">${escaparHtml(dia)}</div>
     <div class="produto-nome">${escaparHtml(p.descricao || "Produto")}</div>
     <div class="produto-meta">${escaparHtml(p.loja || "")}</div>
@@ -2302,6 +2361,7 @@ function criarCartaoProduto(p) {
     <div class="produto-total">${escaparHtml(formatarDinheiro(p.precoUnitario))}</div>
   `;
   const caixa = cartao.querySelector(".check-produto");
+  if (!caixa) return cartao;
   caixa.checked = produtoNaLista(p);
   caixa.addEventListener("change", () => {
     if (!caixa.checked) return;
@@ -2422,6 +2482,124 @@ window.addEventListener("scroll", () => {
 });
 
 
+/* TELA PRODUTOS: todos os produtos cadastrados, em ordem alfabética, de 50 em 50 */
+let todos = [];
+let totalTodos = 0;
+let proximoOffsetTodos = 0;
+let fimTodosLista = false;
+let carregandoTodos = false;
+let sequenciaTodos = 0;
+let timerBuscaTodos = null;
+let erroTodos = false;
+
+async function abrirTodosProdutos() {
+  telaAtual = "todos";
+  esconderPerguntaOutraCaptura_();
+  limparMensagem();
+  try { await pararCamera(); } catch (_) {}
+
+  el("telaLeitura").style.display = "none";
+  el("telaProdutos").style.display = "none";
+  el("btnLista").classList.remove("ativo");
+  el("telaTodos").style.display = "block";
+  el("btnProdutos").classList.add("ativo");
+  try { window.scrollTo(0, 0); } catch (_) {}
+
+  carregarTodos(true);
+}
+
+function renderizarTodos() {
+  const lista = el("listaTodos");
+  lista.replaceChildren();
+  todos.forEach((p) => lista.appendChild(criarCartaoProduto(p, true)));
+
+  const girando = carregandoTodos && !todos.length;
+  if (girando) {
+    el("carregando").classList.add("visivel");
+    spinnerTodosAtivo = true;
+  } else if (spinnerTodosAtivo) {
+    el("carregando").classList.remove("visivel");
+    spinnerTodosAtivo = false;
+  }
+
+  const naoAchou = !carregandoTodos && !todos.length && !erroTodos;
+  el("resumoTodos").textContent = girando
+    ? ""
+    : (naoAchou ? "Produto não localizado." : totalTodos + (totalTodos === 1 ? " produto" : " produtos"));
+  el("resumoTodos").classList.toggle("produto-nao-achado", naoAchou);
+
+  el("fimTodos").textContent = carregandoTodos && todos.length
+    ? "Carregando…"
+    : (todos.length && !fimTodosLista ? "Role para ver mais" : "");
+}
+let spinnerTodosAtivo = false;
+
+async function carregarTodos(reiniciar) {
+  if (carregandoTodos && !reiniciar) return;
+  if (!reiniciar && fimTodosLista) return;
+
+  const minha = ++sequenciaTodos;
+  const offset = reiniciar ? 0 : proximoOffsetTodos;
+  const busca = el("filtroTodos").value.trim();
+
+  carregandoTodos = true;
+  renderizarTodos();
+
+  try {
+    const dados = await enviarMotor({
+      acao: "produtos",
+      todos: true,
+      busca: busca,
+      offset: offset,
+      limite: POR_PAGINA_PRODUTOS
+    });
+
+    if (minha !== sequenciaTodos) return;   // chegou uma busca mais nova
+
+    if (!dados || dados.ok === false || !Array.isArray(dados.produtos)) {
+      throw new Error((dados && dados.aviso) || "Não foi possível ler a lista de produtos.");
+    }
+
+    erroTodos = false;
+    todos = reiniciar ? dados.produtos : todos.concat(dados.produtos);
+    proximoOffsetTodos = offset + dados.produtos.length;
+    fimTodosLista = !!dados.fim;
+    totalTodos = Number(dados.total) || 0;
+  } catch (erro) {
+    if (minha === sequenciaTodos) {
+      erroTodos = true;
+      mostrarMensagem(erro.message || "Erro ao carregar os produtos.", "erro");
+    }
+  } finally {
+    if (minha === sequenciaTodos) {
+      carregandoTodos = false;
+      renderizarTodos();
+    }
+  }
+}
+
+el("filtroTodos").addEventListener("input", () => {
+  el("btnLimparFiltroTodos").style.display = el("filtroTodos").value ? "block" : "none";
+  clearTimeout(timerBuscaTodos);
+  timerBuscaTodos = setTimeout(() => carregarTodos(true), 250);
+});
+
+el("btnLimparFiltroTodos").addEventListener("click", () => {
+  el("filtroTodos").value = "";
+  el("btnLimparFiltroTodos").style.display = "none";
+  clearTimeout(timerBuscaTodos);
+  carregarTodos(true);
+});
+
+window.addEventListener("scroll", () => {
+  if (telaAtual !== "todos") return;
+  if (carregandoTodos || fimTodosLista || !todos.length) return;
+  if (window.innerHeight + window.scrollY >= document.body.scrollHeight - 400) {
+    carregarTodos(false);
+  }
+});
+
+
 /* LISTA DE COMPRAS: lista de produtos buscados (guardados no celular) */
 const CHAVE_LISTA = "nota_lista";
 let listaCompras = lerLocal(CHAVE_LISTA);
@@ -2469,6 +2647,9 @@ function alternarProdutoNaLista(p, marcado) {
 }
 
 function renderizarListaCompras() {
+  const rod = el("contadorRodape");
+  rod.textContent = String(listaCompras.length);
+  rod.style.display = listaCompras.length ? "block" : "none";
   const sac = el("contadorSacola");
   sac.textContent = String(listaCompras.length);
   sac.style.display = listaCompras.length ? "block" : "none";
@@ -2664,7 +2845,8 @@ el("btnLimparFiltroProdutos").addEventListener("click", () => {
   el("filtroProdutos").focus();
 });
 
-el("btnProdutos").addEventListener("click", abrirProdutos);
+el("btnLista").addEventListener("click", abrirProdutos);
+el("btnProdutos").addEventListener("click", abrirTodosProdutos);
 
 el("btnModoExcluir").addEventListener("click", () => definirModoSelecao(!modoSelecao));
 el("btnSelecionarTodas").addEventListener("click", alternarSelecionarTodas);
