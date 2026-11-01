@@ -2293,7 +2293,7 @@ function criarCartaoProduto(p) {
     : "";
 
   cartao.innerHTML = `
-    <label class="produto-marcar"><input type="checkbox" class="check-produto" aria-label="Enviar para a lista"><span>Lista</span></label>
+    <label class="produto-marcar"><input type="checkbox" class="check-produto" aria-label="Enviar para a lista"></label>
     <div class="produto-data">${escaparHtml(dia)}</div>
     <div class="produto-nome">${escaparHtml(p.descricao || "Produto")}</div>
     <div class="produto-meta">${escaparHtml(p.loja || "")}</div>
@@ -2611,7 +2611,7 @@ el("sacolaFolha").addEventListener("click", (ev) => {
   if (ev.target === el("sacolaFolha")) el("sacolaFolha").classList.remove("visivel");
 });
 
-/* PRODUTOS BUSCADOS (acumulam na tela até serem enviados para a lista) */
+/* PRODUTOS DA BUSCA ATUAL (a cada nova busca a relação anterior é limpa) */
 const CHAVE_ACUMULADOS = "nota_acumulados";
 let acumulados = lerLocal(CHAVE_ACUMULADOS);
 
@@ -2621,8 +2621,8 @@ function acumularProdutos(lista) {
     if (produtoNaLista(p)) return;
     novos.push(p);
   });
-  const chaves = new Set(novos.map(chaveProduto));
-  acumulados = novos.concat(acumulados.filter((a) => !chaves.has(chaveProduto(a)))).slice(0, 100);
+  // cada nova busca substitui a relação anterior
+  acumulados = novos;
   gravarLocal(CHAVE_ACUMULADOS, acumulados);
 }
 
