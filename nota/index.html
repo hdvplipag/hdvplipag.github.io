@@ -574,8 +574,6 @@
     .produto-endereco-linha .produto-endereco { flex: 1; min-width: 0; margin-top: 0; }
     .produto-mapa { flex: none; text-decoration: none; color: #124f80; font-weight: 800; font-size: 1rem; padding: 0 4px; }
     .produto-endereco { font-size: .68rem; color: #7a8896; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .filtro-categoria { margin-top: 8px; }
-    .filtro-categoria select { width: 100%; background: #fff; }
     .produto-meta { font-size: .85rem; color: #526171; margin-top: 3px; overflow-wrap: anywhere; }
     .produto-valores {
       display: flex;
@@ -823,9 +821,6 @@
         <svg class="lupa-busca" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#6b7a89" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input id="filtroProdutos" type="text" inputmode="search" autocomplete="off" placeholder="Buscar produto…" aria-label="Buscar produto">
         <button id="btnLimparFiltroProdutos" type="button" aria-label="Limpar busca" style="display:none">✕</button>
-      </div>
-      <div class="filtro-categoria">
-        <select id="filtroCategoriaProdutos" aria-label="Filtrar por categoria"><option value="">Todas as categorias</option></select>
       </div>
       <div id="resumoProdutos" class="dica"></div>
     </section>
@@ -2237,7 +2232,7 @@ let erroProdutos = false;
 let ultimoAquecimento = 0;
 
 function temConsultaProdutos() {
-  return !!(el("filtroProdutos").value.trim() || el("filtroCategoriaProdutos").value);
+  return !!(el("filtroProdutos").value.trim());
 }
 
 // Pede ao servidor que monte a lista em segundo plano (cache) e traz as categorias
@@ -2246,7 +2241,6 @@ async function aquecerProdutos() {
   ultimoAquecimento = Date.now();
   try {
     const dados = await enviarMotor({ acao: "produtos", limite: 1 });
-    if (dados && Array.isArray(dados.categorias)) preencherCategoriasProdutos(dados.categorias);
   } catch (_) {
     ultimoAquecimento = 0;
   }
@@ -2306,7 +2300,6 @@ async function carregarProdutos(reiniciar) {
     const dados = await enviarMotor({
       acao: "produtos",
       busca: busca,
-      categoria: el("filtroCategoriaProdutos").value,
       offset: offset,
       limite: POR_PAGINA_PRODUTOS
     });
@@ -2322,7 +2315,6 @@ async function carregarProdutos(reiniciar) {
     proximoOffsetProdutos = offset + dados.produtos.length;
     fimProdutos = !!dados.fim;
     totalProdutos = Number(dados.total) || 0;
-    preencherCategoriasProdutos(dados.categorias);
   } catch (erro) {
     if (minha === sequenciaProdutos) {
       erroProdutos = true;
@@ -2344,25 +2336,6 @@ window.addEventListener("scroll", () => {
   }
 });
 
-function preencherCategoriasProdutos(lista) {
-  const sel = el("filtroCategoriaProdutos");
-  if (!Array.isArray(lista)) return;
-  const atual = sel.value;
-  const nomes = lista.slice();
-  if (atual && nomes.indexOf(atual) === -1) nomes.push(atual);
-  sel.innerHTML = "";
-  const todas = document.createElement("option");
-  todas.value = ""; todas.textContent = "Todas as categorias";
-  sel.appendChild(todas);
-  nomes.forEach((n) => {
-    const o = document.createElement("option");
-    o.value = n; o.textContent = n;
-    sel.appendChild(o);
-  });
-  sel.value = atual;
-}
-
-el("filtroCategoriaProdutos").addEventListener("change", () => carregarProdutos(true));
 
 el("filtroProdutos").addEventListener("input", () => {
   el("btnLimparFiltroProdutos").style.display = el("filtroProdutos").value ? "block" : "none";
