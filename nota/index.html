@@ -2377,7 +2377,7 @@ function criarCartaoProduto(p, semCheckbox) {
   const dia = formatarDataHora(p.data).split(" ")[0];
   const mapa = p.endereco
     ? "https://www.google.com/maps/search/?api=1&query=" +
-      encodeURIComponent(p.endereco + (p.loja ? " " + p.loja : ""))
+      encodeURIComponent(p.endereco)
     : "";
 
   cartao.innerHTML = `
