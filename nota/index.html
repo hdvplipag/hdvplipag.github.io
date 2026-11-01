@@ -599,6 +599,7 @@
     .modal-fundo { position: fixed; inset: 0; z-index: 60; background: rgba(15, 30, 45, .55); display: none; align-items: center; justify-content: center; padding: 20px; }
     .modal-fundo.visivel { display: flex; }
     #confirmacao { z-index: 70; }
+    #apelidoModal { z-index: 65; }
     .modal-caixa { width: 100%; max-width: 340px; background: #fff; border-radius: 20px; padding: 22px 20px 18px; text-align: center; box-shadow: 0 18px 50px rgba(0,0,0,.3); }
     .modal-icone { width: 56px; height: 56px; margin: 0 auto 12px; border-radius: 50%; background: #fdeceb; display: flex; align-items: center; justify-content: center; }
     .modal-caixa h3 { margin: 0 0 6px; font-size: 1.15rem; color: #17324d; }
@@ -906,6 +907,19 @@
     <div class="modal-botoes">
       <button id="confCancelar" class="modal-cancelar" type="button">Cancelar</button>
       <button id="confOk" class="modal-confirmar" type="button">Limpar</button>
+    </div>
+  </div>
+</div>
+
+<div id="apelidoModal" class="modal-fundo" role="dialog" aria-modal="true" aria-labelledby="apelidoTitulo">
+  <div class="modal-caixa">
+    <div class="modal-icone" style="background:#e7f1fb"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#124f80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l1-5h16l1 5"/><path d="M4 9v11h16V9"/><path d="M9 20v-6h6v6"/></svg></div>
+    <h3 id="apelidoTitulo">Apelido da loja</h3>
+    <p id="apelidoTexto"></p>
+    <input id="apelidoEntrada" type="text" maxlength="60" autocomplete="off" aria-label="Apelido da loja" style="width:100%;min-height:48px;margin:-6px 0 16px;background:#fff">
+    <div class="modal-botoes">
+      <button id="apelidoPular" class="modal-cancelar" type="button">Agora não</button>
+      <button id="apelidoSalvar" class="modal-confirmar" type="button" style="background:#124f80">Salvar</button>
     </div>
   </div>
 </div>
@@ -1445,6 +1459,7 @@ async function carregarLista(reiniciar) {
     }));
 
     cupons = reiniciar ? novos : cupons.concat(novos);
+    novos.forEach((c) => { if (c.apelido) lembrarApelido(c.loja, c.apelido); });
     proximoOffset = offset + dados.compras.length;
     // a tela mostra apenas os 10 últimos: totais e seleção valem para eles
     fimDaLista = true;
@@ -1568,6 +1583,72 @@ window.addEventListener("scroll", () => {
 
 /* LANÇAMENTO DA NOTA */
 
+/* APELIDO DA LOJA: pedido logo após digitalizar uma nota */
+function perguntarApelido(loja) {
+  return new Promise((resolver) => {
+    const caixa = el("apelidoModal");
+    const entrada = el("apelidoEntrada");
+    el("apelidoTexto").textContent = "Como você quer chamar \"" + loja + "\"?";
+    entrada.value = "";
+    function fechar(valor) {
+      caixa.classList.remove("visivel");
+      el("apelidoSalvar").removeEventListener("click", salvar);
+      el("apelidoPular").removeEventListener("click", pular);
+      entrada.removeEventListener("keydown", tecla);
+      resolver(valor);
+    }
+    function salvar() { fechar(entrada.value.replace(/\s+/g, " ").trim()); }
+    function pular() { fechar(""); }
+    function tecla(ev) { if (ev.key === "Enter") { ev.preventDefault(); salvar(); } }
+    el("apelidoSalvar").addEventListener("click", salvar);
+    el("apelidoPular").addEventListener("click", pular);
+    entrada.addEventListener("keydown", tecla);
+    caixa.classList.add("visivel");
+    setTimeout(() => { try { entrada.focus(); } catch (_) {} }, 150);
+  });
+}
+
+// Lojas que já têm apelido (guardado no celular, além do que o servidor devolve)
+const CHAVE_APELIDOS = "nota_apelidos";
+function normalizarLoja(loja) {
+  return String(loja || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
+}
+function lerApelidosConhecidos() {
+  try {
+    const v = JSON.parse(localStorage.getItem(CHAVE_APELIDOS) || "{}");
+    return v && typeof v === "object" && !Array.isArray(v) ? v : {};
+  } catch (_) { return {}; }
+}
+function lembrarApelido(loja, apelido) {
+  const k = normalizarLoja(loja);
+  if (!k) return;
+  const mapa = lerApelidosConhecidos();
+  if (apelido) mapa[k] = apelido; else delete mapa[k];
+  try { localStorage.setItem(CHAVE_APELIDOS, JSON.stringify(mapa)); } catch (_) {}
+}
+function lojaTemApelido(loja) {
+  const k = normalizarLoja(loja);
+  return !!lerApelidosConhecidos()[k] ||
+    cupons.some((c) => normalizarLoja(c.loja) === k && String(c.apelido || "").trim());
+}
+
+async function pedirApelidoDaNota(dados) {
+  const loja = String((dados && dados.loja) || "").trim();
+  if (!loja || EMBUTIDO) return;
+  if (dados.ok === false || !dados.chaveAcesso) return;   // falha ou nota repetida
+  if (String(dados.apelido || "").trim()) {                // a loja já tem apelido
+    lembrarApelido(loja, String(dados.apelido).trim());
+    return;
+  }
+  if (lojaTemApelido(loja)) return;                         // já informado antes: não pergunta
+
+  const apelido = await perguntarApelido(loja);
+  if (!apelido) return;
+  await salvarApelido(loja, apelido, dados.chaveAcesso, null);
+  carregarLista(true);
+}
+
+
 async function lancarLink(link) {
   const valor = String(link || "").trim();
 
@@ -1640,6 +1721,7 @@ async function lancarLink(link) {
       Array.isArray(dados.itens)
     ) {
       renderizarCompra(dados);
+      await pedirApelidoDaNota(dados);
     } else if (dados.ok !== false) {
       mostrarMensagem(
         "A resposta não trouxe os dados esperados da nota. Confira o Apps Script.",
@@ -2214,7 +2296,7 @@ async function alternarLanterna() {
 async function salvarApelido(loja, apelido, chave, aviso) {
   if (!loja && !chave) return;
   const mostrar = (txt, erro) => {
-    if (!aviso) return;
+    if (!aviso) { if (erro) mostrarMensagem(txt, "erro"); return; }
     aviso.textContent = txt;
     aviso.className = "apelido-status" + (erro ? " erro" : "");
   };
@@ -2225,6 +2307,7 @@ async function salvarApelido(loja, apelido, chave, aviso) {
       mostrar((dados && dados.aviso) || "Não foi possível salvar o apelido.", true);
       return;
     }
+    lembrarApelido(loja, apelido);
     mostrar("✓ Salvo na planilha");
     setTimeout(() => { if (aviso && aviso.textContent.indexOf("Salvo") >= 0) aviso.textContent = ""; }, 2500);
     cupons.forEach((x) => { if (x.loja === loja) x.apelido = apelido; });
