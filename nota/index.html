@@ -2232,7 +2232,7 @@ let erroProdutos = false;
 let ultimoAquecimento = 0;
 
 function temConsultaProdutos() {
-  return !!(el("filtroProdutos").value.trim());
+  return el("filtroProdutos").value.trim().length >= 3;   // só busca com 3 letras ou mais
 }
 
 // Pede ao servidor que monte a lista em segundo plano (cache) e traz as categorias
@@ -2265,7 +2265,7 @@ function renderizarProdutos() {
   el("resumoProdutos").textContent = girando
     ? ""
     : (!temConsultaProdutos()
-        ? "Digite o nome de um produto para buscar."
+        ? "Digite as três primeiras letras de um produto para buscar."
         : (naoAchou
             ? "Produto não localizado."
             : totalProdutos + (totalProdutos === 1 ? " produto" : " produtos")));
