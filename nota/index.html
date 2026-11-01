@@ -2197,6 +2197,7 @@ async function abrirProdutos() {
   try { window.scrollTo(0, 0); } catch (_) {}
 
   carregarProdutos(true);
+  aquecerProdutos();
 }
 
 /* PRODUTOS (aba Itens) */
@@ -2231,6 +2232,23 @@ function criarCartaoProduto(p) {
 }
 
 let spinnerProdutosAtivo = false;
+let ultimoAquecimento = 0;
+
+function temConsultaProdutos() {
+  return !!(el("filtroProdutos").value.trim() || el("filtroCategoriaProdutos").value);
+}
+
+// Pede ao servidor que monte a lista em segundo plano (cache) e traz as categorias
+async function aquecerProdutos() {
+  if (Date.now() - ultimoAquecimento < 4 * 60 * 1000) return;
+  ultimoAquecimento = Date.now();
+  try {
+    const dados = await enviarMotor({ acao: "produtos", limite: 1 });
+    if (dados && Array.isArray(dados.categorias)) preencherCategoriasProdutos(dados.categorias);
+  } catch (_) {
+    ultimoAquecimento = 0;
+  }
+}
 
 function renderizarProdutos() {
   const lista = el("listaProdutos");
@@ -2249,7 +2267,9 @@ function renderizarProdutos() {
 
   el("resumoProdutos").textContent = girando
     ? ""
-    : totalProdutos + (totalProdutos === 1 ? " produto" : " produtos");
+    : (!temConsultaProdutos()
+        ? "Digite o nome de um produto para buscar."
+        : totalProdutos + (totalProdutos === 1 ? " produto" : " produtos"));
 
   el("fimProdutos").textContent = carregandoProdutos && produtos.length
     ? "Carregando…"
@@ -2261,6 +2281,15 @@ async function carregarProdutos(reiniciar) {
   if (!reiniciar && fimProdutos) return;
 
   const minha = ++sequenciaProdutos;
+
+  // Sem texto na busca (e sem categoria): lista vazia, nada é pedido ao servidor
+  if (!temConsultaProdutos()) {
+    produtos = []; totalProdutos = 0; proximoOffsetProdutos = 0; fimProdutos = true;
+    carregandoProdutos = false;
+    renderizarProdutos();
+    return;
+  }
+
   const offset = reiniciar ? 0 : proximoOffsetProdutos;
   const busca = el("filtroProdutos").value.trim();
 
