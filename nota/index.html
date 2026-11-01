@@ -893,7 +893,8 @@
           <button id="btnImprimirLista" class="botao-camera-pequeno" type="button" aria-label="Imprimir ou enviar a lista" title="Imprimir ou enviar a lista"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></button>
           <div id="menuLista" class="menu-lista" style="display:none">
             <button id="btnImprimir" type="button">🖨️ Imprimir</button>
-            <button id="btnWhatsapp" type="button">💬 Enviar pelo WhatsApp</button>
+            <button id="btnWhatsapp" type="button">💬 WhatsApp</button>
+            <button id="btnTelegram" type="button">✈️ Telegram</button>
           </div>
         </div>
         <button id="sacolaFechar" class="botao-camera-pequeno botao-lanterna" type="button" aria-label="Fechar">✕</button>
@@ -2475,15 +2476,6 @@ function renderizarListaCompras() {
   renderizarSacola();
 }
 
-function textoDaLista() {
-  let soma = 0;
-  const linhas = listaCompras.map((b) => {
-    soma += Number(b.preco) || 0;
-    return "• " + b.descricao + " — " + b.loja + " — " + formatarDinheiro(b.preco);
-  });
-  return "*Lista de compras*\n" + linhas.join("\n") + "\n\nTotal: " + formatarDinheiro(soma);
-}
-
 function imprimirLista() {
   let soma = 0;
   const linhas = listaCompras.map((b) => {
@@ -2504,6 +2496,15 @@ function imprimirLista() {
     try { quadro.contentWindow.focus(); quadro.contentWindow.print(); } catch (_) {}
     setTimeout(() => quadro.remove(), 3000);
   }, 300);
+}
+
+function textoDaLista() {
+  let soma = 0;
+  const linhas = listaCompras.map((b) => {
+    soma += Number(b.preco) || 0;
+    return "• " + b.descricao + " — " + b.loja + " — " + formatarDinheiro(b.preco);
+  });
+  return "*Lista de compras*\n" + linhas.join("\n") + "\n\nTotal: " + formatarDinheiro(soma);
 }
 
 el("btnLimparLista").addEventListener("click", async () => {
@@ -2536,6 +2537,13 @@ el("btnWhatsapp").addEventListener("click", () => {
   el("menuLista").style.display = "none";
   if (!listaCompras.length) return;
   window.open("https://wa.me/?text=" + encodeURIComponent(textoDaLista()), "_blank", "noopener");
+});
+
+el("btnTelegram").addEventListener("click", () => {
+  el("menuLista").style.display = "none";
+  if (!listaCompras.length) return;
+  const texto = textoDaLista().replace(/\*/g, "");
+  window.open("https://t.me/share/url?url=%20&text=" + encodeURIComponent(texto), "_blank", "noopener");
 });
 
 document.addEventListener("click", (ev) => {
