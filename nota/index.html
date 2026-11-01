@@ -2375,9 +2375,16 @@ function criarCartaoProduto(p, semCheckbox) {
   cartao.className = "produto";
 
   const dia = formatarDataHora(p.data).split(" ")[0];
-  const mapa = p.endereco
-    ? "https://www.google.com/maps/search/?api=1&query=" +
-      encodeURIComponent(p.endereco)
+  // Maps: primeiro o bairro, depois o apelido e o endereço (rua, número, cidade),
+  // para não cair numa rua de mesmo nome em outro bairro
+  const partesEnd = String(p.endereco || "").split(" - ");
+  const ruaECidade = (partesEnd.length > 1 ? partesEnd.slice(1).join(" - ") : partesEnd[0])
+    .replace(/(?:^|,\s*)S\/N\b/i, "")
+    .replace(/^[\s,]+/, "");
+  const consultaMapa = [p.bairro, p.apelido, ruaECidade]
+    .filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
+  const mapa = consultaMapa
+    ? "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(consultaMapa)
     : "";
 
   cartao.innerHTML = `
@@ -2385,7 +2392,7 @@ function criarCartaoProduto(p, semCheckbox) {
     <div class="produto-data">${escaparHtml(dia)}</div>
     <div class="produto-nome">${escaparHtml(p.descricao || "Produto")}</div>
     <div class="produto-meta">${escaparHtml(p.loja || "")}</div>
-    ${p.endereco ? `<div class="produto-endereco-linha"><span class="produto-endereco">${escaparHtml(p.endereco)}</span><a class="produto-mapa" href="${mapa}" target="_blank" rel="noopener" aria-label="Abrir no Google Maps" title="Abrir no Google Maps"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7z" fill="#ea4335"/><path d="M12 2a7 7 0 0 0-7 7c0 1.2.4 2.600 1 4L12 6z" fill="#fbbc04"/><path d="M12 2a7 7 0 0 1 7 7c0 1.500-.5 3-1.200 4.400L12 6z" fill="#4285f4"/><path d="M12 22s3.200-3.800 5.200-7.800L12 9z" fill="#34a853"/><circle cx="12" cy="9" r="2.600" fill="#fff"/></svg></a></div>` : ""}
+    ${(p.endereco || mapa) ? `<div class="produto-endereco-linha"><span class="produto-endereco">${escaparHtml(p.endereco)}</span><a class="produto-mapa" href="${mapa}" target="_blank" rel="noopener" aria-label="Abrir no Google Maps" title="Abrir no Google Maps"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7z" fill="#ea4335"/><path d="M12 2a7 7 0 0 0-7 7c0 1.2.4 2.600 1 4L12 6z" fill="#fbbc04"/><path d="M12 2a7 7 0 0 1 7 7c0 1.500-.5 3-1.200 4.400L12 6z" fill="#4285f4"/><path d="M12 22s3.200-3.800 5.200-7.800L12 9z" fill="#34a853"/><circle cx="12" cy="9" r="2.600" fill="#fff"/></svg></a></div>` : ""}
     <div class="produto-total">${escaparHtml(formatarDinheiro(p.precoUnitario))}</div>
   `;
   const caixa = cartao.querySelector(".check-produto");
