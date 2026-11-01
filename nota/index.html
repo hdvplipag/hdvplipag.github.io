@@ -568,6 +568,23 @@
 
     .produto-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
     .produto-nome { font-weight: 800; overflow-wrap: anywhere; }
+    .topo-produtos { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .topo-produtos h2 { margin: 0; }
+    .menu-lista-ancora { position: relative; }
+    .menu-lista { position: absolute; right: 0; top: 50px; z-index: 30; background: #fff; border: 1px solid #cfe0f1; border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,.15); padding: 6px; min-width: 220px; }
+    .menu-lista button { display: block; width: 100%; text-align: left; background: transparent; color: #17324d; font-weight: 700; padding: 12px; border-radius: 8px; min-height: 44px; }
+    .menu-lista button:active { background: #eaf4ff; }
+    .filtro-buscados { margin-top: 8px; }
+    .filtro-buscados select { width: 100%; background: #fff; }
+    .botao-link { background: transparent; color: #b3261e; font-weight: 700; min-height: 36px; padding: 0 6px; }
+    .item-lista { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid #e4ecf4; }
+    .item-lista:first-child { border-top: 0; }
+    .item-lista .info { flex: 1; min-width: 0; }
+    .item-lista .nome { font-weight: 800; overflow-wrap: anywhere; }
+    .item-lista .loja { font-size: .8rem; color: #526171; }
+    .item-lista .preco { font-weight: 800; color: #c62828; white-space: nowrap; }
+    .item-lista button { background: #fdeceb; color: #b3261e; width: 34px; min-height: 34px; height: 34px; padding: 0; border-radius: 50%; font-weight: 800; }
+    .total-lista { text-align: right; font-weight: 800; margin-top: 8px; border-top: 2px solid #cfe0f1; padding-top: 8px; }
     .produto-nao-achado { color: #c62828 !important; font-weight: 700; }
     .produto-data { font-size: .8rem; color: #526171; margin-bottom: 2px; }
     .produto-endereco-linha { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
@@ -816,13 +833,33 @@
   <!-- Tela de produtos (aba Itens) -->
   <div id="telaProdutos" style="display:none">
     <section class="cartao">
-      <h2>Produtos</h2>
+      <div class="topo-produtos">
+        <h2>Produtos</h2>
+        <div class="menu-lista-ancora">
+          <button id="btnImprimirLista" class="botao-camera-pequeno" type="button" style="display:none" aria-label="Imprimir ou enviar a lista" title="Imprimir ou enviar a lista"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></button>
+          <div id="menuLista" class="menu-lista" style="display:none">
+            <button id="btnImprimir" type="button">🖨️ Imprimir</button>
+            <button id="btnWhatsapp" type="button">💬 Enviar pelo WhatsApp</button>
+          </div>
+        </div>
+      </div>
       <div class="filtro-produtos">
         <svg class="lupa-busca" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#6b7a89" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input id="filtroProdutos" type="text" inputmode="search" autocomplete="off" placeholder="Buscar produto…" aria-label="Buscar produto">
         <button id="btnLimparFiltroProdutos" type="button" aria-label="Limpar busca" style="display:none">✕</button>
       </div>
+      <div class="filtro-buscados" id="blocoBuscados" style="display:none">
+        <select id="selBuscados" aria-label="Produtos já buscados"></select>
+      </div>
       <div id="resumoProdutos" class="dica"></div>
+    </section>
+    <section id="cartaoLista" class="cartao" style="display:none">
+      <div class="topo-produtos">
+        <h2>Minha lista</h2>
+        <button id="btnLimparLista" class="botao-link" type="button">Limpar lista</button>
+      </div>
+      <div id="itensLista"></div>
+      <div id="totalLista" class="total-lista"></div>
     </section>
     <div id="listaProdutos"></div>
     <p id="fimProdutos" class="dica" style="text-align:center"></p>
@@ -2311,6 +2348,7 @@ async function carregarProdutos(reiniciar) {
     }
 
     erroProdutos = false;
+    if (busca) guardarBuscados(dados.produtos);
     produtos = reiniciar ? dados.produtos : produtos.concat(dados.produtos);
     proximoOffsetProdutos = offset + dados.produtos.length;
     fimProdutos = !!dados.fim;
@@ -2336,6 +2374,169 @@ window.addEventListener("scroll", () => {
   }
 });
 
+
+/* LISTA DE COMPRAS: produtos já buscados + lista escolhida (guardados no celular) */
+const CHAVE_BUSCADOS = "nota_buscados";
+const CHAVE_LISTA = "nota_lista";
+let buscados = lerLocal(CHAVE_BUSCADOS);
+let listaCompras = lerLocal(CHAVE_LISTA);
+
+function lerLocal(chave) {
+  try {
+    const v = JSON.parse(localStorage.getItem(chave) || "[]");
+    return Array.isArray(v) ? v : [];
+  } catch (_) { return []; }
+}
+
+function gravarLocal(chave, valor) {
+  try { localStorage.setItem(chave, JSON.stringify(valor)); } catch (_) {}
+}
+
+function chaveProduto(p) {
+  return String(p.descricao || "").toLowerCase().trim() + "|" + String(p.loja || "").toLowerCase().trim();
+}
+
+function guardarBuscados(lista) {
+  let mudou = false;
+  (lista || []).forEach((p) => {
+    const item = {
+      k: chaveProduto(p),
+      descricao: String(p.descricao || ""),
+      loja: String(p.loja || ""),
+      endereco: String(p.endereco || ""),
+      preco: Number(p.precoUnitario) || 0
+    };
+    const i = buscados.findIndex((b) => b.k === item.k);
+    if (i >= 0) { buscados[i] = item; } else { buscados.push(item); }
+    mudou = true;
+  });
+  if (!mudou) return;
+  buscados.sort((a, b) => a.descricao.localeCompare(b.descricao, "pt-BR"));
+  buscados = buscados.slice(0, 300);
+  gravarLocal(CHAVE_BUSCADOS, buscados);
+  renderizarBuscados();
+}
+
+function renderizarBuscados() {
+  const sel = el("selBuscados");
+  el("blocoBuscados").style.display = buscados.length ? "block" : "none";
+  sel.innerHTML = "";
+  const ph = document.createElement("option");
+  ph.value = "";
+  ph.textContent = "Produtos já buscados (" + buscados.length + ") — escolha para a lista";
+  sel.appendChild(ph);
+  buscados.forEach((b) => {
+    const o = document.createElement("option");
+    o.value = b.k;
+    o.textContent = b.descricao + " · " + b.loja + " · " + formatarDinheiro(b.preco);
+    sel.appendChild(o);
+  });
+  sel.value = "";
+}
+
+function renderizarListaCompras() {
+  const cartao = el("cartaoLista");
+  cartao.style.display = listaCompras.length ? "block" : "none";
+  el("btnImprimirLista").style.display = listaCompras.length ? "" : "none";
+  if (!listaCompras.length) el("menuLista").style.display = "none";
+
+  const caixa = el("itensLista");
+  caixa.replaceChildren();
+  let soma = 0;
+  listaCompras.forEach((b) => {
+    soma += Number(b.preco) || 0;
+    const linha = document.createElement("div");
+    linha.className = "item-lista";
+    linha.innerHTML =
+      '<div class="info"><div class="nome">' + escaparHtml(b.descricao) + '</div>' +
+      '<div class="loja">' + escaparHtml(b.loja) + '</div></div>' +
+      '<span class="preco">' + escaparHtml(formatarDinheiro(b.preco)) + '</span>' +
+      '<button type="button" aria-label="Remover da lista">✕</button>';
+    linha.querySelector("button").addEventListener("click", () => {
+      listaCompras = listaCompras.filter((x) => x.k !== b.k);
+      gravarLocal(CHAVE_LISTA, listaCompras);
+      renderizarListaCompras();
+    });
+    caixa.appendChild(linha);
+  });
+  el("totalLista").textContent = listaCompras.length
+    ? listaCompras.length + (listaCompras.length === 1 ? " item" : " itens") + " · Total " + formatarDinheiro(soma)
+    : "";
+}
+
+function textoDaLista() {
+  let soma = 0;
+  const linhas = listaCompras.map((b) => {
+    soma += Number(b.preco) || 0;
+    return "• " + b.descricao + " — " + b.loja + " — " + formatarDinheiro(b.preco);
+  });
+  return "*Lista de compras*\n" + linhas.join("\n") + "\n\nTotal: " + formatarDinheiro(soma);
+}
+
+function imprimirLista() {
+  let soma = 0;
+  const linhas = listaCompras.map((b) => {
+    soma += Number(b.preco) || 0;
+    return "<tr><td>" + escaparHtml(b.descricao) + "<br><small>" + escaparHtml(b.loja) + "</small></td><td style='text-align:right;white-space:nowrap'>" + escaparHtml(formatarDinheiro(b.preco)) + "</td></tr>";
+  }).join("");
+  const doc = "<!doctype html><html lang='pt-BR'><head><meta charset='utf-8'><title>Lista de compras</title>" +
+    "<style>body{font-family:Arial,sans-serif;padding:16px}h1{font-size:20px}table{width:100%;border-collapse:collapse}td{padding:8px 4px;border-bottom:1px solid #ccc;vertical-align:top}small{color:#555}.t{text-align:right;font-weight:bold;margin-top:12px}</style></head><body>" +
+    "<h1>Lista de compras</h1><table>" + linhas + "</table><div class='t'>Total: " + escaparHtml(formatarDinheiro(soma)) + "</div></body></html>";
+
+  const quadro = document.createElement("iframe");
+  quadro.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;";
+  document.body.appendChild(quadro);
+  quadro.contentDocument.open();
+  quadro.contentDocument.write(doc);
+  quadro.contentDocument.close();
+  setTimeout(() => {
+    try { quadro.contentWindow.focus(); quadro.contentWindow.print(); } catch (_) {}
+    setTimeout(() => quadro.remove(), 3000);
+  }, 300);
+}
+
+el("selBuscados").addEventListener("change", () => {
+  const k = el("selBuscados").value;
+  if (!k) return;
+  const item = buscados.find((b) => b.k === k);
+  if (item && !listaCompras.some((x) => x.k === k)) {
+    listaCompras.push(item);
+    gravarLocal(CHAVE_LISTA, listaCompras);
+    renderizarListaCompras();
+  }
+  el("selBuscados").value = "";
+});
+
+el("btnLimparLista").addEventListener("click", () => {
+  if (!confirm("Limpar toda a lista?")) return;
+  listaCompras = [];
+  gravarLocal(CHAVE_LISTA, listaCompras);
+  renderizarListaCompras();
+});
+
+el("btnImprimirLista").addEventListener("click", (ev) => {
+  ev.stopPropagation();
+  const m = el("menuLista");
+  m.style.display = m.style.display === "none" ? "block" : "none";
+});
+
+el("btnImprimir").addEventListener("click", () => {
+  el("menuLista").style.display = "none";
+  imprimirLista();
+});
+
+el("btnWhatsapp").addEventListener("click", () => {
+  el("menuLista").style.display = "none";
+  window.open("https://wa.me/?text=" + encodeURIComponent(textoDaLista()), "_blank", "noopener");
+});
+
+document.addEventListener("click", (ev) => {
+  const m = el("menuLista");
+  if (m.style.display !== "none" && !m.contains(ev.target)) m.style.display = "none";
+});
+
+renderizarBuscados();
+renderizarListaCompras();
 
 el("filtroProdutos").addEventListener("input", () => {
   el("btnLimparFiltroProdutos").style.display = el("filtroProdutos").value ? "block" : "none";
