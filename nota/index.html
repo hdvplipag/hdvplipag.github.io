@@ -582,7 +582,24 @@
     .menu-lista button { display: block; width: 100%; text-align: left; background: transparent; color: #17324d; font-weight: 700; padding: 12px; border-radius: 8px; min-height: 44px; }
     .menu-lista button:active { background: #eaf4ff; }
     .acoes-lista { display: flex; align-items: center; gap: 8px; }
-    .botao-limpar-lista { display: flex; align-items: center; gap: 6px; height: 44px; min-height: 44px; padding: 0 14px; border-radius: 12px; background: #b3261e; color: #fff; font-weight: 700; font-size: .95rem; }
+    .botao-limpar-lista { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; min-height: 44px; padding: 0; border-radius: 12px; background: #b3261e; color: #fff; }
+    .botao-camera-pequeno.botao-lanterna.ligada { background: #f5b301; color: #3b2a00; }
+    .modal-fundo { position: fixed; inset: 0; z-index: 60; background: rgba(15, 30, 45, .55); display: none; align-items: center; justify-content: center; padding: 20px; }
+    .modal-fundo.visivel { display: flex; }
+    .modal-caixa { width: 100%; max-width: 340px; background: #fff; border-radius: 20px; padding: 22px 20px 18px; text-align: center; box-shadow: 0 18px 50px rgba(0,0,0,.3); }
+    .modal-icone { width: 56px; height: 56px; margin: 0 auto 12px; border-radius: 50%; background: #fdeceb; display: flex; align-items: center; justify-content: center; }
+    .modal-caixa h3 { margin: 0 0 6px; font-size: 1.15rem; color: #17324d; }
+    .modal-caixa p { margin: 0 0 18px; color: #526171; font-size: .95rem; }
+    .modal-botoes { display: flex; gap: 10px; }
+    .modal-botoes button { flex: 1; height: 48px; min-height: 48px; border-radius: 12px; font-weight: 800; font-size: 1rem; }
+    .modal-cancelar { background: #e7f1fb; color: #124f80; }
+    .modal-confirmar { background: #b3261e; color: #fff; }
+    .sacola-folha { align-items: flex-end; padding: 0; }
+    .sacola-folha .modal-caixa { max-width: 520px; border-radius: 20px 20px 0 0; text-align: left; max-height: 80vh; overflow-y: auto; padding-bottom: calc(18px + env(safe-area-inset-bottom)); }
+    .sacola-topo { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .sacola-topo h3 { margin: 0; }
+    .botao-sacola { position: relative; background: #e7f1fb; color: #124f80; }
+    .botao-sacola .contador-lista { top: -6px; right: -6px; }
     .botao-link { background: transparent; color: #b3261e; font-weight: 700; min-height: 36px; padding: 0 6px; }
     .item-lista { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid #e4ecf4; }
     .item-lista:first-child { border-top: 0; }
@@ -755,6 +772,7 @@
     <div class="cabecalho-leitura">
       <h2 id="tituloLeitura">Registrar compra</h2>
       <div class="acoes-topo">
+        <button id="btnLanterna" class="botao-camera-pequeno botao-lanterna" type="button" style="display:none" aria-label="Lanterna" title="Lanterna"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2h12v4l-2 3H8L6 6z"/><path d="M8 9h8v11a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2z"/><line x1="12" y1="13" x2="12" y2="16"/></svg></button>
         <button id="btnModoExcluir" style="display:none" class="botao-camera-pequeno botao-perigo" type="button" aria-label="Excluir várias notas" title="Excluir várias notas"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
       </div>
     </div>
@@ -774,10 +792,6 @@
       </p>
 
       <div class="acoes-camera">
-        <button id="btnLanterna" class="botao-secundario" type="button">
-          🔦 Lanterna
-        </button>
-
         <button id="btnFecharCamera" class="botao-secundario" type="button" style="display:none">
           Fechar câmera
         </button>
@@ -840,7 +854,10 @@
   <!-- Tela de produtos (aba Itens) -->
   <div id="telaProdutos" style="display:none">
     <section class="cartao">
-      <h2>Produtos</h2>
+      <div class="topo-produtos">
+        <h2>Produtos</h2>
+        <button id="btnSacola" class="botao-camera-pequeno botao-sacola" type="button" aria-label="Produtos selecionados" title="Produtos selecionados"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8h12l1 13H5z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg><b id="contadorSacola" class="contador-lista" style="display:none"></b></button>
+      </div>
       <div class="filtro-produtos">
         <svg class="lupa-busca" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#6b7a89" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input id="filtroProdutos" type="text" inputmode="search" autocomplete="off" placeholder="Buscar produto…" aria-label="Buscar produto">
@@ -858,7 +875,7 @@
       <div class="topo-produtos">
         <h2>Lista</h2>
         <div class="acoes-lista">
-        <button id="btnLimparLista" class="botao-limpar-lista" type="button" style="display:none" aria-label="Limpar lista" title="Limpar lista"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg><span>Limpar lista</span></button>
+        <button id="btnLimparLista" class="botao-limpar-lista" type="button" style="display:none" aria-label="Limpar lista" title="Limpar lista"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
         <div class="menu-lista-ancora">
           <button id="btnImprimirLista" class="botao-camera-pequeno" type="button" aria-label="Imprimir ou enviar a lista" title="Imprimir ou enviar a lista"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></button>
           <div id="menuLista" class="menu-lista" style="display:none">
@@ -874,7 +891,30 @@
     </section>
   </div>
 
-  <p id="ajudaCamera" class="rodape">
+  <div id="confirmacao" class="modal-fundo" role="dialog" aria-modal="true" aria-labelledby="confTitulo">
+  <div class="modal-caixa">
+    <div class="modal-icone"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#b3261e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></div>
+    <h3 id="confTitulo">Limpar a lista?</h3>
+    <p id="confTexto"></p>
+    <div class="modal-botoes">
+      <button id="confCancelar" class="modal-cancelar" type="button">Cancelar</button>
+      <button id="confOk" class="modal-confirmar" type="button">Limpar</button>
+    </div>
+  </div>
+</div>
+
+<div id="sacolaFolha" class="modal-fundo sacola-folha" role="dialog" aria-modal="true" aria-labelledby="sacolaTitulo">
+  <div class="modal-caixa">
+    <div class="sacola-topo">
+      <h3 id="sacolaTitulo">Produtos selecionados</h3>
+      <button id="sacolaFechar" class="botao-camera-pequeno botao-lanterna" type="button" aria-label="Fechar">✕</button>
+    </div>
+    <div id="sacolaItens"></div>
+    <div id="sacolaTotal" class="total-lista"></div>
+  </div>
+</div>
+
+<p id="ajudaCamera" class="rodape">
     Se a câmera não abrir, permita o acesso à câmera nas configurações
     do navegador e abra esta página por HTTPS.
   </p>
@@ -1641,7 +1681,7 @@ async function pararCamera() {
     lanternaLigada = false;
     el("btnLanterna").style.display = "none";
 
-    el("btnLanterna").textContent = "🔦 Lanterna";
+    el("btnLanterna").classList.remove("ligada");
 
     el("areaCamera").classList.remove("aberta");
     el("estadoCamera").textContent = "";
@@ -1698,7 +1738,7 @@ function atualizarBotaoLanterna_(trilha) {
   } catch (_) {
     disponivel = false;
   }
-  el("btnLanterna").style.display = disponivel ? "block" : "none";
+  el("btnLanterna").style.display = disponivel ? "flex" : "none";
 }
 
 async function iniciarLeituraAoVivoNoIphone_() {
@@ -2105,9 +2145,8 @@ async function alternarLanterna() {
 
     lanternaLigada = proximoEstado;
 
-    el("btnLanterna").textContent = lanternaLigada
-      ? "🔦 Desligar lanterna"
-      : "🔦 Lanterna";
+    el("btnLanterna").classList.toggle("ligada", lanternaLigada);
+    el("btnLanterna").setAttribute("aria-label", lanternaLigada ? "Desligar lanterna" : "Lanterna");
 
     el("estadoCamera").textContent = lanternaLigada
       ? "Lanterna ligada. Mantenha o QR Code inteiro dentro do quadrado."
@@ -2292,14 +2331,11 @@ function criarCartaoProduto(p) {
   const caixa = cartao.querySelector(".check-produto");
   caixa.checked = produtoNaLista(p);
   caixa.addEventListener("change", () => {
-    alternarProdutoNaLista(p, caixa.checked);
     if (!caixa.checked) return;
-    // Só o produto marcado vai para a lista; a tela é limpa para uma nova busca
-    el("filtroProdutos").value = "";
-    el("btnLimparFiltroProdutos").style.display = "none";
-    clearTimeout(timerBuscaProdutos);
-    carregarProdutos(true);
-    try { window.scrollTo(0, 0); el("filtroProdutos").focus(); } catch (_) {}
+    // Só o produto marcado sai da tela e vai para a lista; os demais ficam acumulados
+    alternarProdutoNaLista(p, true);
+    tirarDosAcumulados(p);
+    renderizarProdutos();
   });
   return cartao;
 }
@@ -2326,10 +2362,10 @@ async function aquecerProdutos() {
 function renderizarProdutos() {
   const lista = el("listaProdutos");
   lista.replaceChildren();
-  produtos.forEach((p) => lista.appendChild(criarCartaoProduto(p)));
+  acumulados.forEach((p) => lista.appendChild(criarCartaoProduto(p)));
 
-  // Na abertura (lista ainda vazia): círculo girando com três pontinhos
-  const girando = carregandoProdutos && !produtos.length;
+  // Na abertura (nada na tela ainda): círculo girando com três pontinhos
+  const girando = carregandoProdutos && !acumulados.length;
   if (girando) {
     el("carregando").classList.add("visivel");
     spinnerProdutosAtivo = true;
@@ -2339,18 +2375,16 @@ function renderizarProdutos() {
   }
 
   const naoAchou = temConsultaProdutos() && !carregandoProdutos && !produtos.length && !erroProdutos;
-  el("resumoProdutos").textContent = girando
-    ? ""
-    : (!temConsultaProdutos()
-        ? "Digite as três primeiras letras de um produto para buscar."
-        : (naoAchou
-            ? "Produto não localizado."
-            : totalProdutos + (totalProdutos === 1 ? " produto" : " produtos")));
+  let texto = "";
+  if (!girando) {
+    if (naoAchou) texto = "Produto não localizado.";
+    else if (acumulados.length) texto = acumulados.length + (acumulados.length === 1 ? " produto" : " produtos");
+    else if (!temConsultaProdutos()) texto = "Digite as três primeiras letras de um produto para buscar.";
+  }
+  el("resumoProdutos").textContent = texto;
   el("resumoProdutos").classList.toggle("produto-nao-achado", naoAchou);
 
-  el("fimProdutos").textContent = carregandoProdutos && produtos.length
-    ? "Carregando…"
-    : (produtos.length && !fimProdutos ? "Role para ver mais" : "");
+  el("fimProdutos").textContent = "";
 }
 
 async function carregarProdutos(reiniciar) {
@@ -2388,6 +2422,7 @@ async function carregarProdutos(reiniciar) {
     }
 
     erroProdutos = false;
+    if (reiniciar && busca) acumularProdutos(dados.produtos);
     produtos = reiniciar ? dados.produtos : produtos.concat(dados.produtos);
     proximoOffsetProdutos = offset + dados.produtos.length;
     fimProdutos = !!dados.fim;
@@ -2463,6 +2498,9 @@ function alternarProdutoNaLista(p, marcado) {
 function renderizarListaCompras() {
   el("listaVazia").style.display = listaCompras.length ? "none" : "block";
   el("btnLimparLista").style.display = listaCompras.length ? "" : "none";
+  const sac = el("contadorSacola");
+  sac.textContent = String(listaCompras.length);
+  sac.style.display = listaCompras.length ? "block" : "none";
   const cont = el("contadorLista");
   cont.textContent = String(listaCompras.length);
   cont.style.display = listaCompras.length ? "block" : "none";
@@ -2479,12 +2517,7 @@ function renderizarListaCompras() {
       '<div class="loja">' + escaparHtml(b.loja) + '</div></div>' +
       '<span class="preco">' + escaparHtml(formatarDinheiro(b.preco)) + '</span>' +
       '<button type="button" aria-label="Remover da lista">✕</button>';
-    linha.querySelector("button").addEventListener("click", () => {
-      listaCompras = listaCompras.filter((x) => x.k !== b.k);
-      gravarLocal(CHAVE_LISTA, listaCompras);
-      renderizarListaCompras();
-      if (typeof renderizarProdutos === "function") renderizarProdutos();
-    });
+    linha.querySelector("button").addEventListener("click", () => removerDaLista(b.k));
     caixa.appendChild(linha);
   });
   el("totalLista").textContent = listaCompras.length
@@ -2523,11 +2556,18 @@ function imprimirLista() {
   }, 300);
 }
 
-el("btnLimparLista").addEventListener("click", () => {
-  if (!confirm("Limpar toda a lista?")) return;
+el("btnLimparLista").addEventListener("click", async () => {
+  const n = listaCompras.length;
+  const ok = await confirmarAcao(
+    "Limpar a lista?",
+    n === 1 ? "O item será removido da lista." : "Os " + n + " itens serão removidos da lista.",
+    "Limpar"
+  );
+  if (!ok) return;
   listaCompras = [];
   gravarLocal(CHAVE_LISTA, listaCompras);
   renderizarListaCompras();
+  renderizarSacola();
   renderizarProdutos();
 });
 
@@ -2553,6 +2593,96 @@ document.addEventListener("click", (ev) => {
   const m = el("menuLista");
   if (m.style.display !== "none" && !m.contains(ev.target)) m.style.display = "none";
 });
+
+
+/* CONFIRMAÇÃO PERSONALIZADA */
+function confirmarAcao(titulo, texto, rotuloOk) {
+  return new Promise((resolver) => {
+    el("confTitulo").textContent = titulo;
+    el("confTexto").textContent = texto;
+    el("confOk").textContent = rotuloOk || "Confirmar";
+    const caixa = el("confirmacao");
+    function fechar(r) {
+      caixa.classList.remove("visivel");
+      el("confOk").removeEventListener("click", ok);
+      el("confCancelar").removeEventListener("click", cancelar);
+      caixa.removeEventListener("click", fundo);
+      resolver(r);
+    }
+    function ok() { fechar(true); }
+    function cancelar() { fechar(false); }
+    function fundo(ev) { if (ev.target === caixa) fechar(false); }
+    el("confOk").addEventListener("click", ok);
+    el("confCancelar").addEventListener("click", cancelar);
+    caixa.addEventListener("click", fundo);
+    caixa.classList.add("visivel");
+  });
+}
+
+/* SACOLA: produtos selecionados */
+function removerDaLista(k) {
+  listaCompras = listaCompras.filter((x) => x.k !== k);
+  gravarLocal(CHAVE_LISTA, listaCompras);
+  renderizarListaCompras();
+  renderizarSacola();
+}
+
+function renderizarSacola() {
+  const caixa = el("sacolaItens");
+  caixa.replaceChildren();
+  let soma = 0;
+  if (!listaCompras.length) {
+    const vazio = document.createElement("p");
+    vazio.className = "dica";
+    vazio.textContent = "Nenhum produto selecionado ainda. Marque a caixa \"Lista\" em um produto.";
+    caixa.appendChild(vazio);
+  }
+  listaCompras.forEach((b) => {
+    soma += Number(b.preco) || 0;
+    const linha = document.createElement("div");
+    linha.className = "item-lista";
+    linha.innerHTML =
+      '<div class="info"><div class="nome">' + escaparHtml(b.descricao) + '</div>' +
+      '<div class="loja">' + escaparHtml(b.loja) + '</div></div>' +
+      '<span class="preco">' + escaparHtml(formatarDinheiro(b.preco)) + '</span>' +
+      '<button type="button" aria-label="Remover da lista">✕</button>';
+    linha.querySelector("button").addEventListener("click", () => removerDaLista(b.k));
+    caixa.appendChild(linha);
+  });
+  el("sacolaTotal").textContent = listaCompras.length
+    ? listaCompras.length + (listaCompras.length === 1 ? " item" : " itens") + " · Total " + formatarDinheiro(soma)
+    : "";
+}
+
+el("btnSacola").addEventListener("click", () => {
+  renderizarSacola();
+  el("sacolaFolha").classList.add("visivel");
+});
+el("sacolaFechar").addEventListener("click", () => el("sacolaFolha").classList.remove("visivel"));
+el("sacolaFolha").addEventListener("click", (ev) => {
+  if (ev.target === el("sacolaFolha")) el("sacolaFolha").classList.remove("visivel");
+});
+
+/* PRODUTOS BUSCADOS (acumulam na tela até serem enviados para a lista) */
+const CHAVE_ACUMULADOS = "nota_acumulados";
+let acumulados = lerLocal(CHAVE_ACUMULADOS);
+
+function acumularProdutos(lista) {
+  const novos = [];
+  (lista || []).forEach((p) => {
+    if (produtoNaLista(p)) return;
+    novos.push(p);
+  });
+  const chaves = new Set(novos.map(chaveProduto));
+  acumulados = novos.concat(acumulados.filter((a) => !chaves.has(chaveProduto(a)))).slice(0, 100);
+  gravarLocal(CHAVE_ACUMULADOS, acumulados);
+}
+
+function tirarDosAcumulados(p) {
+  const k = chaveProduto(p);
+  acumulados = acumulados.filter((a) => chaveProduto(a) !== k);
+  gravarLocal(CHAVE_ACUMULADOS, acumulados);
+}
 
 renderizarListaCompras();
 
