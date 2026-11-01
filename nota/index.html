@@ -623,6 +623,7 @@
     .item-lista button { background: #fdeceb; color: #b3261e; width: 34px; min-height: 34px; height: 34px; padding: 0; border-radius: 50%; font-weight: 800; }
     .total-lista { text-align: right; font-weight: 800; margin-top: 8px; border-top: 2px solid #cfe0f1; padding-top: 8px; }
     .produto-nao-achado { color: #c62828 !important; font-weight: 700; }
+    .produto-apelido { font-size: .85rem; font-weight: 700; color: #124f80; margin-top: 2px; overflow-wrap: anywhere; }
     .produto-data { font-size: .8rem; color: #526171; margin-bottom: 2px; }
     .produto-endereco-linha { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
     .produto-endereco-linha .produto-endereco { flex: 1; min-width: 0; margin-top: 0; }
@@ -1187,7 +1188,7 @@ function escaparHtml(valor) {
   })[caractere]);
 }
 
-const POR_PAGINA = 50;
+const POR_PAGINA = 10;   // só os 10 últimos cupons digitalizados
 
 // Notas digitalizadas neste aparelho (guardadas no celular)
 const CHAVE_MINHAS_NOTAS = "nota_minhas_chaves";
@@ -1445,9 +1446,10 @@ async function carregarLista(reiniciar) {
 
     cupons = reiniciar ? novos : cupons.concat(novos);
     proximoOffset = offset + dados.compras.length;
-    fimDaLista = !!dados.fim;
-    totalNotas = Number(dados.totalNotas) || 0;
-    somaNotas = Number(dados.soma) || 0;
+    // a tela mostra apenas os 10 últimos: totais e seleção valem para eles
+    fimDaLista = true;
+    totalNotas = cupons.length;
+    somaNotas = cupons.reduce((t, c) => t + (Number(c.total) || 0), 0);
   } catch (erro) {
     if (minha === sequenciaLista) {
       mostrarMensagem(erro.message || "Erro ao carregar a lista de notas.", "erro");
@@ -1479,11 +1481,7 @@ async function alternarSelecionarTodas() {
   botao.textContent = "Selecionando…";
 
   try {
-    const dados = await enviarMotor({ acao: "chaves", chaves: lerMinhasNotas() });
-
-    if (!dados || dados.ok === false || !Array.isArray(dados.chaves)) {
-      throw new Error((dados && dados.aviso) || "Não foi possível selecionar todas as notas.");
-    }
+    const dados = { chaves: cupons.map((c) => c.chave) };
 
     selecionadas.clear();
     dados.chaves.forEach((c) => selecionadas.add(String(c)));
@@ -2395,6 +2393,7 @@ function criarCartaoProduto(p, semCheckbox) {
     <div class="produto-data">${escaparHtml(dia)}</div>
     <div class="produto-nome">${escaparHtml(p.descricao || "Produto")}</div>
     <div class="produto-meta">${escaparHtml(p.loja || "")}</div>
+    ${p.apelido ? `<div class="produto-apelido">${escaparHtml(p.apelido)}</div>` : ""}
     ${(p.endereco || mapa) ? `<div class="produto-endereco-linha"><span class="produto-endereco">${escaparHtml(p.endereco)}</span><a class="produto-mapa" href="${mapa}" target="_blank" rel="noopener" aria-label="Abrir no Google Maps" title="Abrir no Google Maps"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7z" fill="#ea4335"/><path d="M12 2a7 7 0 0 0-7 7c0 1.2.4 2.600 1 4L12 6z" fill="#fbbc04"/><path d="M12 2a7 7 0 0 1 7 7c0 1.500-.5 3-1.200 4.400L12 6z" fill="#4285f4"/><path d="M12 22s3.200-3.800 5.200-7.800L12 9z" fill="#34a853"/><circle cx="12" cy="9" r="2.600" fill="#fff"/></svg></a></div>` : ""}
     <div class="produto-total">${escaparHtml(formatarDinheiro(p.precoUnitario))}</div>
   `;
@@ -2876,8 +2875,7 @@ el("filtroProdutos").addEventListener("input", () => {
 el("btnLimparFiltroProdutos").addEventListener("click", () => {
   el("filtroProdutos").value = "";
   el("btnLimparFiltroProdutos").style.display = "none";
-  clearTimeout(timerBuscaProdutos);
-  carregarProdutos(true);
+  limparTelaBusca();   // limpa também os produtos listados
   el("filtroProdutos").focus();
 });
 
