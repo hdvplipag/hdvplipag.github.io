@@ -1406,14 +1406,20 @@ function renderizarCupons() {
     " · " + formatarDinheiro(somaNotas);
 
   const rodape = el("fimCupons");
+  // Carregando: círculo girando com três pontinhos (sem texto)
   if (carregandoLista) {
-    rodape.textContent = "Carregando…";
-  } else if (cupons.length && !fimDaLista) {
-    rodape.textContent = "Role para ver mais";
-  } else {
+    el("carregando").classList.add("visivel");
+    spinnerListaAtivo = true;
     rodape.textContent = "";
+  } else {
+    if (spinnerListaAtivo) {
+      spinnerListaAtivo = false;
+      if (!requisicaoEmAndamento) el("carregando").classList.remove("visivel");
+    }
+    rodape.textContent = (cupons.length && !fimDaLista) ? "Role para ver mais" : "";
   }
 }
+let spinnerListaAtivo = false;
 
 /*
  * A lista mostra apenas as notas que constam na planilha (aba Compras),
