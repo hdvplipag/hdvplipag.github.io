@@ -2555,7 +2555,7 @@ function renderizarProdutos() {
   if (!girando) {
     if (naoAchou) texto = "Produto não localizado.";
     else if (acumulados.length) texto = acumulados.length + (acumulados.length === 1 ? " produto" : " produtos");
-    else if (!temConsultaProdutos()) texto = "Digite as três primeiras letras de um produto para buscar.";
+    else if (!temConsultaProdutos()) texto = "Digite as três primeiras letras de um produto ou do nome da loja ou apelido para buscar.";
   }
   el("resumoProdutos").textContent = texto;
   el("resumoProdutos").classList.toggle("produto-nao-achado", naoAchou);
