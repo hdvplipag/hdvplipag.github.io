@@ -2627,6 +2627,7 @@ let carregandoTodos = false;
 let sequenciaTodos = 0;
 let timerBuscaTodos = null;
 let erroTodos = false;
+let limpandoBuscaTodos = false;   // true só quando a busca foi limpa pelo X
 
 async function abrirTodosProdutos() {
   telaAtual = "todos";
@@ -2649,7 +2650,7 @@ function renderizarTodos() {
   lista.replaceChildren();
   todos.forEach((p) => lista.appendChild(criarCartaoProduto(p, true)));
 
-  const girando = carregandoTodos && !todos.length;
+  const girando = carregandoTodos && (!todos.length || limpandoBuscaTodos);
   if (girando) {
     el("carregando").classList.add("visivel");
     spinnerTodosAtivo = true;
@@ -2664,15 +2665,17 @@ function renderizarTodos() {
     : (naoAchou ? "Produto não localizado." : totalTodos + (totalTodos === 1 ? " produto" : " produtos"));
   el("resumoTodos").classList.toggle("produto-nao-achado", naoAchou);
 
-  el("fimTodos").textContent = carregandoTodos && todos.length
+  el("fimTodos").textContent = carregandoTodos && todos.length && !limpandoBuscaTodos
     ? "Carregando…"
     : (todos.length && !fimTodosLista ? "Role para ver mais" : "");
 }
 let spinnerTodosAtivo = false;
 
-async function carregarTodos(reiniciar) {
+async function carregarTodos(reiniciar, limpando) {
   if (carregandoTodos && !reiniciar) return;
   if (!reiniciar && fimTodosLista) return;
+
+  limpandoBuscaTodos = !!limpando;
 
   const minha = ++sequenciaTodos;
   const offset = reiniciar ? 0 : proximoOffsetTodos;
@@ -2724,7 +2727,7 @@ el("btnLimparFiltroTodos").addEventListener("click", () => {
   el("filtroTodos").value = "";
   el("btnLimparFiltroTodos").style.display = "none";
   clearTimeout(timerBuscaTodos);
-  carregarTodos(true);
+  carregarTodos(true, true);
 });
 
 window.addEventListener("scroll", () => {
