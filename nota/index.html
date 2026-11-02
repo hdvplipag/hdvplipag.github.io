@@ -623,6 +623,12 @@
     .item-lista .info { flex: 1; min-width: 0; }
     .item-lista .nome { font-weight: 800; overflow-wrap: anywhere; }
     .item-lista .loja { font-size: .8rem; color: #526171; }
+    .item-lista .apelido { font-size: .8rem; font-weight: 700; color: #124f80; }
+    .item-lista { flex-wrap: wrap; }
+    .item-lista .linha-atual { flex: 0 0 100%; display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+    .item-lista .linha-atual label { font-size: .8rem; color: #526171; font-weight: 700; }
+    .item-lista .linha-atual input { width: 120px; min-height: 36px; padding: 4px 10px; text-align: right; font-weight: 800; border: 1px solid #b9cde2; border-radius: 10px; background: #fff; color: #124f80; font-size: 1rem; }
+    .total-lista .linha-total-atual { color: #124f80; margin-top: 4px; }
     .item-lista .preco { font-weight: 800; color: #c62828; white-space: nowrap; }
     .item-lista button { background: #fdeceb; color: #b3261e; width: 34px; min-height: 34px; height: 34px; padding: 0; border-radius: 50%; font-weight: 800; }
     .total-lista { text-align: right; font-weight: 800; margin-top: 8px; border-top: 2px solid #cfe0f1; padding-top: 8px; }
@@ -2780,8 +2786,11 @@ function itemDaLista(p) {
     k: chaveProduto(p),
     descricao: String(p.descricao || ""),
     loja: String(p.loja || ""),
+    apelido: String(p.apelido || ""),
     endereco: String(p.endereco || ""),
-    preco: Number(p.precoUnitario) || 0
+    preco: Number(p.precoUnitario) || 0,
+    atual: null,
+    atualTxt: ""
   };
 }
 
@@ -2814,14 +2823,17 @@ function renderizarListaCompras() {
 }
 
 function imprimirLista() {
-  let soma = 0;
+  let soma = 0, somaAtual = 0, informados = 0;
   const linhas = listaCompras.map((b) => {
     soma += Number(b.preco) || 0;
-    return "<tr><td>" + escaparHtml(b.descricao) + "<br><small>" + escaparHtml(b.loja) + "</small></td><td style='text-align:right;white-space:nowrap'>" + escaparHtml(formatarDinheiro(b.preco)) + "</td></tr>";
+    const temAtual = b.atual !== null && b.atual !== undefined && Number.isFinite(Number(b.atual));
+    if (temAtual) { somaAtual += Number(b.atual); informados++; }
+    return "<tr><td>" + escaparHtml(b.descricao) + "<br><small>" + escaparHtml(b.loja) + (b.apelido ? " · " + escaparHtml(b.apelido) : "") + "</small></td><td style='text-align:right;white-space:nowrap'>" + escaparHtml(formatarDinheiro(b.preco)) + (temAtual ? "<br><small>Atual: " + escaparHtml(formatarDinheiro(Number(b.atual))) + "</small>" : "") + "</td></tr>";
   }).join("");
   const doc = "<!doctype html><html lang='pt-BR'><head><meta charset='utf-8'><title>Lista de compras</title>" +
     "<style>body{font-family:Arial,sans-serif;padding:16px}h1{font-size:20px}table{width:100%;border-collapse:collapse}td{padding:8px 4px;border-bottom:1px solid #ccc;vertical-align:top}small{color:#555}.t{text-align:right;font-weight:bold;margin-top:12px}</style></head><body>" +
-    "<h1>Lista de compras</h1><table>" + linhas + "</table><div class='t'>Total: " + escaparHtml(formatarDinheiro(soma)) + "</div></body></html>";
+    "<h1>Lista de compras</h1><table>" + linhas + "</table><div class='t'>Total: " + escaparHtml(formatarDinheiro(soma)) + "</div>" +
+    (informados ? "<div class='t'>Preço atual: " + escaparHtml(formatarDinheiro(somaAtual)) + "</div>" : "") + "</body></html>";
 
   const quadro = document.createElement("iframe");
   quadro.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;";
@@ -2836,12 +2848,16 @@ function imprimirLista() {
 }
 
 function textoDaLista() {
-  let soma = 0;
+  let soma = 0, somaAtual = 0, informados = 0;
   const linhas = listaCompras.map((b) => {
     soma += Number(b.preco) || 0;
-    return "• " + b.descricao + " — " + b.loja + " — " + formatarDinheiro(b.preco);
+    const temAtual = b.atual !== null && b.atual !== undefined && Number.isFinite(Number(b.atual));
+    if (temAtual) { somaAtual += Number(b.atual); informados++; }
+    return "• " + b.descricao + " — " + b.loja + (b.apelido ? " (" + b.apelido + ")" : "") + " — " + formatarDinheiro(b.preco) +
+      (temAtual ? " → atual " + formatarDinheiro(Number(b.atual)) : "");
   });
-  return "*Lista de compras*\n" + linhas.join("\n") + "\n\nTotal: " + formatarDinheiro(soma);
+  return "*Lista de compras*\n" + linhas.join("\n") + "\n\nTotal: " + formatarDinheiro(soma) +
+    (informados ? "\nPreço atual: " + formatarDinheiro(somaAtual) : "");
 }
 
 el("btnLimparLista").addEventListener("click", async () => {
@@ -2936,15 +2952,51 @@ function renderizarSacola() {
     linha.className = "item-lista";
     linha.innerHTML =
       '<div class="info"><div class="nome">' + escaparHtml(b.descricao) + '</div>' +
-      '<div class="loja">' + escaparHtml(b.loja) + '</div></div>' +
+      '<div class="loja">' + escaparHtml(b.loja) + '</div>' +
+      (b.apelido ? '<div class="apelido">' + escaparHtml(b.apelido) + '</div>' : '') + '</div>' +
       '<span class="preco">' + escaparHtml(formatarDinheiro(b.preco)) + '</span>' +
-      '<button type="button" aria-label="Remover da lista">✕</button>';
+      '<button type="button" aria-label="Remover da lista">✕</button>' +
+      '<div class="linha-atual"><label>Preço atual</label>' +
+      '<input type="text" inputmode="decimal" autocomplete="off" placeholder="R$ 0,00" aria-label="Preço atual" value="' + escaparHtml(b.atualTxt || "") + '"></div>';
     linha.querySelector("button").addEventListener("click", () => removerDaLista(b.k));
+    const campo = linha.querySelector(".linha-atual input");
+    campo.addEventListener("input", () => {
+      b.atualTxt = campo.value;
+      b.atual = lerPrecoDigitado(campo.value);
+      gravarLocal(CHAVE_LISTA, listaCompras);
+      atualizarTotaisSacola();   // só os totais: o campo mantém o foco
+    });
     caixa.appendChild(linha);
   });
-  el("sacolaTotal").textContent = listaCompras.length
-    ? listaCompras.length + (listaCompras.length === 1 ? " item" : " itens") + " · Total " + formatarDinheiro(soma)
-    : "";
+  atualizarTotaisSacola();
+}
+
+// "2,39", "2.39" ou "1.234,56" -> número; vazio ou inválido -> null
+function lerPrecoDigitado(texto) {
+  let s = String(texto || "").replace(/[^\d.,]/g, "");
+  if (!s) return null;
+  if (s.indexOf(",") !== -1) s = s.replace(/\./g, "").replace(",", ".");
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+
+// Totais da sacola: preço anterior e preço atual (soma dos que já foram informados)
+function atualizarTotaisSacola() {
+  const total = el("sacolaTotal");
+  if (!listaCompras.length) { total.textContent = ""; return; }
+  let soma = 0, somaAtual = 0, informados = 0;
+  listaCompras.forEach((b) => {
+    soma += Number(b.preco) || 0;
+    if (b.atual !== null && b.atual !== undefined && Number.isFinite(Number(b.atual))) {
+      somaAtual += Number(b.atual);
+      informados++;
+    }
+  });
+  const n = listaCompras.length;
+  total.innerHTML = escaparHtml(n + (n === 1 ? " item" : " itens") + " · Total " + formatarDinheiro(soma)) +
+    (informados
+      ? '<div class="linha-total-atual">' + escaparHtml("Preço atual (" + informados + " de " + n + ") · " + formatarDinheiro(somaAtual)) + "</div>"
+      : "");
 }
 
 el("btnSacola").addEventListener("click", () => {
