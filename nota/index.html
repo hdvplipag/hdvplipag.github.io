@@ -882,6 +882,11 @@
         <input id="filtroProdutos" type="text" inputmode="search" autocomplete="off" placeholder="Buscar produto…" aria-label="Buscar produto">
         <button id="btnLimparFiltroProdutos" type="button" aria-label="Limpar busca" style="display:none">✕</button>
       </div>
+      <div class="filtro-produtos" style="margin-top:10px">
+        <svg class="lupa-busca" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#6b7a89" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="filtroLoja" type="text" inputmode="search" autocomplete="off" placeholder="Buscar loja ou apelido…" aria-label="Buscar por loja ou apelido">
+        <button id="btnLimparFiltroLoja" type="button" aria-label="Limpar busca da loja" style="display:none">✕</button>
+      </div>
       <div id="resumoProdutos" class="dica"></div>
     </section>
     <div id="listaProdutos"></div>
@@ -1082,6 +1087,7 @@ async function enviarMotor(dados) {
   if (dados.chaves !== undefined) corpo.chaves = dados.chaves;
   if (dados.apelido !== undefined) corpo.apelido = dados.apelido;
   if (dados.busca !== undefined) corpo.busca = dados.busca;
+  if (dados.buscaLoja !== undefined) corpo.buscaLoja = dados.buscaLoja;
   if (dados.todos) corpo.todos = true;
 
   let resposta;
@@ -2514,7 +2520,8 @@ let erroProdutos = false;
 let ultimoAquecimento = 0;
 
 function temConsultaProdutos() {
-  return el("filtroProdutos").value.trim().length >= 3;   // só busca com 3 letras ou mais
+  // só busca com 3 letras ou mais (no produto ou na loja/apelido)
+  return el("filtroProdutos").value.trim().length >= 3 || el("filtroLoja").value.trim().length >= 3;
 }
 
 // Pede ao servidor que monte a lista em segundo plano (cache) e traz as categorias
@@ -2571,7 +2578,10 @@ async function carregarProdutos(reiniciar) {
   }
 
   const offset = reiniciar ? 0 : proximoOffsetProdutos;
-  const busca = el("filtroProdutos").value.trim();
+  const textoProduto = el("filtroProdutos").value.trim();
+  const textoLoja = el("filtroLoja").value.trim();
+  const busca = textoProduto.length >= 3 ? textoProduto : "";
+  const buscaLoja = textoLoja.length >= 3 ? textoLoja : "";
 
   carregandoProdutos = true;
   renderizarProdutos();
@@ -2580,6 +2590,7 @@ async function carregarProdutos(reiniciar) {
     const dados = await enviarMotor({
       acao: "produtos",
       busca: busca,
+      buscaLoja: buscaLoja,
       offset: offset,
       limite: POR_PAGINA_PRODUTOS
     });
@@ -2591,7 +2602,7 @@ async function carregarProdutos(reiniciar) {
     }
 
     erroProdutos = false;
-    if (reiniciar && busca) acumularProdutos(dados.produtos);
+    if (reiniciar && (busca || buscaLoja)) acumularProdutos(dados.produtos);
     produtos = reiniciar ? dados.produtos : produtos.concat(dados.produtos);
     proximoOffsetProdutos = offset + dados.produtos.length;
     fimProdutos = !!dados.fim;
@@ -2962,6 +2973,8 @@ function limparTelaBusca() {
   clearTimeout(timerBuscaProdutos);
   el("filtroProdutos").value = "";
   el("btnLimparFiltroProdutos").style.display = "none";
+  el("filtroLoja").value = "";
+  el("btnLimparFiltroLoja").style.display = "none";
   carregandoProdutos = false;
   renderizarProdutos();
 }
@@ -2977,8 +2990,31 @@ el("filtroProdutos").addEventListener("input", () => {
 el("btnLimparFiltroProdutos").addEventListener("click", () => {
   el("filtroProdutos").value = "";
   el("btnLimparFiltroProdutos").style.display = "none";
-  limparTelaBusca();   // limpa também os produtos listados
+  if (el("filtroLoja").value.trim().length >= 3) {
+    clearTimeout(timerBuscaProdutos);
+    carregarProdutos(true);   // a busca por loja continua valendo
+  } else {
+    limparTelaBusca();   // limpa também os produtos listados
+  }
   el("filtroProdutos").focus();
+});
+
+el("filtroLoja").addEventListener("input", () => {
+  el("btnLimparFiltroLoja").style.display = el("filtroLoja").value ? "block" : "none";
+  clearTimeout(timerBuscaProdutos);
+  timerBuscaProdutos = setTimeout(() => carregarProdutos(true), 150);
+});
+
+el("btnLimparFiltroLoja").addEventListener("click", () => {
+  el("filtroLoja").value = "";
+  el("btnLimparFiltroLoja").style.display = "none";
+  clearTimeout(timerBuscaProdutos);
+  if (el("filtroProdutos").value.trim().length >= 3) {
+    carregarProdutos(true);   // a busca por produto continua valendo
+  } else {
+    limparTelaBusca();
+  }
+  el("filtroLoja").focus();
 });
 
 el("btnLista").addEventListener("click", abrirProdutos);
