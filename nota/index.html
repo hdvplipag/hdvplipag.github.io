@@ -2969,6 +2969,18 @@ function acumularProdutos(lista) {
   acumulados = novos;
 }
 
+// Limpa apenas a lista de produtos exibida (mantém o texto dos campos)
+function limparListaProdutos() {
+  acumulados = [];
+  produtos = [];
+  totalProdutos = 0;
+  erroProdutos = false;
+  sequenciaProdutos++;            // descarta qualquer busca ainda em andamento
+  clearTimeout(timerBuscaProdutos);
+  carregandoProdutos = false;
+  renderizarProdutos();
+}
+
 // Limpa a tela de busca: sem resultados e com o campo em branco, pronta para outro produto
 function limparTelaBusca() {
   acumulados = [];
@@ -2989,6 +3001,7 @@ renderizarListaCompras();
 
 el("filtroProdutos").addEventListener("input", () => {
   el("btnLimparFiltroProdutos").style.display = el("filtroProdutos").value ? "block" : "none";
+  if (!el("filtroProdutos").value) { limparListaProdutos(); return; }
   clearTimeout(timerBuscaProdutos);
   timerBuscaProdutos = setTimeout(() => carregarProdutos(true), 150);
 });
@@ -2996,17 +3009,13 @@ el("filtroProdutos").addEventListener("input", () => {
 el("btnLimparFiltroProdutos").addEventListener("click", () => {
   el("filtroProdutos").value = "";
   el("btnLimparFiltroProdutos").style.display = "none";
-  if (el("filtroLoja").value.trim().length >= 3) {
-    clearTimeout(timerBuscaProdutos);
-    carregarProdutos(true);   // a busca por loja continua valendo
-  } else {
-    limparTelaBusca();   // limpa também os produtos listados
-  }
+  limparListaProdutos();
   el("filtroProdutos").focus();
 });
 
 el("filtroLoja").addEventListener("input", () => {
   el("btnLimparFiltroLoja").style.display = el("filtroLoja").value ? "block" : "none";
+  if (!el("filtroLoja").value) { limparListaProdutos(); return; }
   clearTimeout(timerBuscaProdutos);
   timerBuscaProdutos = setTimeout(() => carregarProdutos(true), 150);
 });
@@ -3014,12 +3023,7 @@ el("filtroLoja").addEventListener("input", () => {
 el("btnLimparFiltroLoja").addEventListener("click", () => {
   el("filtroLoja").value = "";
   el("btnLimparFiltroLoja").style.display = "none";
-  clearTimeout(timerBuscaProdutos);
-  if (el("filtroProdutos").value.trim().length >= 3) {
-    carregarProdutos(true);   // a busca por produto continua valendo
-  } else {
-    limparTelaBusca();
-  }
+  limparListaProdutos();
   el("filtroLoja").focus();
 });
 
