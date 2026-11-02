@@ -2965,6 +2965,9 @@ function acumularProdutos(lista) {
     if (produtoNaLista(p)) return;
     novos.push(p);
   });
+  // sempre em ordem alfabética (produto, depois loja), sem diferenciar maiúsculas e acentos
+  const cmp = (a, b) => String(a || "").localeCompare(String(b || ""), "pt-BR", { sensitivity: "base", numeric: true });
+  novos.sort((a, b) => cmp(a.descricao, b.descricao) || cmp(a.loja, b.loja) || cmp(a.apelido, b.apelido));
   // cada nova busca substitui a relação anterior
   acumulados = novos;
 }
