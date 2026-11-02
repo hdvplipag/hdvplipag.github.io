@@ -837,11 +837,6 @@
 
   <div id="mensagem" class="mensagem" role="status" aria-live="polite"></div>
 
-  <div id="carregando" aria-hidden="true">
-    <div class="anel"></div>
-    <div class="pontos"><i></i><i></i><i></i></div>
-  </div>
-
   <section id="perguntaOutra" class="cartao" style="display:none" aria-live="polite">
     <h2>Captura concluída</h2>
     <p>Deseja realizar outra captura?</p>
@@ -867,6 +862,12 @@
     <div id="listaCupons"></div>
     <p id="fimCupons" class="dica" style="text-align:center"></p>
   </section>
+  </div>
+
+  <!-- Indicador de carregamento (fora de #telaLeitura para aparecer em todas as telas) -->
+  <div id="carregando" aria-hidden="true">
+    <div class="anel"></div>
+    <div class="pontos"><i></i><i></i><i></i></div>
   </div>
 
   <!-- Tela de produtos (aba Itens) -->
