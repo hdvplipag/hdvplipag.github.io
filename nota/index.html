@@ -1544,6 +1544,9 @@ async function carregarLista(reiniciar) {
     return;
   }
 
+  // Sem internet: mantém a lista que já está na tela, sem consultar o servidor nem mostrar erro
+  if (navigator.onLine === false) return;
+
   carregandoLista = true;
   renderizarCupons();
 
@@ -1584,9 +1587,8 @@ async function carregarLista(reiniciar) {
     totalNotas = cupons.length;
     somaNotas = cupons.reduce((t, c) => t + (Number(c.total) || 0), 0);
   } catch (erro) {
-    if (minha === sequenciaLista) {
-      mostrarMensagem(erro.message || "Erro ao carregar a lista de notas.", "erro");
-    }
+    // falha ao ler a lista de notas (sem conexão, por exemplo): não mostra mensagem na tela
+    console.warn("Lista de notas:", erro && erro.message);
   } finally {
     if (minha === sequenciaLista) {
       carregandoLista = false;
