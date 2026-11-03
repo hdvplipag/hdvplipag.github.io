@@ -502,7 +502,7 @@
       display: none !important;
     }
 
-    main { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+    main { padding-bottom: calc(122px + env(safe-area-inset-bottom)); }
 
     #rodapeAcoes {
       position: fixed;
@@ -511,9 +511,10 @@
       bottom: 0;
       z-index: 40;
       display: flex;
+      flex-wrap: wrap;
       gap: 12px;
       justify-content: center;
-      padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+      padding: 10px 16px calc(8px + env(safe-area-inset-bottom));
       background: #fff;
       border-top: 1px solid var(--borda);
       box-shadow: 0 -4px 14px rgba(25, 45, 70, .08);
@@ -635,8 +636,9 @@
     .licenca-botoes { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
     .licenca-bloqueio { border: 2px solid #c62828; text-align: center; }
     .licenca-bloqueio p { color: #c62828; font-weight: 800; font-size: 1.05rem; line-height: 1.35; margin: 0 0 18px; }
-    .rodape-licenca { text-align: center; font-size: .78rem; color: #526171; margin: 22px 0 8px; cursor: pointer; }
-    .rodape-licenca strong { color: #15202b; }
+    #rodapeAcoes .rodape-licenca { margin-top: -2px; }
+    .rodape-licenca { flex: 0 0 100%; display: flex; align-items: center; justify-content: center; gap: 5px; padding-top: 6px; border-top: 1px solid #e4ecf4; font-size: .75rem; font-weight: 600; color: #526171; cursor: pointer; }
+    .rodape-licenca strong { color: #15202b; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60vw; }
     .fila-notas { margin-top: 12px; }
     .fila-notas .fila-topo { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
     .fila-notas .fila-aviso { font-size: .8rem; color: #526171; margin-top: 4px; }
@@ -901,11 +903,6 @@
     <div id="listaCupons"></div>
     <p id="fimCupons" class="dica" style="text-align:center"></p>
   </section>
-
-  <!-- Licenciado: toque para trocar de e-mail -->
-  <div id="rodapeLicenca" class="rodape-licenca" style="display:none" role="button" tabindex="0" title="Trocar de e-mail">
-    Licenciado para: <strong id="licencaNome"></strong>
-  </div>
   </div>
 
   <!-- Indicador de carregamento (fora de #telaLeitura para aparecer em todas as telas) -->
@@ -1034,9 +1031,13 @@
   <button id="btnNovaCaptura" class="botao-rodape botao-rodape-camera" type="button" aria-label="Voltar para a digitalização" title="Digitalizar"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></button>
   <button id="btnProdutos" class="botao-rodape botao-rodape-produtos" type="button" aria-label="Produtos" title="Produtos"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg><span>Produtos</span></button>
   <button id="btnLista" class="botao-rodape botao-rodape-produtos" type="button" aria-label="Lista" title="Lista"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3.5" cy="6" r="1"/><circle cx="3.5" cy="12" r="1"/><circle cx="3.5" cy="18" r="1"/></svg><span>Lista</span><b id="contadorRodape" class="contador-lista" style="display:none"></b></button>
+  <!-- Licenciado: toque para trocar de e-mail -->
+  <div id="rodapeLicenca" class="rodape-licenca" style="display:none" role="button" tabindex="0" title="Trocar de e-mail">
+    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 3v6c0 5-3.4 9.4-8 11-4.6-1.6-8-6-8-11V5z"/></svg>
+    Licenciado para: <strong id="licencaNome"></strong>
+  </div>
 </nav>
 
-<script>document.write('<script src="usuarios.js?t=' + Date.now() + '"><\/script>');</script>
 <script>
 "use strict";
 
@@ -1152,15 +1153,18 @@ let iosQuadro = 0;
 const el = (id) => document.getElementById(id);
 
 
-/* LICENÇA: licenciados do usuarios.js (e-mail + senha do dia).
-   A licença validada fica guardada no aparelho, para o app abrir também sem internet.
-   Dentro do PliPag (iframe) o acesso é controlado pelo próprio PliPag e nada muda. */
+/* LICENÇA: cadastro de licenciados numa planilha do Google (usuarios.gs, no Apps Script), o mesmo do PliPag.
+   Login: e-mail cadastrado + senha do dia. A licença validada fica guardada no aparelho,
+   para o app abrir também sem internet. Dentro do PliPag (iframe) o acesso é controlado
+   pelo próprio PliPag e nada muda. */
 const MENSAGEM_LICENCA_VENCIDA =
   "Cópia não registrada, entrar em contato com o desenvolvedor pelo telefone: 82987340685 para regularização da licença";
 const CHAVE_EMAIL_LICENCA = "nota_user_email";
 const CHAVE_LICENCA = "nota_licenca";
+const INTERVALO_REVALIDAR_LICENCA_MS = 5 * 60 * 1000;
 let LICENCA_OK = EMBUTIDO;
 let PLANILHA_ATIVA = "";
+let ultimaRevalidacaoLicenca = 0;
 
 function hojeISO() {
   const d = new Date();
@@ -1182,36 +1186,100 @@ function lerLicencaGuardada() {
   } catch (_) { return null; }
 }
 
-// Com o usuarios.js carregado (internet): ele manda, e a licença é guardada no aparelho.
-// Sem ele (sem internet): vale a licença guardada da última vez que esse e-mail entrou.
-function buscarLicenciado(email) {
-  const alvo = String(email || "").trim().toLowerCase();
-  if (!alvo) return null;
-  if (typeof notasBuscarUsuario === "function") {
-    const u = notasBuscarUsuario(alvo);
-    if (u) { try { localStorage.setItem(CHAVE_LICENCA, JSON.stringify(u)); } catch (_) {} }
-    return u;
+// 'DD/MM/AAAA' (formato do cadastro) ou 'AAAA-MM-DD' -> Date; null se for inválida
+function parseDataLicenca(texto) {
+  const t = String(texto || "").trim();
+  let dia, mes, ano, m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) { dia = +m[1]; mes = +m[2]; ano = +m[3]; }
+  else {
+    m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (!m) return null;
+    ano = +m[1]; mes = +m[2]; dia = +m[3];
   }
-  const guardada = lerLicencaGuardada();
-  if (guardada && String(guardada.email || "").toLowerCase() === alvo) {
-    guardada.vencida = !!guardada.validade && hojeISO() > guardada.validade;
-    return guardada;
-  }
-  return null;
+  const d = new Date(ano, mes - 1, dia);
+  return (d.getFullYear() === ano && d.getMonth() === mes - 1 && d.getDate() === dia) ? d : null;
 }
 
-// true = liberado, "vencida" = licença vencida, false = e-mail não cadastrado
+// Vale até o fim do dia da validade. Vazia = não vence. Data inválida = vencida.
+function validadeVencida(validade) {
+  const t = String(validade || "").trim();
+  if (!t) return false;
+  const d = parseDataLicenca(t);
+  if (!d) return true;
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  return hoje > d;
+}
+
+// Licença guardada neste aparelho para o e-mail (a validade é conferida com a data do aparelho)
+function licencaGuardadaDe(email) {
+  const alvo = String(email || "").trim().toLowerCase();
+  const g = lerLicencaGuardada();
+  if (!alvo || !g || String(g.email || "").toLowerCase() !== alvo) return null;
+  return Object.assign({}, g, { vencida: !!g.vencidaServidor || validadeVencida(g.validade) });
+}
+
+function guardarLicenca(u) {
+  const g = {
+    email: String(u.email || "").toLowerCase(),
+    nome: u.nome || u.email,
+    planilha: u.planilha || "",
+    validade: u.validade || "",
+    vencidaServidor: !!u.vencida
+  };
+  try { localStorage.setItem(CHAVE_LICENCA, JSON.stringify(g)); } catch (_) {}
+  return g;
+}
+
+function mostrarNomeLicenca(nome) {
+  el("licencaNome").textContent = nome;
+  el("rodapeLicenca").style.display = "";
+}
+
+// Pergunta ao servidor (cadastro do PliPag). Não guarda nada.
+// Devolve { estado: "ok", dados } | { estado: "nao" } | { estado: "erro", semInternet, mensagem }
+async function consultarLicenca(email) {
+  try {
+    const d = await enviarMotor({ acao: "licenca", email: email });
+    if (d && d.ok === true && d.cadastrado === false) return { estado: "nao" };
+    if (d && d.ok === true && d.cadastrado === true) return { estado: "ok", dados: d };
+    return { estado: "erro", semInternet: false, mensagem: (d && d.aviso) || "Não foi possível validar a licença." };
+  } catch (e) {
+    return { estado: "erro", semInternet: !!(e && e.name === "SemConexao"), mensagem: (e && e.message) || "Não foi possível validar a licença." };
+  }
+}
+
+// Usa a licença guardada no aparelho. true = liberado, "vencida" = vencida, false = não há licença guardada
 function aplicarLicenca(email) {
-  const u = buscarLicenciado(email);
+  const u = licencaGuardadaDe(email);
   if (!u) return false;
   if (u.vencida) { LICENCA_OK = false; return "vencida"; }
-  if (u.url) URL_DO_MOTOR = u.url;
   PLANILHA_ATIVA = u.planilha || "";
   LICENCA_OK = true;
-  el("licencaNome").textContent = u.nome || u.email;
-  el("rodapeLicenca").style.display = "";
+  mostrarNomeLicenca(u.nome || u.email);
   document.documentElement.classList.remove("sem-licenca");
   return true;
+}
+
+// Com o app já liberado, confere de vez em quando no cadastro (licença vencida, e-mail retirado, planilha trocada)
+async function revalidarLicenca() {
+  if (EMBUTIDO || !LICENCA_OK || navigator.onLine === false) return;
+  if (Date.now() - ultimaRevalidacaoLicenca < INTERVALO_REVALIDAR_LICENCA_MS) return;
+  ultimaRevalidacaoLicenca = Date.now();
+
+  const r = await consultarLicenca(lerEmailLicenca());
+  if (r.estado === "nao") {
+    try { localStorage.removeItem(CHAVE_EMAIL_LICENCA); localStorage.removeItem(CHAVE_LICENCA); } catch (_) {}
+    location.reload();
+    return;
+  }
+  if (r.estado !== "ok") return;   // sem resposta firme: continua com o que está guardado
+
+  const antes = lerLicencaGuardada();
+  const g = guardarLicenca(r.dados);
+  if (g.vencidaServidor) { location.reload(); return; }
+  mostrarNomeLicenca(g.nome);
+  if ((antes && antes.planilha || "") !== g.planilha) location.reload();   // planilha mudou: recomeça nela
 }
 
 function abrirLoginLicenca(podeCancelar, mensagem) {
@@ -1255,23 +1323,48 @@ async function enviarLoginLicenca(ev) {
   const email = el("licencaEmail").value.trim().toLowerCase();
   const senha = el("licencaSenha").value.trim();
   const erro = el("licencaErro");
+  const botao = el("licencaForm").querySelector("button[type=submit]");
   const mostrarErro = (t) => { erro.textContent = t; erro.style.display = ""; };
 
   if (senha !== senhaDoDia()) { mostrarErro("Senha incorreta."); return; }
 
-  const u = buscarLicenciado(email);
-  if (!u) {
-    mostrarErro(typeof notasBuscarUsuario === "function"
-      ? "E-mail não cadastrado. Entre em contato com o desenvolvedor."
-      : "Sem internet e este e-mail ainda não foi validado neste aparelho. Conecte-se para o primeiro acesso.");
-    return;
-  }
-  if (u.vencida) { fecharLoginLicenca(); mostrarBloqueioLicenca(); return; }
+  botao.disabled = true;
+  botao.textContent = "Verificando…";
+  try {
+    // 1) cadastro no servidor; 2) sem resposta (sem internet): vale a licença guardada deste e-mail
+    const r = await consultarLicenca(email);
+    let u = null;
 
-  const anterior = lerEmailLicenca();
-  if (anterior && anterior !== u.email) await limparDadosLocais();
-  try { localStorage.setItem(CHAVE_EMAIL_LICENCA, u.email); } catch (_) {}
-  location.reload();   // recomeça já liberado: câmera, lista e sincronização iniciam normalmente
+    if (r.estado === "nao") {
+      const g = lerLicencaGuardada();
+      if (g && String(g.email || "").toLowerCase() === email) { try { localStorage.removeItem(CHAVE_LICENCA); } catch (_) {} }
+      mostrarErro("E-mail não cadastrado. Entre em contato com o desenvolvedor.");
+      return;
+    }
+    if (r.estado === "ok") {
+      u = { email: String(r.dados.email || email).toLowerCase(), nome: r.dados.nome, planilha: r.dados.planilha,
+            validade: r.dados.validade, vencida: !!r.dados.vencida };
+    } else {
+      u = licencaGuardadaDe(email);
+      if (!u) {
+        mostrarErro(r.semInternet
+          ? "Sem internet e este e-mail ainda não foi validado neste aparelho. Conecte-se para o primeiro acesso."
+          : r.mensagem);
+        return;
+      }
+    }
+
+    if (u.vencida) { fecharLoginLicenca(); mostrarBloqueioLicenca(); return; }
+
+    const anterior = lerEmailLicenca();
+    if (anterior && anterior !== u.email) await limparDadosLocais();
+    if (r.estado === "ok") guardarLicenca(u);
+    try { localStorage.setItem(CHAVE_EMAIL_LICENCA, u.email); } catch (_) {}
+    location.reload();   // recomeça já liberado: câmera, lista e sincronização iniciam normalmente
+  } finally {
+    botao.disabled = false;
+    botao.textContent = "Entrar";
+  }
 }
 
 function iniciarLicenca() {
@@ -1283,19 +1376,24 @@ function iniciarLicenca() {
   if (EMBUTIDO) return;
   const salvo = lerEmailLicenca();
   const r = salvo ? aplicarLicenca(salvo) : false;
-  if (r === true) return;
+  if (r === true) { revalidarLicenca(); return; }
 
   document.documentElement.classList.add("sem-licenca");
   if (r === "vencida") mostrarBloqueioLicenca(); else abrirLoginLicenca(false);
 }
 iniciarLicenca();
 
-// Voltou para o app: se a licença venceu (ou foi retirada) enquanto ele estava aberto, recomeça
+// Voltou para o app ou a internet voltou: a licença guardada pode ter vencido; confere também no cadastro
+function conferirLicencaAgora() {
+  if (EMBUTIDO || !LICENCA_OK) return;
+  const u = licencaGuardadaDe(lerEmailLicenca());
+  if (!u || u.vencida) { location.reload(); return; }
+  revalidarLicenca();
+}
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState !== "visible" || EMBUTIDO || !LICENCA_OK) return;
-  const u = buscarLicenciado(lerEmailLicenca());
-  if (!u || u.vencida) location.reload();
+  if (document.visibilityState === "visible") conferirLicencaAgora();
 });
+window.addEventListener("online", conferirLicencaAgora);
 
 
 /* MENSAGENS */
@@ -1345,8 +1443,8 @@ function validarMotor() {
 }
 
 async function enviarMotor(dados) {
-  // Sem licença válida nada é consultado nem enviado
-  if (!LICENCA_OK) {
+  // Sem licença válida nada é consultado nem enviado (só a própria consulta da licença passa)
+  if (!LICENCA_OK && dados.acao !== "licenca") {
     const semLicenca = new Error("Licença não validada.");
     semLicenca.name = "SemLicenca";
     throw semLicenca;
@@ -1367,7 +1465,8 @@ async function enviarMotor(dados) {
     categoria: dados.categoria || ""
   };
 
-  if (PLANILHA_ATIVA) corpo.planilha = PLANILHA_ATIVA;   // planilha do licenciado
+  if (dados.email !== undefined) corpo.email = dados.email;
+  if (PLANILHA_ATIVA && dados.acao !== "licenca") corpo.planilha = PLANILHA_ATIVA;   // planilha do licenciado
   if (dados.offset !== undefined) corpo.offset = dados.offset;
   if (dados.limite !== undefined) corpo.limite = dados.limite;
   if (dados.chaves !== undefined) corpo.chaves = dados.chaves;
