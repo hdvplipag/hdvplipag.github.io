@@ -999,6 +999,63 @@ if ("serviceWorker" in navigator) {
   });
 }
 
+/* BIBLIOTECAS DE LEITURA DE QR: uma cópia fica guardada no aparelho (Cache Storage)
+   para a câmera abrir mesmo sem internet. A cópia é feita na primeira vez que o app abre online. */
+const BIBLIOTECAS_QR = [
+  { url: "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js", carregada: () => typeof jsQR === "function" },
+  { url: "https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js", carregada: () => typeof Html5Qrcode !== "undefined" }
+];
+const CACHE_BIBLIOTECAS_QR = "plipag-bibliotecas-qr-v1";
+
+// Com internet: guarda as bibliotecas que ainda não estão guardadas
+async function guardarBibliotecasQr() {
+  if (!window.caches || navigator.onLine === false) return;
+  try {
+    const cache = await caches.open(CACHE_BIBLIOTECAS_QR);
+    for (const b of BIBLIOTECAS_QR) {
+      if (await cache.match(b.url)) continue;
+      const r = await fetch(b.url);
+      if (r.ok) await cache.put(b.url, r);
+    }
+  } catch (_) {}
+}
+
+function executarScriptQr_(texto) {
+  return new Promise((resolver, rejeitar) => {
+    const endereco = URL.createObjectURL(new Blob([texto], { type: "text/javascript" }));
+    const s = document.createElement("script");
+    s.src = endereco;
+    s.onload = () => { URL.revokeObjectURL(endereco); resolver(); };
+    s.onerror = () => { URL.revokeObjectURL(endereco); rejeitar(new Error("script")); };
+    document.head.appendChild(s);
+  });
+}
+
+// Se a página abriu sem as bibliotecas (sem internet), carrega a cópia guardada
+async function garantirBibliotecasQr() {
+  for (const b of BIBLIOTECAS_QR) {
+    if (b.carregada()) continue;
+    try {
+      const cache = window.caches ? await caches.open(CACHE_BIBLIOTECAS_QR) : null;
+      const guardada = cache ? await cache.match(b.url) : null;
+      let texto = "";
+      if (guardada) {
+        texto = await guardada.text();
+      } else if (navigator.onLine !== false) {
+        const r = await fetch(b.url);
+        if (r.ok) {
+          if (cache) cache.put(b.url, r.clone());
+          texto = await r.text();
+        }
+      }
+      if (texto) await executarScriptQr_(texto);
+    } catch (_) {}
+  }
+}
+
+window.addEventListener("load", () => setTimeout(guardarBibliotecasQr, 3000));
+window.addEventListener("online", () => setTimeout(guardarBibliotecasQr, 1000));
+
 /*
  * ENDEREÇO DO GOOGLE APPS SCRIPT
  * Mantido conforme o arquivo enviado.
@@ -1877,6 +1934,8 @@ async function pararCamera() {
 }
 
 function mensagemErroCamera(erro) {
+  if (erro && erro.name === "BibliotecaQr") return erro.message;
+
   const nome = String(
     erro && (erro.name || erro.message) || erro || ""
   );
@@ -1937,9 +1996,17 @@ async function iniciarLeituraAoVivoNoIphone_() {
 
   const [stream, zbar] = await Promise.all([pedidoCamera, pedidoZbar]);
 
+  // sem internet o leitor não veio da rede: usa a cópia guardada no aparelho
+  if (!zbar && typeof jsQR !== "function") await garantirBibliotecasQr();
+
   if (!zbar && typeof jsQR !== "function") {
     stream.getTracks().forEach(track => track.stop());
-    throw new Error("Os leitores de QR não carregaram. Confira a internet e tente novamente.");
+    const erroQr = new Error(
+      "Sem internet, e o leitor de QR ainda não foi guardado neste aparelho. " +
+      "Abra o app uma vez com internet e espere uns segundos; depois ele funciona offline."
+    );
+    erroQr.name = "BibliotecaQr";
+    throw erroQr;
   }
 
   iosCameraStream = stream;
@@ -2096,11 +2163,13 @@ async function executarInicioCamera() {
     return;
   }
 
+  if (!EH_IOS && typeof Html5Qrcode === "undefined") await garantirBibliotecasQr();
+
   if (
     !EH_IOS && typeof Html5Qrcode === "undefined"
   ) {
     mostrarMensagem(
-      "A biblioteca de leitura não carregou. Confira a internet e recarregue a página.",
+      "A biblioteca de leitura não carregou. Abra o app uma vez com internet para guardá-la no aparelho.",
       "erro"
     );
 
