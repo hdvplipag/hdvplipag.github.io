@@ -3482,13 +3482,26 @@ async function sincronizarProdutos(forcar, manual) {
       console.warn("IndexedDB:", erroBanco);
     }
     baseLocal = { itens: prepararBaseLocal(itens), quando: quando };
+    tentativasSync = 0;
   } catch (erro) {
     erroSincronizacao = (erro && erro.message) || "Falha na sincronização.";
+    baseDesatualizada = true;                 // continua pendente: será tentada de novo
     if (manual) mostrarMensagem(erroSincronizacao, "erro");
+    else agendarNovaTentativaSync();
   } finally {
     sincronizando = false;
     atualizarStatusSync();
+    // algo foi lançado/alterado enquanto sincronizava: atualiza de novo em seguida
+    if (baseDesatualizada && !erroSincronizacao) setTimeout(() => sincronizarProdutos(false), 2000);
   }
+}
+
+// Falhou (rede instável logo após reconectar, por exemplo): tenta de novo depois de 5 s, 15 s, 45 s e 2 min
+let tentativasSync = 0;
+function agendarNovaTentativaSync() {
+  const esperas = [5000, 15000, 45000, 120000];
+  if (tentativasSync >= esperas.length) return;
+  setTimeout(() => sincronizarProdutos(false), esperas[tentativasSync++]);
 }
 
 // Depois de lançar, excluir ou alterar notas: atualiza a cópia local em segundo plano
@@ -3509,8 +3522,21 @@ async function iniciarBaseLocal() {
 document.querySelectorAll(".btn-sync").forEach((b) => {
   b.addEventListener("click", () => sincronizarProdutos(true, true));
 });
-window.addEventListener("online", () => { atualizarStatusSync(); sincronizarProdutos(false); });
+// Voltou a internet: atualiza a cópia sozinho, mesmo que ela seja recente (a planilha pode ter mudado)
+window.addEventListener("online", () => {
+  atualizarStatusSync();
+  tentativasSync = 0;
+  marcarBaseDesatualizada();
+});
 window.addEventListener("offline", atualizarStatusSync);
+// Ao voltar para o app e a cada minuto com o app aberto: cobre o caso do iPhone não avisar que a internet voltou
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") sincronizarProdutos(false);
+});
+setInterval(() => {
+  if (document.visibilityState !== "visible" || navigator.onLine === false) return;
+  sincronizarProdutos(false);
+}, 60000);
 iniciarBaseLocal();
 
 
@@ -3643,7 +3669,11 @@ async function processarFila(manual) {
       try {
         dados = await enviarMotor({ acao: "lancar", link: item.link });
       } catch (erro) {
-        if (erro && erro.name === "SemConexao") { pendentes += 1; break; }   // sem rede: tenta depois
+        if (erro && erro.name === "SemConexao") {   // sem rede: tenta depois
+          pendentes += 1;
+          agendarNovaTentativaFila();
+          break;
+        }
         item.tentativas = (item.tentativas || 0) + 1;
         item.erro = (erro && erro.message) || "Falha ao lançar a nota.";
         await filaSalvar(item);
@@ -3687,8 +3717,20 @@ async function processarFila(manual) {
   await renderizarFila();
 }
 
+// Rede instável logo após reconectar: tenta de novo depois de 5 s, 15 s, 45 s e 2 min
+let tentativasRedeFila = 0;
+function agendarNovaTentativaFila() {
+  const esperas = [5000, 15000, 45000, 120000];
+  if (tentativasRedeFila >= esperas.length) return;
+  setTimeout(() => processarFila(false), esperas[tentativasRedeFila++]);
+}
+
 el("btnFilaAgora").addEventListener("click", () => processarFila(true));
-window.addEventListener("online", () => { renderizarFila(); setTimeout(() => processarFila(false), 1500); });
+window.addEventListener("online", () => { tentativasRedeFila = 0; renderizarFila(); setTimeout(() => processarFila(false), 1500); });
+setInterval(() => {
+  if (document.visibilityState !== "visible" || navigator.onLine === false) return;
+  processarFila(false);
+}, 60000);
 window.addEventListener("offline", renderizarFila);
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") processarFila(false);
