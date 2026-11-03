@@ -2627,6 +2627,7 @@ el("btnNovaCaptura").addEventListener("click", async () => {
 
 el("btnConcluirCapturas").addEventListener("click", () => {
   esconderPerguntaOutraCaptura_();
+  limparMensagem();   // some também o aviso da nota (ex.: "Essa notinha já foi lançada")
 });
 
 
@@ -2722,7 +2723,8 @@ function temConsultaProdutos() {
 
 // Ao abrir a tela, atualiza a cópia local (IndexedDB) se ela estiver velha ou não existir
 async function aquecerProdutos() {
-  sincronizarProdutos(false);
+  // ao entrar na tela com internet, atualiza sozinho se a cópia tiver mais de 2 minutos
+  sincronizarProdutos(false, false, 2 * 60 * 1000);
 }
 
 function renderizarProdutos() {
@@ -2843,6 +2845,7 @@ async function abrirTodosProdutos() {
   el("btnProdutos").classList.add("ativo");
   try { window.scrollTo(0, 0); } catch (_) {}
 
+  aquecerProdutos();
   carregarTodos(true);
 }
 
@@ -3488,21 +3491,21 @@ function atualizarStatusSync() {
     texto = "Sincronizando produtos e lojas…";
   } else if (baseLocalPronta()) {
     texto = "Pesquisa offline pronta · " + baseLocal.itens.length + " itens · sincronizado " + formatarQuandoSync(baseLocal.quando) +
-      (semRede ? " · sem internet" : "") + (erroSincronizacao ? " · a última sincronização falhou" : "");
-  } else if (semRede) {
-    texto = "Sem dados offline ainda. Conecte-se à internet para sincronizar.";
+      (erroSincronizacao ? " · a última sincronização falhou" : "");
   } else {
-    texto = erroSincronizacao || "Dados offline ainda não sincronizados.";
+    texto = erroSincronizacao || "Sincronizando os dados para a pesquisa offline…";
   }
   document.querySelectorAll(".status-sync-texto").forEach((e) => { e.textContent = texto; });
   document.querySelectorAll(".btn-sync").forEach((b) => { b.disabled = sincronizando; });
+  // sem internet: a linha de sincronização não aparece (a pesquisa continua funcionando com os dados guardados)
+  document.querySelectorAll(".linha-sync").forEach((l) => { l.style.display = semRede ? "none" : ""; });
 }
 
 // Baixa toda a base da planilha (em lotes) e troca a cópia do IndexedDB.
-// forcar = true ignora a validade de 30 minutos (botão Sincronizar).
-async function sincronizarProdutos(forcar, manual) {
+// forcar = true ignora a validade (botão Sincronizar). validade = quanto tempo a cópia vale (padrão: 30 minutos).
+async function sincronizarProdutos(forcar, manual, validade) {
   if (sincronizando) return;
-  const fresca = baseLocalPronta() && !baseDesatualizada && (Date.now() - baseLocal.quando) < VALIDADE_BASE_MS;
+  const fresca = baseLocalPronta() && !baseDesatualizada && (Date.now() - baseLocal.quando) < (validade || VALIDADE_BASE_MS);
   if (!forcar && fresca) return;
   if (navigator.onLine === false) {
     if (manual) mostrarMensagem("Sem internet. A pesquisa continua usando os dados já sincronizados.", "erro");
