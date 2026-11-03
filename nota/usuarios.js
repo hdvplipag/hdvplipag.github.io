@@ -14,8 +14,8 @@
  */
 var NOTAS_USUARIOS = [
   {
-    email: 'COLOQUE-SEU-EMAIL@gmail.com',
-    nome: 'Seu Nome',
+    email: 'sbstor@gmail.com',
+    nome: 'Sebastiao Torquato',
     planilha: '13KqktuRfviyKjRxZyYR8-WKUxB5aqy_gxoP2sBPb1ZM',
     url: '',
     validade: '2027-12-31'
