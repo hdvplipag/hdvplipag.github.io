@@ -632,10 +632,6 @@
     .fila-notas .fila-item button { background: #fdeceb; color: #b3261e; width: 34px; min-height: 34px; height: 34px; padding: 0; border-radius: 50%; font-weight: 800; flex: 0 0 auto; }
     .btn-fila { flex: 0 0 auto; width: auto; min-height: 36px; height: 36px; padding: 0 14px; border-radius: 10px; background: #124f80; color: #fff; font-weight: 800; font-size: .85rem; }
     .btn-fila:disabled { opacity: .55; }
-    .linha-sync { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; }
-    .linha-sync .status-sync-texto { font-size: .78rem; color: #526171; flex: 1; min-width: 0; }
-    .linha-sync .btn-sync { flex: 0 0 auto; width: auto; min-height: 34px; height: 34px; padding: 0 14px; border-radius: 10px; background: #e7f1fb; color: #124f80; font-weight: 800; font-size: .82rem; }
-    .linha-sync .btn-sync:disabled { opacity: .55; }
     .item-lista .apelido { font-size: .8rem; font-weight: 700; color: #124f80; }
     .item-lista { flex-wrap: wrap; }
     .item-lista .linha-atual { flex: 0 0 100%; display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
@@ -917,7 +913,6 @@
         <button id="btnLimparFiltroLoja" type="button" aria-label="Limpar busca da loja" style="display:none">✕</button>
       </div>
       <div id="resumoProdutos" class="dica"></div>
-      <div class="linha-sync"><span class="status-sync-texto"></span><button type="button" class="btn-sync">Sincronizar</button></div>
     </section>
     <div id="listaProdutos"></div>
     <p id="fimProdutos" class="dica" style="text-align:center"></p>
@@ -933,7 +928,6 @@
         <button id="btnLimparFiltroTodos" type="button" aria-label="Limpar busca" style="display:none">✕</button>
       </div>
       <div id="resumoTodos" class="dica"></div>
-      <div class="linha-sync"><span class="status-sync-texto"></span><button type="button" class="btn-sync">Sincronizar</button></div>
     </section>
     <div id="listaTodos"></div>
     <p id="fimTodos" class="dica" style="text-align:center"></p>
@@ -3486,25 +3480,11 @@ function formatarQuandoSync(ms) {
   return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) + " " + hora;
 }
 
-function atualizarStatusSync() {
-  const semRede = navigator.onLine === false;
-  let texto;
-  if (sincronizando) {
-    texto = "Sincronizando produtos e lojas…";
-  } else if (baseLocalPronta()) {
-    texto = "Pesquisa offline pronta · " + baseLocal.itens.length + " itens · sincronizado " + formatarQuandoSync(baseLocal.quando) +
-      (erroSincronizacao ? " · a última sincronização falhou" : "");
-  } else {
-    texto = erroSincronizacao || "Sincronizando os dados para a pesquisa offline…";
-  }
-  document.querySelectorAll(".status-sync-texto").forEach((e) => { e.textContent = texto; });
-  document.querySelectorAll(".btn-sync").forEach((b) => { b.disabled = sincronizando; });
-  // sem internet: a linha de sincronização não aparece (a pesquisa continua funcionando com os dados guardados)
-  document.querySelectorAll(".linha-sync").forEach((l) => { l.style.display = semRede ? "none" : ""; });
-}
+// A sincronização é automática e silenciosa: não há texto nem botão na tela.
+function atualizarStatusSync() {}
 
 // Baixa toda a base da planilha (em lotes) e troca a cópia do IndexedDB.
-// forcar = true ignora a validade (botão Sincronizar). validade = quanto tempo a cópia vale (padrão: 30 minutos).
+// forcar = true ignora a validade. validade = quanto tempo a cópia vale (padrão: 30 minutos).
 async function sincronizarProdutos(forcar, manual, validade) {
   if (sincronizando) return;
   const fresca = baseLocalPronta() && !baseDesatualizada && (Date.now() - baseLocal.quando) < (validade || VALIDADE_BASE_MS);
@@ -3556,6 +3536,7 @@ async function sincronizarProdutos(forcar, manual, validade) {
     tentativasSync = 0;
   } catch (erro) {
     erroSincronizacao = (erro && erro.message) || "Falha na sincronização.";
+    console.warn("Sincronização:", erroSincronizacao);
     baseDesatualizada = true;                 // continua pendente: será tentada de novo
     if (manual) mostrarMensagem(erroSincronizacao, "erro");
     else agendarNovaTentativaSync();
@@ -3590,9 +3571,6 @@ async function iniciarBaseLocal() {
   sincronizarProdutos(false);
 }
 
-document.querySelectorAll(".btn-sync").forEach((b) => {
-  b.addEventListener("click", () => sincronizarProdutos(true, true));
-});
 // Voltou a internet: atualiza a cópia sozinho, mesmo que ela seja recente (a planilha pode ter mudado)
 window.addEventListener("online", () => {
   atualizarStatusSync();
