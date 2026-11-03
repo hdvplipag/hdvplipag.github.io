@@ -623,6 +623,10 @@
     .item-lista .info { flex: 1; min-width: 0; }
     .item-lista .nome { font-weight: 800; overflow-wrap: anywhere; }
     .item-lista .loja { font-size: .8rem; color: #526171; }
+    .linha-sync { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; }
+    .linha-sync .status-sync-texto { font-size: .78rem; color: #526171; flex: 1; min-width: 0; }
+    .linha-sync .btn-sync { flex: 0 0 auto; width: auto; min-height: 34px; height: 34px; padding: 0 14px; border-radius: 10px; background: #e7f1fb; color: #124f80; font-weight: 800; font-size: .82rem; }
+    .linha-sync .btn-sync:disabled { opacity: .55; }
     .item-lista .apelido { font-size: .8rem; font-weight: 700; color: #124f80; }
     .item-lista { flex-wrap: wrap; }
     .item-lista .linha-atual { flex: 0 0 100%; display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
@@ -894,6 +898,7 @@
         <button id="btnLimparFiltroLoja" type="button" aria-label="Limpar busca da loja" style="display:none">✕</button>
       </div>
       <div id="resumoProdutos" class="dica"></div>
+      <div class="linha-sync"><span class="status-sync-texto"></span><button type="button" class="btn-sync">Sincronizar</button></div>
     </section>
     <div id="listaProdutos"></div>
     <p id="fimProdutos" class="dica" style="text-align:center"></p>
@@ -909,6 +914,7 @@
         <button id="btnLimparFiltroTodos" type="button" aria-label="Limpar busca" style="display:none">✕</button>
       </div>
       <div id="resumoTodos" class="dica"></div>
+      <div class="linha-sync"><span class="status-sync-texto"></span><button type="button" class="btn-sync">Sincronizar</button></div>
     </section>
     <div id="listaTodos"></div>
     <p id="fimTodos" class="dica" style="text-align:center"></p>
@@ -1079,6 +1085,12 @@ function validarMotor() {
 }
 
 async function enviarMotor(dados) {
+  // Busca de produtos e lojas: usa a base guardada no celular (IndexedDB) quando existe;
+  // assim a pesquisa é instantânea e funciona sem internet.
+  if (dados.acao === "produtos" && baseLocalPronta()) {
+    return buscarProdutosLocal(dados);
+  }
+
   validarMotor();
 
   const corpo = {
@@ -1137,6 +1149,11 @@ async function enviarMotor(dados) {
     resultado.aviso || resultado.mensagem || ""
   );
 
+  // Notas lançadas, excluídas ou alteradas: a cópia local precisa ser atualizada
+  if (["lancar", "categoria", "apelido", "excluir"].indexOf(corpo.acao) !== -1 &&
+      resultado && resultado.ok !== false) {
+    marcarBaseDesatualizada();
+  }
 
   return resultado;
 }
@@ -2536,15 +2553,9 @@ function temConsultaProdutos() {
   return el("filtroProdutos").value.trim().length >= 3 || el("filtroLoja").value.trim().length >= 3;
 }
 
-// Pede ao servidor que monte a lista em segundo plano (cache) e traz as categorias
+// Ao abrir a tela, atualiza a cópia local (IndexedDB) se ela estiver velha ou não existir
 async function aquecerProdutos() {
-  if (Date.now() - ultimoAquecimento < 4 * 60 * 1000) return;
-  ultimoAquecimento = Date.now();
-  try {
-    const dados = await enviarMotor({ acao: "produtos", limite: 1 });
-  } catch (_) {
-    ultimoAquecimento = 0;
-  }
+  sincronizarProdutos(false);
 }
 
 function renderizarProdutos() {
@@ -3132,6 +3143,273 @@ window.addEventListener("pagehide", () => {
     leitorQr.stop().catch(() => {});
   }
 });
+
+
+/* BASE OFFLINE (IndexedDB): produtos e lojas da planilha, para pesquisar sem internet */
+const BANCO_NOME = "plipag_offline";
+const BANCO_VERSAO = 1;
+const VALIDADE_BASE_MS = 30 * 60 * 1000;   // ao abrir, sincroniza se a cópia tiver mais de 30 minutos
+
+let baseLocal = { itens: [], quando: 0 };
+let sincronizando = false;
+let baseDesatualizada = false;
+let erroSincronizacao = "";
+
+function baseLocalPronta() {
+  return baseLocal.itens.length > 0;
+}
+
+function abrirBanco() {
+  return new Promise((resolver, rejeitar) => {
+    if (!window.indexedDB) { rejeitar(new Error("IndexedDB indisponível neste navegador.")); return; }
+    const pedido = indexedDB.open(BANCO_NOME, BANCO_VERSAO);
+    pedido.onupgradeneeded = () => {
+      const db = pedido.result;
+      if (!db.objectStoreNames.contains("produtos")) db.createObjectStore("produtos", { autoIncrement: true });
+      if (!db.objectStoreNames.contains("meta")) db.createObjectStore("meta");
+    };
+    pedido.onsuccess = () => resolver(pedido.result);
+    pedido.onerror = () => rejeitar(pedido.error || new Error("Falha ao abrir o banco local."));
+    pedido.onblocked = () => rejeitar(new Error("Banco local bloqueado por outra aba."));
+  });
+}
+
+// Troca toda a base de uma vez (transação única): se algo falhar, a cópia antiga continua intacta
+async function gravarBaseNoBanco(itens, quando) {
+  const db = await abrirBanco();
+  try {
+    await new Promise((resolver, rejeitar) => {
+      const tx = db.transaction(["produtos", "meta"], "readwrite");
+      const guarda = tx.objectStore("produtos");
+      guarda.clear();
+      itens.forEach((a) => guarda.add(a));
+      tx.objectStore("meta").put({ quando: quando, total: itens.length }, "sync");
+      tx.oncomplete = () => resolver();
+      tx.onerror = () => rejeitar(tx.error || new Error("Falha ao gravar no banco local."));
+      tx.onabort = () => rejeitar(tx.error || new Error("Gravação no banco local cancelada."));
+    });
+  } finally {
+    db.close();
+  }
+}
+
+async function lerBaseDoBanco() {
+  const db = await abrirBanco();
+  try {
+    return await new Promise((resolver, rejeitar) => {
+      const tx = db.transaction(["produtos", "meta"], "readonly");
+      const pedidoItens = tx.objectStore("produtos").getAll();
+      const pedidoMeta = tx.objectStore("meta").get("sync");
+      tx.oncomplete = () => resolver({ itens: pedidoItens.result || [], meta: pedidoMeta.result || null });
+      tx.onerror = () => rejeitar(tx.error || new Error("Falha ao ler o banco local."));
+      tx.onabort = () => rejeitar(tx.error || new Error("Leitura do banco local cancelada."));
+    });
+  } finally {
+    db.close();
+  }
+}
+
+// Mesma normalização do servidor: sem acentos, minúsculas, espaços simples
+function normalizarTextoBusca(texto) {
+  return String(texto || "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+// Prepara os campos de busca e deixa a base em ordem alfabética (mais recente primeiro no empate)
+function prepararBaseLocal(brutos) {
+  const itens = brutos.map((a) => {
+    const nome = normalizarTextoBusca(a.descricao);
+    return Object.assign({}, a, {
+      nome: nome,
+      palavrasDesc: " " + nome.replace(/[^a-z0-9]+/g, " "),
+      textoLoja: " " + (normalizarTextoBusca(a.loja) + " " + normalizarTextoBusca(a.apelido)).replace(/[^a-z0-9]+/g, " ")
+    });
+  });
+  itens.sort((a, b) => (a.nome < b.nome ? -1 : (a.nome > b.nome ? 1 : (Number(b.ms) || 0) - (Number(a.ms) || 0))));
+  return itens;
+}
+
+// Pesquisa local: mesmas regras do servidor (início das palavras, 4 letras e depois 3),
+// um resultado por descrição (menor preço) e sempre em ordem alfabética.
+function buscarProdutosLocal(dados) {
+  const offset = Math.max(0, parseInt(dados.offset, 10) || 0);
+  // tela Produtos: de 50 em 50; tela Lista: mostra todos os resultados de uma vez (até 200)
+  const limite = dados.todos ? Math.min(100, Math.max(1, parseInt(dados.limite, 10) || 50)) : 200;
+  const busca = normalizarTextoBusca(dados.busca);
+  const termosLoja = normalizarTextoBusca(dados.buscaLoja)
+    .split(" ").filter(Boolean).map((p) => p.substring(0, 4));
+  const palavras = busca ? busca.split(" ").filter(Boolean) : [];
+
+  function filtrar(tamanho, inicio) {
+    const termos = palavras.map((p) => (tamanho ? p.substring(0, tamanho) : p));
+    return baseLocal.itens.filter((a) => {
+      for (let t = 0; t < termosLoja.length; t++) {
+        if (a.textoLoja.indexOf(" " + termosLoja[t]) === -1) return false;
+      }
+      for (let i = 0; i < termos.length; i++) {
+        if (i === 0 && inicio) {
+          if (a.palavrasDesc.indexOf(" " + termos[0]) !== 0) return false;
+        } else if (a.palavrasDesc.indexOf(" " + termos[i]) === -1) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }
+
+  let filtrados;
+  if (!palavras.length) {
+    filtrados = termosLoja.length ? filtrar(0, false) : baseLocal.itens;
+  } else {
+    filtrados = filtrar(4, true);
+    if (!filtrados.length) filtrados = filtrar(3, true);
+    if (!filtrados.length) filtrados = filtrar(4, false);
+    if (!filtrados.length) filtrados = filtrar(3, false);
+  }
+
+  // cada descrição aparece uma vez, com o menor preço (empate: lançamento mais recente)
+  const menorPorDescricao = {};
+  const ordemDesc = [];
+  filtrados.forEach((a) => {
+    const pa = Number(a.preco);
+    const va = isFinite(pa) ? pa : Infinity;
+    const atual = menorPorDescricao[a.nome];
+    if (!atual) {
+      menorPorDescricao[a.nome] = { item: a, valor: va };
+      ordemDesc.push(a.nome);
+    } else if (va < atual.valor || (va === atual.valor && (Number(a.ms) || 0) > (Number(atual.item.ms) || 0))) {
+      menorPorDescricao[a.nome] = { item: a, valor: va };
+    }
+  });
+  const lista = ordemDesc.map((n) => menorPorDescricao[n].item);   // já em ordem alfabética
+
+  const total = lista.length;
+  const produtos = lista.slice(offset, offset + limite).map((a) => ({
+    data: a.ms ? new Date(a.ms).toISOString() : a.dataTxt,
+    loja: a.loja,
+    endereco: a.endereco,
+    bairro: a.bairro,
+    cidade: a.cidade,
+    apelido: a.apelido,
+    descricao: a.descricao,
+    quantidade: a.quantidade,
+    unidade: a.unidade,
+    precoUnitario: a.preco,
+    total: a.total
+  }));
+
+  return { ok: true, produtos: produtos, total: total, offset: offset, fim: offset + produtos.length >= total, local: true };
+}
+
+function formatarQuandoSync(ms) {
+  if (!ms) return "";
+  const d = new Date(ms);
+  const hora = d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  if (d.toDateString() === new Date().toDateString()) return "hoje " + hora;
+  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) + " " + hora;
+}
+
+function atualizarStatusSync() {
+  const semRede = navigator.onLine === false;
+  let texto;
+  if (sincronizando) {
+    texto = "Sincronizando produtos e lojas…";
+  } else if (baseLocalPronta()) {
+    texto = "Pesquisa offline pronta · " + baseLocal.itens.length + " itens · sincronizado " + formatarQuandoSync(baseLocal.quando) +
+      (semRede ? " · sem internet" : "") + (erroSincronizacao ? " · a última sincronização falhou" : "");
+  } else if (semRede) {
+    texto = "Sem dados offline ainda. Conecte-se à internet para sincronizar.";
+  } else {
+    texto = erroSincronizacao || "Dados offline ainda não sincronizados.";
+  }
+  document.querySelectorAll(".status-sync-texto").forEach((e) => { e.textContent = texto; });
+  document.querySelectorAll(".btn-sync").forEach((b) => { b.disabled = sincronizando; });
+}
+
+// Baixa toda a base da planilha (em lotes) e troca a cópia do IndexedDB.
+// forcar = true ignora a validade de 30 minutos (botão Sincronizar).
+async function sincronizarProdutos(forcar, manual) {
+  if (sincronizando) return;
+  const fresca = baseLocalPronta() && !baseDesatualizada && (Date.now() - baseLocal.quando) < VALIDADE_BASE_MS;
+  if (!forcar && fresca) return;
+  if (navigator.onLine === false) {
+    if (manual) mostrarMensagem("Sem internet. A pesquisa continua usando os dados já sincronizados.", "erro");
+    atualizarStatusSync();
+    return;
+  }
+
+  sincronizando = true;
+  baseDesatualizada = false;   // se algo mudar durante a sincronização, a marca volta
+  erroSincronizacao = "";
+  atualizarStatusSync();
+
+  try {
+    let itens = [];
+    let offset = 0;
+    let versao = null;
+    let recomecos = 0;
+
+    while (true) {
+      const d = await enviarMotor({ acao: "sincronizar", offset: offset, limite: 1000 });
+      if (!d || d.ok === false || !Array.isArray(d.itens)) {
+        throw new Error((d && d.aviso) || "Não foi possível sincronizar os produtos.");
+      }
+      if (versao === null) {
+        versao = d.versao;
+      } else if (d.versao !== versao) {
+        // a planilha mudou no meio dos lotes: recomeça do zero
+        if (++recomecos > 2) throw new Error("A planilha mudou durante a sincronização. Tente de novo.");
+        itens = []; offset = 0; versao = null;
+        continue;
+      }
+      itens = itens.concat(d.itens);
+      offset += d.itens.length;
+      if (d.fim || !d.itens.length) break;
+    }
+
+    const quando = Date.now();
+    try {
+      await gravarBaseNoBanco(itens, quando);
+      try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (_) {}
+    } catch (erroBanco) {
+      // sem IndexedDB: a pesquisa local funciona nesta sessão, mas não fica guardada
+      console.warn("IndexedDB:", erroBanco);
+    }
+    baseLocal = { itens: prepararBaseLocal(itens), quando: quando };
+  } catch (erro) {
+    erroSincronizacao = (erro && erro.message) || "Falha na sincronização.";
+    if (manual) mostrarMensagem(erroSincronizacao, "erro");
+  } finally {
+    sincronizando = false;
+    atualizarStatusSync();
+  }
+}
+
+// Depois de lançar, excluir ou alterar notas: atualiza a cópia local em segundo plano
+function marcarBaseDesatualizada() {
+  baseDesatualizada = true;
+  setTimeout(() => sincronizarProdutos(false), 1500);
+}
+
+async function iniciarBaseLocal() {
+  try {
+    const { itens, meta } = await lerBaseDoBanco();
+    if (itens.length) baseLocal = { itens: prepararBaseLocal(itens), quando: (meta && meta.quando) || 0 };
+  } catch (_) {}
+  atualizarStatusSync();
+  sincronizarProdutos(false);
+}
+
+document.querySelectorAll(".btn-sync").forEach((b) => {
+  b.addEventListener("click", () => sincronizarProdutos(true, true));
+});
+window.addEventListener("online", () => { atualizarStatusSync(); sincronizarProdutos(false); });
+window.addEventListener("offline", atualizarStatusSync);
+iniciarBaseLocal();
 </script>
 </body>
 </html>
