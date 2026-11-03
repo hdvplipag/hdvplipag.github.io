@@ -623,6 +623,15 @@
     .item-lista .info { flex: 1; min-width: 0; }
     .item-lista .nome { font-weight: 800; overflow-wrap: anywhere; }
     .item-lista .loja { font-size: .8rem; color: #526171; }
+    .fila-notas { margin-top: 12px; }
+    .fila-notas .fila-topo { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .fila-notas .fila-aviso { font-size: .8rem; color: #526171; margin-top: 4px; }
+    .fila-notas .fila-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-top: 1px solid #e4ecf4; margin-top: 8px; }
+    .fila-notas .fila-item small { display: block; color: #526171; }
+    .fila-notas .fila-item .fila-erro { color: #b3261e; }
+    .fila-notas .fila-item button { background: #fdeceb; color: #b3261e; width: 34px; min-height: 34px; height: 34px; padding: 0; border-radius: 50%; font-weight: 800; flex: 0 0 auto; }
+    .btn-fila { flex: 0 0 auto; width: auto; min-height: 36px; height: 36px; padding: 0 14px; border-radius: 10px; background: #124f80; color: #fff; font-weight: 800; font-size: .85rem; }
+    .btn-fila:disabled { opacity: .55; }
     .linha-sync { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; }
     .linha-sync .status-sync-texto { font-size: .78rem; color: #526171; flex: 1; min-width: 0; }
     .linha-sync .btn-sync { flex: 0 0 auto; width: auto; min-height: 34px; height: 34px; padding: 0 14px; border-radius: 10px; background: #e7f1fb; color: #124f80; font-weight: 800; font-size: .82rem; }
@@ -858,6 +867,16 @@
         Não
       </button>
     </div>
+  </section>
+
+  <!-- Notas lidas sem internet: ficam guardadas aqui e são lançadas quando a conexão voltar -->
+  <section id="filaNotas" class="cartao fila-notas" style="display:none" aria-live="polite">
+    <div class="fila-topo">
+      <strong id="filaTitulo"></strong>
+      <button id="btnFilaAgora" class="btn-fila" type="button">Lançar agora</button>
+    </div>
+    <div id="filaAviso" class="fila-aviso"></div>
+    <div id="filaLista"></div>
   </section>
 
   <section id="cupons" aria-label="Notas digitalizadas">
@@ -1177,10 +1196,12 @@ async function enviarMotor(dados) {
       redirect: "follow"
     });
   } catch (erro) {
-    throw new Error(
+    const semConexao = new Error(
       "Não foi possível conectar ao Google Apps Script. " +
       "Confira a conexão com a internet, o endereço /exec e as permissões da implantação."
     );
+    semConexao.name = "SemConexao";   // permite à fila de notas reconhecer a falta de internet
+    throw semConexao;
   }
 
   const texto = await resposta.text();
@@ -1782,6 +1803,12 @@ async function lancarLink(link) {
     return;
   }
 
+  // Sem internet: guarda o link na fila (IndexedDB) para lançar quando a conexão voltar
+  if (navigator.onLine === false) {
+    await enfileirarNota(valor);
+    return;
+  }
+
   requisicaoEmAndamento = true;
 
   limparMensagem();
@@ -1837,10 +1864,15 @@ async function lancarLink(link) {
       );
     }
   } catch (erro) {
-    mostrarMensagem(
-      erro.message || "Ocorreu um erro ao lançar a nota.",
-      "erro"
-    );
+    if (erro && erro.name === "SemConexao") {
+      // a conexão caiu (ou o celular acha que está online, mas não está): guarda na fila
+      await enfileirarNota(valor);
+    } else {
+      mostrarMensagem(
+        erro.message || "Ocorreu um erro ao lançar a nota.",
+        "erro"
+      );
+    }
   } finally {
     requisicaoEmAndamento = false;
 
@@ -3216,7 +3248,7 @@ window.addEventListener("pagehide", () => {
 
 /* BASE OFFLINE (IndexedDB): produtos e lojas da planilha, para pesquisar sem internet */
 const BANCO_NOME = "plipag_offline";
-const BANCO_VERSAO = 1;
+const BANCO_VERSAO = 2;   // 2: acrescenta a fila de notas
 const VALIDADE_BASE_MS = 30 * 60 * 1000;   // ao abrir, sincroniza se a cópia tiver mais de 30 minutos
 
 let baseLocal = { itens: [], quando: 0 };
@@ -3236,6 +3268,7 @@ function abrirBanco() {
       const db = pedido.result;
       if (!db.objectStoreNames.contains("produtos")) db.createObjectStore("produtos", { autoIncrement: true });
       if (!db.objectStoreNames.contains("meta")) db.createObjectStore("meta");
+      if (!db.objectStoreNames.contains("fila")) db.createObjectStore("fila", { keyPath: "id", autoIncrement: true });
     };
     pedido.onsuccess = () => resolver(pedido.result);
     pedido.onerror = () => rejeitar(pedido.error || new Error("Falha ao abrir o banco local."));
@@ -3479,6 +3512,188 @@ document.querySelectorAll(".btn-sync").forEach((b) => {
 window.addEventListener("online", () => { atualizarStatusSync(); sincronizarProdutos(false); });
 window.addEventListener("offline", atualizarStatusSync);
 iniciarBaseLocal();
+
+
+/* FILA DE NOTAS (IndexedDB): QR lidos sem internet ficam guardados e são lançados quando a conexão voltar.
+   O servidor recusa nota repetida, então reenviar da fila nunca duplica o lançamento. */
+const MAX_TENTATIVAS_FILA = 5;   // depois disso a nota só é reenviada pelo botão "Lançar agora"
+let processandoFila = false;
+let resumoFila = "";
+let timerResumoFila = null;
+
+async function operarFila_(modo, fn) {
+  const db = await abrirBanco();
+  try {
+    return await new Promise((resolver, rejeitar) => {
+      const tx = db.transaction(["fila"], modo);
+      const pedido = fn(tx.objectStore("fila"));
+      tx.oncomplete = () => resolver(pedido ? pedido.result : undefined);
+      tx.onerror = () => rejeitar(tx.error || new Error("Falha na fila de notas."));
+      tx.onabort = () => rejeitar(tx.error || new Error("Operação na fila de notas cancelada."));
+    });
+  } finally {
+    db.close();
+  }
+}
+
+async function filaListar() {
+  const itens = (await operarFila_("readonly", (s) => s.getAll())) || [];
+  return itens.sort((a, b) => (a.criado || 0) - (b.criado || 0));
+}
+function filaSalvar(item) { return operarFila_("readwrite", (s) => s.put(item)); }
+function filaRemover(id) { return operarFila_("readwrite", (s) => s.delete(id)); }
+
+// Guarda o link na fila (sem repetir o mesmo link) e mostra o aviso na tela
+async function enfileirarNota(link) {
+  limparMensagem();
+  try {
+    const atuais = await filaListar();
+    if (!atuais.some((i) => i.link === link)) {
+      await operarFila_("readwrite", (s) => s.add({ link: link, criado: Date.now(), tentativas: 0, erro: "" }));
+    }
+    el("linkNota").value = "";
+    resumoFila = "";
+  } catch (erro) {
+    console.warn("Fila:", erro);
+    mostrarMensagem("Sem internet e não foi possível guardar a nota neste aparelho. Tente de novo quando a conexão voltar.", "erro");
+    return;
+  }
+  await renderizarFila();
+  mostrarPerguntaOutraCaptura_();
+}
+
+async function renderizarFila() {
+  const caixa = el("filaNotas");
+  let itens = [];
+  try { itens = await filaListar(); } catch (_) {}
+
+  if (!itens.length && !resumoFila) { caixa.style.display = "none"; return; }
+  caixa.style.display = "";
+
+  el("filaTitulo").textContent = itens.length
+    ? itens.length + (itens.length === 1 ? " nota aguardando lançamento" : " notas aguardando lançamento")
+    : resumoFila;
+  el("filaAviso").textContent = !itens.length ? "" : (
+    (resumoFila ? resumoFila + " · " : "") +
+    (navigator.onLine === false
+      ? "Sem internet: serão lançadas sozinhas quando a conexão voltar."
+      : "Elas são lançadas sozinhas; se não for, toque em Lançar agora.")
+  );
+
+  const botao = el("btnFilaAgora");
+  botao.style.display = itens.length ? "" : "none";
+  botao.disabled = processandoFila;
+  botao.textContent = processandoFila ? "Lançando…" : "Lançar agora";
+
+  const lista = el("filaLista");
+  lista.replaceChildren();
+  itens.forEach((item, i) => {
+    const linha = document.createElement("div");
+    linha.className = "fila-item";
+    const info = document.createElement("div");
+    const nome = document.createElement("b");
+    nome.textContent = "Nota " + (i + 1);
+    const quando = document.createElement("small");
+    quando.textContent = "guardada " + formatarQuandoSync(item.criado);
+    info.appendChild(nome);
+    info.appendChild(quando);
+    if (item.erro) {
+      const erro = document.createElement("small");
+      erro.className = "fila-erro";
+      erro.textContent = item.erro;
+      info.appendChild(erro);
+    }
+    const remover = document.createElement("button");
+    remover.type = "button";
+    remover.setAttribute("aria-label", "Remover da fila");
+    remover.textContent = "✕";
+    remover.addEventListener("click", async () => {
+      const ok = await confirmarAcao("Remover da fila?", "Esta nota não será lançada.", "Remover");
+      if (!ok) return;
+      try { await filaRemover(item.id); } catch (_) {}
+      renderizarFila();
+    });
+    linha.appendChild(info);
+    linha.appendChild(remover);
+    lista.appendChild(linha);
+  });
+}
+
+// Envia as notas da fila, uma a uma, da mais antiga para a mais nova
+async function processarFila(manual) {
+  if (processandoFila || requisicaoEmAndamento) return;
+  if (navigator.onLine === false) {
+    if (manual) mostrarMensagem("Sem internet. As notas continuam guardadas na fila.", "erro");
+    return;
+  }
+
+  let itens = [];
+  try { itens = await filaListar(); } catch (_) { return; }
+  if (!itens.length) return;
+
+  processandoFila = true;
+  renderizarFila();
+  let lancadas = 0, repetidas = 0, pendentes = 0;
+
+  try {
+    for (const item of itens) {
+      if (!manual && (item.tentativas || 0) >= MAX_TENTATIVAS_FILA) { pendentes++; continue; }
+
+      let dados;
+      try {
+        dados = await enviarMotor({ acao: "lancar", link: item.link });
+      } catch (erro) {
+        if (erro && erro.name === "SemConexao") { pendentes += 1; break; }   // sem rede: tenta depois
+        item.tentativas = (item.tentativas || 0) + 1;
+        item.erro = (erro && erro.message) || "Falha ao lançar a nota.";
+        await filaSalvar(item);
+        pendentes++;
+        continue;
+      }
+
+      const aviso = String((dados && dados.aviso) || "");
+      const repetida = /notinha\s+j[aá]\s+foi\s+lan[cç]ada|nota\s+j[aá]\s+foi\s+lan[cç]ada|duplicad/i.test(aviso);
+
+      if (repetida) {
+        await filaRemover(item.id);
+        repetidas++;
+      } else if (dados && dados.ok !== false) {
+        await filaRemover(item.id);
+        lancadas++;
+        if (dados.chaveAcesso && !EMBUTIDO) guardarMinhaNota(dados.chaveAcesso);
+      } else {
+        // por exemplo, a nota ainda não está disponível na SEFAZ: tenta de novo mais tarde
+        item.tentativas = (item.tentativas || 0) + 1;
+        item.erro = aviso || "Não foi possível lançar a nota.";
+        await filaSalvar(item);
+        pendentes++;
+      }
+    }
+  } catch (erro) {
+    console.warn("Fila:", erro);
+  } finally {
+    processandoFila = false;
+  }
+
+  if (lancadas || repetidas) {
+    resumoFila = (lancadas ? lancadas + (lancadas === 1 ? " nota lançada" : " notas lançadas") : "") +
+      (lancadas && repetidas ? " · " : "") +
+      (repetidas ? repetidas + (repetidas === 1 ? " já estava lançada" : " já estavam lançadas") : "");
+    clearTimeout(timerResumoFila);
+    timerResumoFila = setTimeout(() => { resumoFila = ""; renderizarFila(); }, 12000);
+    // a lista de notas da tela precisa mostrar as novas
+    try { if (typeof carregarLista === "function") carregarLista(true); } catch (_) {}
+  }
+  await renderizarFila();
+}
+
+el("btnFilaAgora").addEventListener("click", () => processarFila(true));
+window.addEventListener("online", () => { renderizarFila(); setTimeout(() => processarFila(false), 1500); });
+window.addEventListener("offline", renderizarFila);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") processarFila(false);
+});
+renderizarFila().then(() => processarFila(false));
 </script>
 </body>
 </html>
