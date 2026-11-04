@@ -502,7 +502,7 @@
       display: none !important;
     }
 
-    main { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+    main { padding-bottom: calc(122px + env(safe-area-inset-bottom)); }
 
     #rodapeAcoes {
       position: fixed;
@@ -511,9 +511,10 @@
       bottom: 0;
       z-index: 40;
       display: flex;
+      flex-wrap: wrap;
       gap: 12px;
       justify-content: center;
-      padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+      padding: 10px 16px calc(8px + env(safe-area-inset-bottom));
       background: #fff;
       border-top: 1px solid var(--borda);
       box-shadow: 0 -4px 14px rgba(25, 45, 70, .08);
@@ -623,6 +624,21 @@
     .item-lista .info { flex: 1; min-width: 0; }
     .item-lista .nome { font-weight: 800; overflow-wrap: anywhere; }
     .item-lista .loja { font-size: .8rem; color: #526171; }
+    /* Licença: login por e-mail e tela de licença vencida */
+    html.sem-licenca main, html.sem-licenca #rodapeAcoes { visibility: hidden; }
+    .licenca-fundo { position: fixed; inset: 0; z-index: 100; display: none; align-items: center; justify-content: center; padding: 20px; background: #f4f7fb; }
+    .licenca-fundo.visivel { display: flex; }
+    .licenca-caixa { width: 100%; max-width: 380px; background: #fff; border: 1px solid #e4ecf4; border-radius: 16px; padding: 22px 20px; box-shadow: 0 8px 28px rgba(15, 30, 45, .12); }
+    .licenca-caixa h2 { margin: 0 0 14px; font-size: 1.1rem; color: #15202b; }
+    .licenca-caixa label { display: block; font-size: .72rem; font-weight: 800; text-transform: uppercase; color: #526171; margin: 12px 0 4px; }
+    .licenca-caixa input { width: 100%; box-sizing: border-box; min-height: 44px; padding: 8px 12px; border: 1px solid #b9cde2; border-radius: 10px; font-size: 1rem; background: #fff; color: #15202b; }
+    .licenca-erro { color: #b3261e; font-size: .85rem; margin: 10px 0 0; }
+    .licenca-botoes { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+    .licenca-bloqueio { border: 2px solid #c62828; text-align: center; }
+    .licenca-bloqueio p { color: #c62828; font-weight: 800; font-size: 1.05rem; line-height: 1.35; margin: 0 0 18px; }
+    #rodapeAcoes .rodape-licenca { margin-top: -2px; }
+    .rodape-licenca { flex: 0 0 100%; display: flex; align-items: center; justify-content: center; gap: 5px; padding-top: 6px; border-top: 1px solid #e4ecf4; font-size: .75rem; font-weight: 600; color: #526171; cursor: pointer; }
+    .rodape-licenca strong { color: #15202b; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60vw; }
     .fila-notas { margin-top: 12px; }
     .fila-notas .fila-topo { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
     .fila-notas .fila-aviso { font-size: .8rem; color: #526171; margin-top: 4px; }
@@ -632,10 +648,6 @@
     .fila-notas .fila-item button { background: #fdeceb; color: #b3261e; width: 34px; min-height: 34px; height: 34px; padding: 0; border-radius: 50%; font-weight: 800; flex: 0 0 auto; }
     .btn-fila { flex: 0 0 auto; width: auto; min-height: 36px; height: 36px; padding: 0 14px; border-radius: 10px; background: #124f80; color: #fff; font-weight: 800; font-size: .85rem; }
     .btn-fila:disabled { opacity: .55; }
-    .linha-sync { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; }
-    .linha-sync .status-sync-texto { font-size: .78rem; color: #526171; flex: 1; min-width: 0; }
-    .linha-sync .btn-sync { flex: 0 0 auto; width: auto; min-height: 34px; height: 34px; padding: 0 14px; border-radius: 10px; background: #e7f1fb; color: #124f80; font-weight: 800; font-size: .82rem; }
-    .linha-sync .btn-sync:disabled { opacity: .55; }
     .item-lista .apelido { font-size: .8rem; font-weight: 700; color: #124f80; }
     .item-lista { flex-wrap: wrap; }
     .item-lista .linha-atual { flex: 0 0 100%; display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
@@ -917,7 +929,6 @@
         <button id="btnLimparFiltroLoja" type="button" aria-label="Limpar busca da loja" style="display:none">✕</button>
       </div>
       <div id="resumoProdutos" class="dica"></div>
-      <div class="linha-sync"><span class="status-sync-texto"></span><button type="button" class="btn-sync">Sincronizar</button></div>
     </section>
     <div id="listaProdutos"></div>
     <p id="fimProdutos" class="dica" style="text-align:center"></p>
@@ -933,7 +944,6 @@
         <button id="btnLimparFiltroTodos" type="button" aria-label="Limpar busca" style="display:none">✕</button>
       </div>
       <div id="resumoTodos" class="dica"></div>
-      <div class="linha-sync"><span class="status-sync-texto"></span><button type="button" class="btn-sync">Sincronizar</button></div>
     </section>
     <div id="listaTodos"></div>
     <p id="fimTodos" class="dica" style="text-align:center"></p>
@@ -993,10 +1003,39 @@
   </p>
 </main>
 
+<!-- Licença vencida ou não registrada -->
+<div id="licencaBloco" class="licenca-fundo" role="alertdialog" aria-modal="true" aria-labelledby="licencaMensagem">
+  <div class="licenca-caixa licenca-bloqueio">
+    <p id="licencaMensagem"></p>
+    <button id="licencaOutroEmail" class="botao-principal" type="button">Entrar com outro e-mail</button>
+  </div>
+</div>
+
+<!-- Acesso por e-mail e senha -->
+<div id="licencaModal" class="licenca-fundo" role="dialog" aria-modal="true" aria-labelledby="licencaTitulo">
+  <form id="licencaForm" class="licenca-caixa" autocomplete="on">
+    <h2 id="licencaTitulo">Acessar com e-mail</h2>
+    <label for="licencaEmail">E-mail cadastrado *</label>
+    <input type="email" id="licencaEmail" required autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false">
+    <label for="licencaSenha">Senha *</label>
+    <input type="password" id="licencaSenha" required maxlength="8" autocomplete="off" inputmode="numeric">
+    <p id="licencaErro" class="licenca-erro" style="display:none"></p>
+    <div class="licenca-botoes">
+      <button id="licencaCancelar" class="botao-secundario" type="button" style="display:none">Cancelar</button>
+      <button class="botao-principal" type="submit">Entrar</button>
+    </div>
+  </form>
+</div>
+
 <nav id="rodapeAcoes" aria-label="Ações">
   <button id="btnNovaCaptura" class="botao-rodape botao-rodape-camera" type="button" aria-label="Voltar para a digitalização" title="Digitalizar"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></button>
   <button id="btnProdutos" class="botao-rodape botao-rodape-produtos" type="button" aria-label="Produtos" title="Produtos"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg><span>Produtos</span></button>
   <button id="btnLista" class="botao-rodape botao-rodape-produtos" type="button" aria-label="Lista" title="Lista"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3.5" cy="6" r="1"/><circle cx="3.5" cy="12" r="1"/><circle cx="3.5" cy="18" r="1"/></svg><span>Lista</span><b id="contadorRodape" class="contador-lista" style="display:none"></b></button>
+  <!-- Licenciado: toque para trocar de e-mail -->
+  <div id="rodapeLicenca" class="rodape-licenca" style="display:none" role="button" tabindex="0" title="Trocar de e-mail">
+    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 3v6c0 5-3.4 9.4-8 11-4.6-1.6-8-6-8-11V5z"/></svg>
+    Licenciado para: <strong id="licencaNome"></strong>
+  </div>
 </nav>
 
 <script>
@@ -1079,7 +1118,7 @@ window.addEventListener("online", () => setTimeout(guardarBibliotecasQr, 1000));
  * ENDEREÇO DO GOOGLE APPS SCRIPT
  * Mantido conforme o arquivo enviado.
  */
-const URL_DO_MOTOR =
+let URL_DO_MOTOR =
   "https://script.google.com/macros/s/AKfycby7bScgVxp5wJxV0KZ26kvU0Awd8az-pMZXSg8kTM137bvnQxQxvgpXJ39zutU8gC_Xew/exec";
 
 const EH_IOS = /iPad|iPhone|iPod/i.test(navigator.userAgent) ||
@@ -1112,6 +1151,249 @@ let iosZbar = null;
 let iosQuadro = 0;
 
 const el = (id) => document.getElementById(id);
+
+
+/* LICENÇA: cadastro de licenciados numa planilha do Google (usuarios.gs, no Apps Script), o mesmo do PliPag.
+   Login: e-mail cadastrado + senha do dia. A licença validada fica guardada no aparelho,
+   para o app abrir também sem internet. Dentro do PliPag (iframe) o acesso é controlado
+   pelo próprio PliPag e nada muda. */
+const MENSAGEM_LICENCA_VENCIDA =
+  "Cópia não registrada, entrar em contato com o desenvolvedor pelo telefone: 82987340685 para regularização da licença";
+const CHAVE_EMAIL_LICENCA = "nota_user_email";
+const CHAVE_LICENCA = "nota_licenca";
+const INTERVALO_REVALIDAR_LICENCA_MS = 5 * 60 * 1000;
+let LICENCA_OK = EMBUTIDO;
+let PLANILHA_ATIVA = "";
+let ultimaRevalidacaoLicenca = 0;
+
+function hojeISO() {
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+
+function senhaDoDia() {
+  return hojeISO().replace(/-/g, "");   // AAAAMMDD
+}
+
+function lerEmailLicenca() {
+  try { return localStorage.getItem(CHAVE_EMAIL_LICENCA) || ""; } catch (_) { return ""; }
+}
+
+function lerLicencaGuardada() {
+  try {
+    const v = JSON.parse(localStorage.getItem(CHAVE_LICENCA) || "null");
+    return v && typeof v === "object" ? v : null;
+  } catch (_) { return null; }
+}
+
+// 'DD/MM/AAAA' (formato do cadastro) ou 'AAAA-MM-DD' -> Date; null se for inválida
+function parseDataLicenca(texto) {
+  const t = String(texto || "").trim();
+  let dia, mes, ano, m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) { dia = +m[1]; mes = +m[2]; ano = +m[3]; }
+  else {
+    m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (!m) return null;
+    ano = +m[1]; mes = +m[2]; dia = +m[3];
+  }
+  const d = new Date(ano, mes - 1, dia);
+  return (d.getFullYear() === ano && d.getMonth() === mes - 1 && d.getDate() === dia) ? d : null;
+}
+
+// Vale até o fim do dia da validade. Vazia = não vence. Data inválida = vencida.
+function validadeVencida(validade) {
+  const t = String(validade || "").trim();
+  if (!t) return false;
+  const d = parseDataLicenca(t);
+  if (!d) return true;
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  return hoje > d;
+}
+
+// Licença guardada neste aparelho para o e-mail (a validade é conferida com a data do aparelho)
+function licencaGuardadaDe(email) {
+  const alvo = String(email || "").trim().toLowerCase();
+  const g = lerLicencaGuardada();
+  if (!alvo || !g || String(g.email || "").toLowerCase() !== alvo) return null;
+  return Object.assign({}, g, { vencida: !!g.vencidaServidor || validadeVencida(g.validade) });
+}
+
+function guardarLicenca(u) {
+  const g = {
+    email: String(u.email || "").toLowerCase(),
+    nome: u.nome || u.email,
+    planilha: u.planilha || "",
+    validade: u.validade || "",
+    vencidaServidor: !!u.vencida
+  };
+  try { localStorage.setItem(CHAVE_LICENCA, JSON.stringify(g)); } catch (_) {}
+  return g;
+}
+
+function mostrarNomeLicenca(nome) {
+  el("licencaNome").textContent = nome;
+  el("rodapeLicenca").style.display = "";
+}
+
+// Pergunta ao servidor (cadastro do PliPag). Não guarda nada.
+// Devolve { estado: "ok", dados } | { estado: "nao" } | { estado: "erro", semInternet, mensagem }
+async function consultarLicenca(email) {
+  try {
+    const d = await enviarMotor({ acao: "licenca", email: email });
+    if (d && d.ok === true && d.cadastrado === false) return { estado: "nao" };
+    if (d && d.ok === true && d.cadastrado === true) return { estado: "ok", dados: d };
+    return { estado: "erro", semInternet: false, mensagem: (d && d.aviso) || "Não foi possível validar a licença." };
+  } catch (e) {
+    return { estado: "erro", semInternet: !!(e && e.name === "SemConexao"), mensagem: (e && e.message) || "Não foi possível validar a licença." };
+  }
+}
+
+// Usa a licença guardada no aparelho. true = liberado, "vencida" = vencida, false = não há licença guardada
+function aplicarLicenca(email) {
+  const u = licencaGuardadaDe(email);
+  if (!u) return false;
+  if (u.vencida) { LICENCA_OK = false; return "vencida"; }
+  PLANILHA_ATIVA = u.planilha || "";
+  LICENCA_OK = true;
+  mostrarNomeLicenca(u.nome || u.email);
+  document.documentElement.classList.remove("sem-licenca");
+  return true;
+}
+
+// Com o app já liberado, confere de vez em quando no cadastro (licença vencida, e-mail retirado, planilha trocada)
+async function revalidarLicenca() {
+  if (EMBUTIDO || !LICENCA_OK || navigator.onLine === false) return;
+  if (Date.now() - ultimaRevalidacaoLicenca < INTERVALO_REVALIDAR_LICENCA_MS) return;
+  ultimaRevalidacaoLicenca = Date.now();
+
+  const r = await consultarLicenca(lerEmailLicenca());
+  if (r.estado === "nao") {
+    try { localStorage.removeItem(CHAVE_EMAIL_LICENCA); localStorage.removeItem(CHAVE_LICENCA); } catch (_) {}
+    location.reload();
+    return;
+  }
+  if (r.estado !== "ok") return;   // sem resposta firme: continua com o que está guardado
+
+  const antes = lerLicencaGuardada();
+  const g = guardarLicenca(r.dados);
+  if (g.vencidaServidor) { location.reload(); return; }
+  mostrarNomeLicenca(g.nome);
+  if ((antes && antes.planilha || "") !== g.planilha) location.reload();   // planilha mudou: recomeça nela
+}
+
+function abrirLoginLicenca(podeCancelar, mensagem) {
+  el("licencaBloco").classList.remove("visivel");
+  el("licencaEmail").value = lerEmailLicenca();
+  el("licencaSenha").value = "";
+  const erro = el("licencaErro");
+  erro.textContent = mensagem || "";
+  erro.style.display = mensagem ? "" : "none";
+  el("licencaCancelar").style.display = podeCancelar ? "" : "none";
+  el("licencaModal").classList.add("visivel");
+  setTimeout(() => { try { el(el("licencaEmail").value ? "licencaSenha" : "licencaEmail").focus(); } catch (_) {} }, 100);
+}
+
+function fecharLoginLicenca() {
+  el("licencaModal").classList.remove("visivel");
+}
+
+function mostrarBloqueioLicenca() {
+  document.documentElement.classList.add("sem-licenca");
+  el("licencaMensagem").textContent = MENSAGEM_LICENCA_VENCIDA;
+  el("licencaBloco").classList.add("visivel");
+}
+
+// Outro usuário entrando neste aparelho não herda a lista, as notas nem os produtos do anterior
+function limparDadosLocais() {
+  ["nota_lista", "nota_minhas_chaves", "nota_apelidos"].forEach((k) => {
+    try { localStorage.removeItem(k); } catch (_) {}
+  });
+  return new Promise((resolver) => {
+    try {
+      const pedido = indexedDB.deleteDatabase("plipag_offline");
+      pedido.onsuccess = pedido.onerror = pedido.onblocked = () => resolver();
+      setTimeout(resolver, 1500);
+    } catch (_) { resolver(); }
+  });
+}
+
+async function enviarLoginLicenca(ev) {
+  ev.preventDefault();
+  const email = el("licencaEmail").value.trim().toLowerCase();
+  const senha = el("licencaSenha").value.trim();
+  const erro = el("licencaErro");
+  const botao = el("licencaForm").querySelector("button[type=submit]");
+  const mostrarErro = (t) => { erro.textContent = t; erro.style.display = ""; };
+
+  if (senha !== senhaDoDia()) { mostrarErro("Senha incorreta."); return; }
+
+  botao.disabled = true;
+  botao.textContent = "Verificando…";
+  try {
+    // 1) cadastro no servidor; 2) sem resposta (sem internet): vale a licença guardada deste e-mail
+    const r = await consultarLicenca(email);
+    let u = null;
+
+    if (r.estado === "nao") {
+      const g = lerLicencaGuardada();
+      if (g && String(g.email || "").toLowerCase() === email) { try { localStorage.removeItem(CHAVE_LICENCA); } catch (_) {} }
+      mostrarErro("E-mail não cadastrado. Entre em contato com o desenvolvedor.");
+      return;
+    }
+    if (r.estado === "ok") {
+      u = { email: String(r.dados.email || email).toLowerCase(), nome: r.dados.nome, planilha: r.dados.planilha,
+            validade: r.dados.validade, vencida: !!r.dados.vencida };
+    } else {
+      u = licencaGuardadaDe(email);
+      if (!u) {
+        mostrarErro(r.semInternet
+          ? "Sem internet e este e-mail ainda não foi validado neste aparelho. Conecte-se para o primeiro acesso."
+          : r.mensagem);
+        return;
+      }
+    }
+
+    if (u.vencida) { fecharLoginLicenca(); mostrarBloqueioLicenca(); return; }
+
+    const anterior = lerEmailLicenca();
+    if (anterior && anterior !== u.email) await limparDadosLocais();
+    if (r.estado === "ok") guardarLicenca(u);
+    try { localStorage.setItem(CHAVE_EMAIL_LICENCA, u.email); } catch (_) {}
+    location.reload();   // recomeça já liberado: câmera, lista e sincronização iniciam normalmente
+  } finally {
+    botao.disabled = false;
+    botao.textContent = "Entrar";
+  }
+}
+
+function iniciarLicenca() {
+  el("licencaForm").addEventListener("submit", enviarLoginLicenca);
+  el("licencaCancelar").addEventListener("click", fecharLoginLicenca);
+  el("licencaOutroEmail").addEventListener("click", () => abrirLoginLicenca(false));
+  el("rodapeLicenca").addEventListener("click", () => abrirLoginLicenca(true));
+
+  if (EMBUTIDO) return;
+  const salvo = lerEmailLicenca();
+  const r = salvo ? aplicarLicenca(salvo) : false;
+  if (r === true) { revalidarLicenca(); return; }
+
+  document.documentElement.classList.add("sem-licenca");
+  if (r === "vencida") mostrarBloqueioLicenca(); else abrirLoginLicenca(false);
+}
+iniciarLicenca();
+
+// Voltou para o app ou a internet voltou: a licença guardada pode ter vencido; confere também no cadastro
+function conferirLicencaAgora() {
+  if (EMBUTIDO || !LICENCA_OK) return;
+  const u = licencaGuardadaDe(lerEmailLicenca());
+  if (!u || u.vencida) { location.reload(); return; }
+  revalidarLicenca();
+}
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") conferirLicencaAgora();
+});
+window.addEventListener("online", conferirLicencaAgora);
 
 
 /* MENSAGENS */
@@ -1161,6 +1443,13 @@ function validarMotor() {
 }
 
 async function enviarMotor(dados) {
+  // Sem licença válida nada é consultado nem enviado (só a própria consulta da licença passa)
+  if (!LICENCA_OK && dados.acao !== "licenca") {
+    const semLicenca = new Error("Licença não validada.");
+    semLicenca.name = "SemLicenca";
+    throw semLicenca;
+  }
+
   // Busca de produtos e lojas: usa a base guardada no celular (IndexedDB) quando existe;
   // assim a pesquisa é instantânea e funciona sem internet.
   if (dados.acao === "produtos" && baseLocalPronta()) {
@@ -1176,6 +1465,8 @@ async function enviarMotor(dados) {
     categoria: dados.categoria || ""
   };
 
+  if (dados.email !== undefined) corpo.email = dados.email;
+  if (PLANILHA_ATIVA && dados.acao !== "licenca") corpo.planilha = PLANILHA_ATIVA;   // planilha do licenciado
   if (dados.offset !== undefined) corpo.offset = dados.offset;
   if (dados.limite !== undefined) corpo.limite = dados.limite;
   if (dados.chaves !== undefined) corpo.chaves = dados.chaves;
@@ -1528,6 +1819,7 @@ let spinnerListaAtivo = false;
  */
 async function carregarLista(reiniciar) {
   if (EMBUTIDO) return;   // dentro do PliPag não mostra a lista de notas
+  if (!LICENCA_OK) return;
   if (carregandoLista && !reiniciar) return;
   if (!reiniciar && fimDaLista) return;
 
@@ -1543,6 +1835,9 @@ async function carregarLista(reiniciar) {
     renderizarCupons();
     return;
   }
+
+  // Sem internet: mantém a lista que já está na tela, sem consultar o servidor nem mostrar erro
+  if (navigator.onLine === false) return;
 
   carregandoLista = true;
   renderizarCupons();
@@ -1584,9 +1879,8 @@ async function carregarLista(reiniciar) {
     totalNotas = cupons.length;
     somaNotas = cupons.reduce((t, c) => t + (Number(c.total) || 0), 0);
   } catch (erro) {
-    if (minha === sequenciaLista) {
-      mostrarMensagem(erro.message || "Erro ao carregar a lista de notas.", "erro");
-    }
+    // falha ao ler a lista de notas (sem conexão, por exemplo): não mostra mensagem na tela
+    console.warn("Lista de notas:", erro && erro.message);
   } finally {
     if (minha === sequenciaLista) {
       carregandoLista = false;
@@ -2046,6 +2340,15 @@ async function iniciarLeituraAoVivoNoIphone_() {
   iosQuadro = 0;
   atualizarBotaoLanterna_(stream.getVideoTracks()[0]);
 
+  // foco contínuo: QR denso só lê bem com a imagem nítida (ignora se o aparelho não aceitar)
+  try {
+    const trilha = stream.getVideoTracks()[0];
+    const cap = trilha.getCapabilities ? trilha.getCapabilities() : {};
+    if (cap.focusMode && cap.focusMode.indexOf("continuous") !== -1) {
+      await trilha.applyConstraints({ advanced: [{ focusMode: "continuous" }] });
+    }
+  } catch (_) {}
+
   const video = document.createElement("video");
   video.autoplay = true;
   video.muted = true;
@@ -2088,7 +2391,68 @@ async function iniciarLeituraAoVivoNoIphone_() {
 
 function agendarLeituraDoQuadroIphone_() {
   if (!cameraAtiva || !iosCameraVideo || processandoLeitura) return;
-  iosTimerLeitura = setTimeout(processarQuadroIphone_, 180);
+  // sem o zbar (sem internet) o jsQR trabalha em todo quadro, então a pausa entre quadros é menor
+  iosTimerLeitura = setTimeout(processarQuadroIphone_, iosZbar ? 180 : 60);
+}
+
+/* Leitura com o jsQR (funciona sem internet). A cada quadro olha a imagem de um jeito diferente:
+   o QR da nota é denso, então o recorte central em resolução máxima costuma ser o que acerta. */
+let iosCanvasReduzido = null;
+let iosDetectorNativo = null;
+
+function pixelsDoRecorte_(sx, sy, lado) {
+  return iosContextoCanvas.getImageData(sx, sy, lado, lado);
+}
+
+async function lerComJsQr_(largura, altura) {
+  // alguns navegadores já trazem um leitor de QR nativo (rápido e sensível): usa se existir
+  if (iosDetectorNativo === null) {
+    iosDetectorNativo = false;
+    try {
+      if ("BarcodeDetector" in window) iosDetectorNativo = new BarcodeDetector({ formats: ["qr_code"] });
+    } catch (_) { iosDetectorNativo = false; }
+  }
+  if (iosDetectorNativo) {
+    try {
+      const achados = await iosDetectorNativo.detect(iosCanvas);
+      if (achados && achados.length && achados[0].rawValue) return achados[0].rawValue;
+    } catch (_) {}
+  }
+
+  if (typeof jsQR !== "function") return "";
+
+  const lado = Math.min(largura, altura);
+  const passo = iosQuadro % 4;
+  let qr = null;
+
+  if (passo === 0 || passo === 2) {
+    // recorte central quadrado em resolução máxima (o QR costuma ficar no meio da tela)
+    const sx = Math.round((largura - lado) / 2);
+    const sy = Math.round((altura - lado) / 2);
+    const px = pixelsDoRecorte_(sx, sy, lado);
+    qr = jsQR(px.data, lado, lado, { inversionAttempts: passo === 2 ? "attemptBoth" : "dontInvert" });
+  } else if (passo === 1) {
+    // quadro inteiro reduzido: acha o QR quando ele está longe ou fora do centro
+    if (!iosCanvasReduzido) iosCanvasReduzido = document.createElement("canvas");
+    const k = Math.min(1, 960 / largura);
+    const w = Math.max(1, Math.round(largura * k));
+    const h = Math.max(1, Math.round(altura * k));
+    iosCanvasReduzido.width = w;
+    iosCanvasReduzido.height = h;
+    const ctx = iosCanvasReduzido.getContext("2d", { willReadFrequently: true });
+    ctx.drawImage(iosCanvas, 0, 0, w, h);
+    const px = ctx.getImageData(0, 0, w, h);
+    qr = jsQR(px.data, w, h, { inversionAttempts: "dontInvert" });
+  } else {
+    // recorte menor (60%) em resolução máxima: QR pequeno e perto do centro
+    const menor = Math.round(lado * 0.6);
+    const sx = Math.round((largura - menor) / 2);
+    const sy = Math.round((altura - menor) / 2);
+    const px = pixelsDoRecorte_(sx, sy, menor);
+    qr = jsQR(px.data, menor, menor, { inversionAttempts: "dontInvert" });
+  }
+
+  return qr && qr.data ? qr.data : "";
 }
 
 async function processarQuadroIphone_() {
@@ -2105,7 +2469,7 @@ async function processarQuadroIphone_() {
   }
 
   try {
-    const escala = Math.min(1, 1600 / video.videoWidth);
+    const escala = Math.min(1, 1920 / video.videoWidth);
     const largura = Math.max(1, Math.round(video.videoWidth * escala));
     const altura = Math.max(1, Math.round(video.videoHeight * escala));
     if (iosCanvas.width !== largura || iosCanvas.height !== altura) {
@@ -2113,22 +2477,18 @@ async function processarQuadroIphone_() {
       iosCanvas.height = altura;
     }
     iosContextoCanvas.drawImage(video, 0, 0, largura, altura);
-    const pixels = iosContextoCanvas.getImageData(0, 0, largura, altura);
     let textoLido = "";
 
     if (iosZbar) {
+      // com internet: zbar (o mais sensível) olhando o quadro inteiro
+      const pixels = iosContextoCanvas.getImageData(0, 0, largura, altura);
       const simbolos = await iosZbar.scanImageData(pixels);
       const qr = simbolos.find(simbolo => /qr/i.test(simbolo.typeName || ""));
       if (qr) textoLido = qr.decode();
     }
 
     iosQuadro += 1;
-    if (!textoLido && typeof jsQR === "function" && iosQuadro % 2 === 0) {
-      const qr = jsQR(pixels.data, largura, altura, {
-        inversionAttempts: "attemptBoth"
-      });
-      if (qr) textoLido = qr.data;
-    }
+    if (!textoLido) textoLido = await lerComJsQr_(largura, altura);
 
     if (textoLido) {
       processandoLeitura = true;
@@ -2561,6 +2921,7 @@ el("btnNovaCaptura").addEventListener("click", async () => {
 
 el("btnConcluirCapturas").addEventListener("click", () => {
   esconderPerguntaOutraCaptura_();
+  limparMensagem();   // some também o aviso da nota (ex.: "Essa notinha já foi lançada")
 });
 
 
@@ -2656,7 +3017,8 @@ function temConsultaProdutos() {
 
 // Ao abrir a tela, atualiza a cópia local (IndexedDB) se ela estiver velha ou não existir
 async function aquecerProdutos() {
-  sincronizarProdutos(false);
+  // ao entrar na tela com internet, atualiza sozinho se a cópia tiver mais de 2 minutos
+  sincronizarProdutos(false, false, 2 * 60 * 1000);
 }
 
 function renderizarProdutos() {
@@ -2777,6 +3139,7 @@ async function abrirTodosProdutos() {
   el("btnProdutos").classList.add("ativo");
   try { window.scrollTo(0, 0); } catch (_) {}
 
+  aquecerProdutos();
   carregarTodos(true);
 }
 
@@ -3222,7 +3585,7 @@ if (EH_IOS) {
   el("btnLer").textContent = "📷 Capturar";
 }
 
-window.addEventListener("load", () => iniciarCamera(), { once: true });
+window.addEventListener("load", () => { if (LICENCA_OK) iniciarCamera(); }, { once: true });
 
 
 /*
@@ -3415,28 +3778,14 @@ function formatarQuandoSync(ms) {
   return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) + " " + hora;
 }
 
-function atualizarStatusSync() {
-  const semRede = navigator.onLine === false;
-  let texto;
-  if (sincronizando) {
-    texto = "Sincronizando produtos e lojas…";
-  } else if (baseLocalPronta()) {
-    texto = "Pesquisa offline pronta · " + baseLocal.itens.length + " itens · sincronizado " + formatarQuandoSync(baseLocal.quando) +
-      (semRede ? " · sem internet" : "") + (erroSincronizacao ? " · a última sincronização falhou" : "");
-  } else if (semRede) {
-    texto = "Sem dados offline ainda. Conecte-se à internet para sincronizar.";
-  } else {
-    texto = erroSincronizacao || "Dados offline ainda não sincronizados.";
-  }
-  document.querySelectorAll(".status-sync-texto").forEach((e) => { e.textContent = texto; });
-  document.querySelectorAll(".btn-sync").forEach((b) => { b.disabled = sincronizando; });
-}
+// A sincronização é automática e silenciosa: não há texto nem botão na tela.
+function atualizarStatusSync() {}
 
 // Baixa toda a base da planilha (em lotes) e troca a cópia do IndexedDB.
-// forcar = true ignora a validade de 30 minutos (botão Sincronizar).
-async function sincronizarProdutos(forcar, manual) {
-  if (sincronizando) return;
-  const fresca = baseLocalPronta() && !baseDesatualizada && (Date.now() - baseLocal.quando) < VALIDADE_BASE_MS;
+// forcar = true ignora a validade. validade = quanto tempo a cópia vale (padrão: 30 minutos).
+async function sincronizarProdutos(forcar, manual, validade) {
+  if (sincronizando || !LICENCA_OK) return;
+  const fresca = baseLocalPronta() && !baseDesatualizada && (Date.now() - baseLocal.quando) < (validade || VALIDADE_BASE_MS);
   if (!forcar && fresca) return;
   if (navigator.onLine === false) {
     if (manual) mostrarMensagem("Sem internet. A pesquisa continua usando os dados já sincronizados.", "erro");
@@ -3485,6 +3834,7 @@ async function sincronizarProdutos(forcar, manual) {
     tentativasSync = 0;
   } catch (erro) {
     erroSincronizacao = (erro && erro.message) || "Falha na sincronização.";
+    console.warn("Sincronização:", erroSincronizacao);
     baseDesatualizada = true;                 // continua pendente: será tentada de novo
     if (manual) mostrarMensagem(erroSincronizacao, "erro");
     else agendarNovaTentativaSync();
@@ -3519,9 +3869,6 @@ async function iniciarBaseLocal() {
   sincronizarProdutos(false);
 }
 
-document.querySelectorAll(".btn-sync").forEach((b) => {
-  b.addEventListener("click", () => sincronizarProdutos(true, true));
-});
 // Voltou a internet: atualiza a cópia sozinho, mesmo que ela seja recente (a planilha pode ter mudado)
 window.addEventListener("online", () => {
   atualizarStatusSync();
@@ -3647,7 +3994,7 @@ async function renderizarFila() {
 
 // Envia as notas da fila, uma a uma, da mais antiga para a mais nova
 async function processarFila(manual) {
-  if (processandoFila || requisicaoEmAndamento) return;
+  if (processandoFila || requisicaoEmAndamento || !LICENCA_OK) return;
   if (navigator.onLine === false) {
     if (manual) mostrarMensagem("Sem internet. As notas continuam guardadas na fila.", "erro");
     return;
