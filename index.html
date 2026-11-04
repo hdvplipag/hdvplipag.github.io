@@ -882,6 +882,7 @@
       let usuarioAtual = '';        // e-mail de quem está usando o app (cada usuário tem seu próprio cache e sua fila)
       let modoOffline = false;      // entrou no app sem internet (login conferido no próprio aparelho)
       let senhaSessao = '';         // só na memória, só se entrou offline: serve para reconectar sozinho quando a internet voltar
+      let ultimoErroRede = '';      // motivo técnico da última falha de conexão (aparece na etiqueta do topo)
       let semRede = false;          // a última tentativa de falar com o servidor falhou por falta de internet
       let sincronizando = false;
       let timerSync = null;
@@ -971,15 +972,17 @@
       function chamarApi(fn, args, opc) {
         const ctl = (opc && opc.timeout && window.AbortController) ? new AbortController() : null;
         const t = ctl ? setTimeout(function() { ctl.abort(); }, opc.timeout) : null;
-        return fetch(API_URL, {
+        // mesma requisição do app original; o sinal de cancelamento só entra nas leituras com limite de tempo
+        const opcoesFetch = {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({ fn: fn, args: args, token: tokenSessao }),
-          redirect: 'follow',
-          signal: ctl ? ctl.signal : undefined
-        }).then(function(r) {
+          redirect: 'follow'
+        };
+        if (ctl) opcoesFetch.signal = ctl.signal;
+        return fetch(API_URL, opcoesFetch).then(function(r) {
           if (t) clearTimeout(t);
-          if (semRede) { semRede = false; atualizarAviso(); }
+          if (semRede) { semRede = false; ultimoErroRede = ''; atualizarAviso(); }
           return r.json();
         }, function(err) {
           if (t) clearTimeout(t);
@@ -988,6 +991,7 @@
           try { console.warn('PliPag: falha de conexão com o servidor', err); } catch (x) {}
           semRede = true; atualizarAviso();
           const motivo = err ? (String(err.name || '') + (err.message ? ': ' + err.message : '')) : '';
+          ultimoErroRede = motivo;
           throw erroRede('Não foi possível conectar ao servidor. Verifique a internet.' + (motivo ? ' (' + motivo + ')' : ''));
         }).then(function(j) {
           if (!j || !j.ok) throw new Error((j && j.error) || 'Erro no servidor');
@@ -1086,7 +1090,7 @@
           if (!e.rede || confirmacao) throw e;
           // sem internet: confere a senha com a verificação guardada neste aparelho
           const cred = await kvGet('cred:' + email).catch(function() { return null; });
-          if (!cred) throw erroRede('Não foi possível conectar ao servidor. Verifique a internet. (O uso sem conexão é liberado depois de entrar uma vez com internet neste aparelho.)');
+          if (!cred) throw erroRede(e.message + ' O uso sem conexão só é liberado depois de entrar uma vez com internet neste aparelho.');
           if (!(await senhaConfere(cred, senha))) return { status: 'erro', message: 'E-mail ou senha incorretos.' };
           modoOffline = true; senhaSessao = senha; tokenSessao = '';
           aoEntrar(email);
@@ -1339,13 +1343,13 @@
           if (!avisoEl) {
             avisoEl = document.createElement('div');
             avisoEl.id = 'avisoOffline';
-            avisoEl.style.cssText = 'position:fixed;top:calc(env(safe-area-inset-top, 0px) + 4px);left:50%;transform:translateX(-50%);z-index:9999;padding:3px 12px;border-radius:999px;font:600 11px/1.4 system-ui,sans-serif;color:#fff;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.25);display:none;white-space:nowrap';
+            avisoEl.style.cssText = 'position:fixed;top:calc(env(safe-area-inset-top, 0px) + 4px);left:50%;transform:translateX(-50%);z-index:9999;padding:3px 12px;border-radius:999px;font:600 11px/1.4 system-ui,sans-serif;color:#fff;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.25);display:none;white-space:nowrap;max-width:94vw;overflow:hidden;text-overflow:ellipsis';
             document.body.appendChild(avisoEl);
           }
           const pend = await contarPendentes();
           const off = semRede;
           let txt = '', cor = '';
-          if (off) { txt = 'Sem conexão · modo offline' + (pend.total ? ' · ' + pend.total + ' pendente' + (pend.total === 1 ? '' : 's') : ''); cor = '#b45309'; }
+          if (off) { txt = 'Sem conexão · modo offline' + (ultimoErroRede ? ' [' + ultimoErroRede.slice(0, 60) + ']' : '') + (pend.total ? ' · ' + pend.total + ' pendente' + (pend.total === 1 ? '' : 's') : ''); cor = '#b45309'; }
           else if (pend.total) { txt = (sincronizando ? 'Sincronizando ' : 'Pendentes: ') + pend.total + (sincronizando ? '…' : ''); cor = '#0e7490'; }
           avisoEl.textContent = txt;
           avisoEl.style.background = cor;
@@ -1389,6 +1393,7 @@
           finally { tokenSessao = ''; senhaSessao = ''; modoOffline = false; }
         }
 
+        if (!tokenSessao && senhaSessao && nome !== 'autenticarBiometria') await reautenticar();
         const res = await chamarApi(nome, args);
         if (nome === 'autenticarBiometria' && res && res.token) { tokenSessao = res.token; delete res.token; }
         if (nome === 'autenticarBiometria' && res && res.status === 'success') { modoOffline = false; senhaSessao = ''; aoEntrar(String(args[0] || '').trim().toLowerCase()); }
