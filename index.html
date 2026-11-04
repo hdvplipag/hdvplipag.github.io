@@ -852,6 +852,19 @@
     </div>
   </div>
 
+  <!-- Nota consultada sem internet: oferece gravar para transmitir depois -->
+  <div id="modalNotaOffline" class="hidden fixed inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" style="z-index: 10002;">
+    <div class="glass-panel w-full max-w-sm p-6 rounded-2xl border border-slate-700 text-center">
+      <div class="w-16 h-16 rounded-full bg-amber-500/20 text-amber-500 mx-auto flex items-center justify-center text-3xl mb-4"><i class="fa-solid fa-wifi"></i></div>
+      <h3 class="text-lg font-bold theme-text mb-2">Sem internet</h3>
+      <p class="text-xs theme-subtext mb-5">Não é possível consultar os dados da nota no site da SEFAZ porque não há internet. Deseja gravar a nota para ser transmitida assim que a internet voltar?</p>
+      <div class="flex gap-2">
+        <button type="button" id="btnNotaOffNao" class="flex-1 py-3 bg-slate-800 text-white rounded-xl text-sm font-semibold">Não gravar</button>
+        <button type="button" id="btnNotaOffSim" class="flex-1 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-semibold">Gravar para depois</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Progresso da leitura do cupom (digitalização feita dentro do formulário) -->
   <div id="modalProgressoScan" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
     <div class="glass-panel w-full max-w-sm p-6 rounded-2xl border border-slate-700 text-center">
@@ -864,15 +877,92 @@
   </div>
 
     <script>
-    // ===== Ponte com o servidor (Apps Script) =====
+    // ===== Ponte com o servidor (Apps Script) + MODO OFFLINE (IndexedDB) =====
     // Dentro do Apps Script, usa o google.script.run original. Hospedado fora dele (site estático),
     // cria um google.script.run equivalente que chama a API publicada no Apps Script.
+    //
+    // MODO OFFLINE: os dados ficam gravados no IndexedDB do aparelho. Sem internet o app continua
+    // mostrando os lançamentos e aceitando novos lançamentos, edições e exclusões; tudo vai para uma
+    // fila (também no IndexedDB) e é enviado à planilha sozinho quando a internet volta.
     (function() {
       if (typeof google !== 'undefined' && google.script && google.script.run) return;
 
       // URL do Apps Script: a mesma registrada em usuarios.gs (PLIPAG_URL_APPS_SCRIPT). Se mudar, atualize nos dois.
       const API_URL = 'https://script.google.com/macros/s/AKfycby7bScgVxp5wJxV0KZ26kvU0Awd8az-pMZXSg8kTM137bvnQxQxvgpXJ39zutU8gC_Xew/exec';
       let tokenSessao = '';
+
+      // ---------- Estado do modo offline ----------
+      let usuarioAtual = '';        // e-mail de quem está usando o app (cada usuário tem seu próprio cache e sua fila)
+      let modoOffline = false;      // entrou no app sem internet (login conferido no próprio aparelho)
+      let senhaSessao = '';         // só na memória, só se entrou offline: serve para reconectar sozinho quando a internet voltar
+      let semRede = false;          // a última tentativa de falar com o servidor falhou por falta de internet
+      let sincronizando = false;
+      let timerSync = null;
+
+      // Chamadas que alteram dados: sem internet, entram na fila e são enviadas depois
+      const ESCRITAS = ['saveTransaction', 'deleteTransaction', 'deleteTransactions', 'clearTransactions', 'importTransactions', 'moverCategoria', 'setBudgetMeta'];
+
+      // ---------- IndexedDB ----------
+      let bdPromessa = null;
+      function abrirBD() {
+        if (bdPromessa) return bdPromessa;
+        bdPromessa = new Promise(function(resolve, reject) {
+          if (!window.indexedDB) { reject(new Error('IndexedDB indisponível')); return; }
+          const rq = indexedDB.open('plipag_offline', 1);
+          rq.onupgradeneeded = function() {
+            const db = rq.result;
+            if (!db.objectStoreNames.contains('kv')) db.createObjectStore('kv');
+            if (!db.objectStoreNames.contains('fila')) db.createObjectStore('fila', { keyPath: 'seq', autoIncrement: true });
+            if (!db.objectStoreNames.contains('notas')) db.createObjectStore('notas', { keyPath: 'seq', autoIncrement: true });
+          };
+          rq.onsuccess = function() { resolve(rq.result); };
+          rq.onerror = function() { reject(rq.error); };
+        });
+        bdPromessa.catch(function() { bdPromessa = null; });
+        return bdPromessa;
+      }
+      function bd(store, modo, fn) {
+        return abrirBD().then(function(db) {
+          return new Promise(function(resolve, reject) {
+            const t = db.transaction(store, modo);
+            let saida;
+            const rq = fn(t.objectStore(store));
+            if (rq) rq.onsuccess = function() { saida = rq.result; };
+            t.oncomplete = function() { resolve(saida); };
+            t.onerror = t.onabort = function() { reject(t.error); };
+          });
+        });
+      }
+      function kvGet(k) { return bd('kv', 'readonly', function(s) { return s.get(k); }); }
+      function kvSet(k, v) { return bd('kv', 'readwrite', function(s) { return s.put(v, k); }); }
+      function listar(store) { return bd(store, 'readonly', function(s) { return s.getAll(); }); }
+      function adicionar(store, obj) { return bd(store, 'readwrite', function(s) { return s.add(obj); }); }
+      function colocar(store, obj) { return bd(store, 'readwrite', function(s) { return s.put(obj); }); }
+      function remover(store, seq) { return bd(store, 'readwrite', function(s) { return s.delete(seq); }); }
+
+      // Uma alteração local por vez (evita duas gravações misturando o cache)
+      let cadeia = Promise.resolve();
+      function serial(fn) {
+        const p = cadeia.then(function() { return fn(); });
+        cadeia = p.catch(function() {});
+        return p;
+      }
+
+      // ---------- Utilidades ----------
+      function erroRede(msg) {
+        const e = new Error(msg || 'Sem conexão com a internet.');
+        e.rede = true;
+        return e;
+      }
+      function copiar(o) { return JSON.parse(JSON.stringify(o)); }
+      function novoId() { return 'offline-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+      function ehTemp(id) { return String(id).indexOf('offline-') === 0; }
+      function mesPassado(it) { return typeof lancamentoMesPassado === 'function' && !!it && lancamentoMesPassado(it.date); }
+      function msgMesPassado() {
+        return (typeof MSG_MES_PASSADO !== 'undefined') ? MSG_MES_PASSADO
+          : 'Só é permitido alterar ou excluir lançamentos do mês vigente. Meses anteriores não podem ser alterados nem excluídos.';
+      }
+      function notificar(msg, tipo, ms) { try { if (typeof exibirToast === 'function') exibirToast(typeof escaparHtml === 'function' ? escaparHtml(String(msg)) : String(msg), tipo || 'sucesso', ms); } catch (e) {} }
 
       // Identificador aleatório deste aparelho (guardado no navegador): o servidor usa para não deixar
       // que tentativas erradas de outras pessoas bloqueiem o seu acesso.
@@ -889,16 +979,502 @@
         } catch (e) { return ''; }
       }
 
-      function chamarApi(fn, args) {
+      // ---------- Chamada ao servidor ----------
+      // opc.timeout (ms): só para leituras e login; gravações nunca são interrompidas no meio.
+      function chamarApi(fn, args, opc) {
+        if (navigator.onLine === false) { semRede = true; atualizarAviso(); return Promise.reject(erroRede()); }
+        const ctl = (opc && opc.timeout && window.AbortController) ? new AbortController() : null;
+        const t = ctl ? setTimeout(function() { ctl.abort(); }, opc.timeout) : null;
         return fetch(API_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({ fn: fn, args: args, token: tokenSessao }),
-          redirect: 'follow'
-        }).then(function(r) { return r.json(); }).then(function(j) {
+          redirect: 'follow',
+          signal: ctl ? ctl.signal : undefined
+        }).then(function(r) {
+          if (t) clearTimeout(t);
+          if (semRede) { semRede = false; atualizarAviso(); }
+          return r.json();
+        }, function() {
+          if (t) clearTimeout(t);
+          semRede = true; atualizarAviso();
+          throw erroRede();
+        }).then(function(j) {
           if (!j || !j.ok) throw new Error((j && j.error) || 'Erro no servidor');
           return j.result;
         });
+      }
+
+      // ---------- Cache dos dados (IndexedDB) ----------
+      function chaveApp() { return 'app:' + usuarioAtual; }
+
+      async function cacheLocal() {
+        const rec = usuarioAtual ? await kvGet(chaveApp()) : null;
+        if (!rec || !rec.data) throw erroRede('Sem internet e ainda não há dados salvos neste aparelho. Abra o app uma vez com internet.');
+        return copiar(rec.data);
+      }
+
+      async function contarPendentes() {
+        if (!usuarioAtual) return { ops: 0, notas: 0, total: 0 };
+        const ops = (await listar('fila').catch(function() { return []; })).filter(function(o) { return o.usuario === usuarioAtual; }).length;
+        const notas = (await listar('notas').catch(function() { return []; })).filter(function(o) { return o.usuario === usuarioAtual; }).length;
+        return { ops: ops, notas: notas, total: ops + notas };
+      }
+
+      async function lerDados() {
+        if (!usuarioAtual) return chamarApi('getAppData', []);
+        let pend = await contarPendentes();
+        // primeiro envia o que foi feito offline, senão os dados do servidor apagariam esses lançamentos da tela
+        if (pend.total && navigator.onLine !== false) { await sincronizar(); pend = await contarPendentes(); }
+        if (pend.ops > 0) return cacheLocal();
+        try {
+          const r = await chamarApi('getAppData', [], { timeout: 20000 });
+          const gravou = await serial(async function() {
+            const p2 = await contarPendentes();
+            if (p2.ops > 0) return false;   // surgiu uma alteração offline durante a consulta: vale o cache local
+            const rec = (await kvGet(chaveApp())) || {};
+            rec.usuario = usuarioAtual;
+            rec.data = r;
+            rec.atualizadoEm = Date.now();
+            await kvSet(chaveApp(), rec);
+            return true;
+          }).catch(function() { return true; });
+          return gravou ? r : cacheLocal();
+        } catch (e) {
+          if (!e.rede) throw e;
+          return cacheLocal();
+        }
+      }
+
+      // ---------- Login: guarda uma verificação da senha para poder entrar sem internet ----------
+      function bufParaB64(buf) {
+        const b = new Uint8Array(buf); let s = '';
+        for (let i = 0; i < b.length; i++) s += String.fromCharCode(b[i]);
+        return btoa(s);
+      }
+      function b64ParaBuf(t) {
+        const s = atob(t); const b = new Uint8Array(s.length);
+        for (let i = 0; i < s.length; i++) b[i] = s.charCodeAt(i);
+        return b;
+      }
+      async function derivarSenha(senha, saltB64, iter) {
+        const chave = await crypto.subtle.importKey('raw', new TextEncoder().encode(senha), 'PBKDF2', false, ['deriveBits']);
+        const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: b64ParaBuf(saltB64), iterations: iter }, chave, 256);
+        return bufParaB64(bits);
+      }
+      async function guardarCredencial(email, senha) {
+        try {
+          if (!(window.crypto && crypto.subtle)) return;
+          const salt = bufParaB64(crypto.getRandomValues(new Uint8Array(16)));
+          const iter = 150000;
+          await kvSet('cred:' + email, { salt: salt, iter: iter, hash: await derivarSenha(senha, salt, iter) });
+        } catch (e) {}
+      }
+      async function senhaConfere(cred, senha) {
+        try { return (await derivarSenha(senha, cred.salt, cred.iter)) === cred.hash; } catch (e) { return false; }
+      }
+
+      function aoEntrar(email) {
+        usuarioAtual = email;
+        atualizarAviso();
+        agendarSync(800);
+      }
+
+      async function loginUsuario(args) {
+        const email = String(args[0] || '').trim().toLowerCase();
+        const senha = String(args[1] || '');
+        const confirmacao = args[2];
+        try {
+          const res = await chamarApi('autenticarUsuario', args, { timeout: 15000 });
+          if (res && res.token) { tokenSessao = res.token; delete res.token; }
+          if (res && res.status === 'success') {
+            modoOffline = false; senhaSessao = '';
+            guardarCredencial(email, senha);
+            aoEntrar(email);
+          }
+          return res;
+        } catch (e) {
+          if (!e.rede || confirmacao) throw e;
+          // sem internet: confere a senha com a verificação guardada neste aparelho
+          const cred = await kvGet('cred:' + email).catch(function() { return null; });
+          if (!cred) throw erroRede('Sem internet. Entre uma vez com internet para liberar o uso sem conexão neste aparelho.');
+          if (!(await senhaConfere(cred, senha))) return { status: 'erro', message: 'E-mail ou senha incorretos.' };
+          modoOffline = true; senhaSessao = senha; tokenSessao = '';
+          aoEntrar(email);
+          return { status: 'success', offline: true };
+        }
+      }
+
+      // Volta a ter sessão no servidor sem pedir nada ao usuário (só quando entrou offline)
+      async function reautenticar() {
+        if (tokenSessao) return true;
+        if (!usuarioAtual || !senhaSessao) return false;
+        try {
+          const res = await chamarApi('autenticarUsuario', [usuarioAtual, senhaSessao, null, idDispositivo()], { timeout: 15000 });
+          if (res && res.status === 'success' && res.token) {
+            tokenSessao = res.token; modoOffline = false; senhaSessao = '';
+            return true;
+          }
+          senhaSessao = '';   // senha mudou ou conta bloqueada: só entrando de novo
+        } catch (e) {}
+        return false;
+      }
+
+      // ---------- Alterações feitas offline ----------
+      function itensDe(op) { return op.nome === 'saveTransaction' ? [op.args[0]] : op.args[0]; }
+      function definirItem(op, idx, item) { if (op.nome === 'saveTransaction') op.args[0] = item; else op.args[0][idx] = item; }
+      function chaveItem(t) {
+        return [String(t.type || ''), String(t.description || ''), (Number(String(t.amount).replace(',', '.')) || 0).toFixed(2),
+          String(t.date || '').slice(0, 10), String(t.chave || '')].join('|');
+      }
+      function acharTemp(ops, id) {
+        for (let i = 0; i < ops.length; i++) {
+          const pos = (ops[i].tmp || []).indexOf(String(id));
+          if (pos >= 0) return { op: ops[i], idx: pos };
+        }
+        return null;
+      }
+      function ocupado() { return new Error('Aguarde a sincronização terminar para alterar este lançamento.'); }
+
+      // tira um lançamento ainda não enviado de dentro da fila
+      async function tirarDaFila(f) {
+        f.op.tmp.splice(f.idx, 1);
+        if (f.op.base) f.op.base.splice(f.idx, 1);
+        if (f.op.nome === 'saveTransaction') { await remover('fila', f.op.seq); return; }
+        f.op.args[0].splice(f.idx, 1);
+        if (!f.op.args[0].length) await remover('fila', f.op.seq); else await colocar('fila', f.op);
+      }
+
+      async function aplicarOffline(nome, args) {
+        const k = chaveApp();
+        const rec = (await kvGet(k)) || { usuario: usuarioAtual, data: {} };
+        const d = rec.data = rec.data || {};
+        d.transactions = d.transactions || [];
+        const todas = (await listar('fila')).filter(function(o) { return o.usuario === usuarioAtual; });
+        const livres = todas.filter(function(o) { return !o.enviando; });
+        let resultado = {};
+
+        function nova(dados, id) {
+          const it = Object.assign({}, dados, { id: id });
+          const n = Number(String(dados.amount).replace(',', '.'));
+          if (isFinite(n)) it.amount = n;
+          delete it.salvarPadraoLoja;
+          return it;
+        }
+        function baseDe(dados) {
+          const c = chaveItem(dados);
+          return d.transactions.filter(function(t) { return chaveItem(t) === c; }).length;
+        }
+        async function removerIds(ids) {
+          const reais = [];
+          for (const id of ids) {
+            const it = d.transactions.find(function(t) { return String(t.id) === String(id); });
+            if (it && mesPassado(it)) throw new Error(msgMesPassado());
+            if (ehTemp(id)) {
+              const f = acharTemp(livres, id);
+              if (!f) throw ocupado();
+              await tirarDaFila(f);
+            } else {
+              reais.push(id);
+            }
+            d.transactions = d.transactions.filter(function(t) { return String(t.id) !== String(id); });
+          }
+          return reais;
+        }
+
+        if (nome === 'saveTransaction') {
+          const dados = Object.assign({}, args[0]);
+          if (dados.id === null || dados.id === undefined || dados.id === '') {
+            const id = novoId();
+            const base = baseDe(dados);
+            d.transactions.unshift(nova(dados, id));
+            await adicionar('fila', { usuario: usuarioAtual, nome: nome, args: [Object.assign({}, dados, { id: null })], tmp: [id], base: [base], criadoEm: Date.now() });
+            resultado = { ok: true, offline: true, id: id };
+          } else if (ehTemp(dados.id)) {
+            const f = acharTemp(livres, dados.id);
+            if (!f) throw ocupado();
+            definirItem(f.op, f.idx, Object.assign({}, dados, { id: null }));
+            await colocar('fila', f.op);
+            d.transactions = d.transactions.map(function(t) { return String(t.id) === String(dados.id) ? nova(dados, dados.id) : t; });
+            resultado = { ok: true, offline: true, id: dados.id };
+          } else {
+            d.transactions = d.transactions.map(function(t) { return String(t.id) === String(dados.id) ? nova(dados, t.id) : t; });
+            await adicionar('fila', { usuario: usuarioAtual, nome: nome, args: [dados], criadoEm: Date.now() });
+            resultado = { ok: true, offline: true, id: dados.id };
+          }
+        } else if (nome === 'importTransactions') {
+          const itens = (args[0] || []).map(function(x) { const c = Object.assign({}, x); delete c.id; return c; });
+          const tmp = [], base = [];
+          itens.forEach(function(it) {
+            const id = novoId();
+            base.push(baseDe(it));
+            tmp.push(id);
+            d.transactions.unshift(nova(it, id));
+          });
+          if (itens.length) await adicionar('fila', { usuario: usuarioAtual, nome: nome, args: [itens], tmp: tmp, base: base, criadoEm: Date.now() });
+          resultado = { importados: itens.length, duplicados: 0 };
+        } else if (nome === 'deleteTransaction' || nome === 'deleteTransactions') {
+          const ids = nome === 'deleteTransaction' ? [args[0]] : (args[0] || []);
+          const reais = await removerIds(ids);
+          if (reais.length) {
+            await adicionar('fila', { usuario: usuarioAtual, nome: nome, args: nome === 'deleteTransaction' ? [reais[0]] : [reais], criadoEm: Date.now() });
+          }
+          resultado = {};
+        } else if (nome === 'clearTransactions') {
+          const apagar = d.transactions.filter(function(t) { return !mesPassado(t); }).map(function(t) { return t.id; });
+          await removerIds(apagar);
+          await adicionar('fila', { usuario: usuarioAtual, nome: nome, args: [], criadoEm: Date.now() });
+          resultado = { preservados: d.transactions.length };
+        } else if (nome === 'moverCategoria') {
+          const ids = (args[0] || []).map(String), destino = args[1];
+          const reais = [];
+          let movidos = 0;
+          for (const t of d.transactions) {
+            if (ids.indexOf(String(t.id)) === -1 || mesPassado(t)) continue;
+            t.category = destino; movidos++;
+            if (ehTemp(t.id)) {
+              const f = acharTemp(livres, t.id);
+              if (f) { const it = itensDe(f.op)[f.idx]; it.category = destino; definirItem(f.op, f.idx, it); await colocar('fila', f.op); }
+            } else {
+              reais.push(t.id);
+            }
+          }
+          if (reais.length) await adicionar('fila', { usuario: usuarioAtual, nome: nome, args: [reais, destino], criadoEm: Date.now() });
+          resultado = { movidos: movidos };
+        } else if (nome === 'setBudgetMeta') {
+          d.budgetMeta = args[0];
+          for (const o of livres) { if (o.nome === nome) await remover('fila', o.seq); }
+          await adicionar('fila', { usuario: usuarioAtual, nome: nome, args: [args[0]], criadoEm: Date.now() });
+          resultado = {};
+        }
+
+        rec.atualizadoEm = Date.now();
+        await kvSet(k, rec);
+        return resultado;
+      }
+
+      async function escrever(nome, args) {
+        const pend = await contarPendentes();
+        if (!usuarioAtual) return chamarApi(nome, args);
+        if (!pend.ops && !modoOffline && tokenSessao && navigator.onLine !== false) {
+          try { return await chamarApi(nome, args); }
+          catch (e) { if (!e.rede) throw e; }   // caiu a internet: guarda na fila
+        }
+        const r = await serial(function() { return aplicarOffline(nome, args); });
+        atualizarAviso();
+        if (navigator.onLine !== false) agendarSync(10000);
+        return r;
+      }
+
+      // ---------- Sincronização automática ----------
+      const ERRO_TEMPORARIO = /acessar a SEFAZ|HTTP \d|p[áa]gina vazia|incompleta|Erro interno|tempo|timeout/i;
+
+      async function jaNoServidor(op, servidor) {
+        // conferência de segurança para uma gravação interrompida no meio: evita lançar duas vezes
+        if (!op.tmp || !op.base) return false;
+        const itens = itensDe(op);
+        const lista = (servidor && servidor.transactions) || [];
+        return itens.length > 0 && itens.every(function(it, i) {
+          const c = chaveItem(it);
+          const n = lista.filter(function(t) { return chaveItem(t) === c; }).length;
+          return n > (op.base[i] || 0);
+        });
+      }
+
+      async function enviarFila() {
+        let enviou = 0;
+        for (;;) {
+          const ops = (await listar('fila')).filter(function(o) { return o.usuario === usuarioAtual; });
+          if (!ops.length) return { ok: true, enviou: enviou };
+          const op = ops[0];
+          if (op.enviando && op.tmp) {
+            let servidor = null;
+            try { servidor = await chamarApi('getAppData', [], { timeout: 20000 }); }
+            catch (e) { return { ok: false, enviou: enviou }; }
+            if (await jaNoServidor(op, servidor)) { await remover('fila', op.seq); enviou++; continue; }
+          }
+          const reenvio = !!op.enviando;
+          op.enviando = true;
+          await colocar('fila', op);
+          try {
+            await chamarApi(op.nome, op.args);
+            await remover('fila', op.seq);
+            enviou++;
+          } catch (e) {
+            if (e.rede) {
+              if (navigator.onLine === false) { op.enviando = reenvio; await colocar('fila', op); }   // nem chegou a sair: não é uma gravação incerta
+              return { ok: false, enviou: enviou };
+            }
+            if (e.message === 'SESSAO_INVALIDA') {
+              tokenSessao = '';
+              op.enviando = reenvio; await colocar('fila', op);
+              if (await reautenticar()) continue;
+              return { ok: false, enviou: enviou };
+            }
+            // o servidor recusou esta alteração: avisa e segue com as próximas
+            await remover('fila', op.seq);
+            if (!reenvio) notificar('Uma alteração feita offline foi recusada pelo servidor: ' + (e.message || 'erro desconhecido'), 'erro', 9000);
+          }
+        }
+      }
+
+      async function enviarNotas() {
+        const notas = (await listar('notas')).filter(function(n) { return n.usuario === usuarioAtual; });
+        let lancadas = 0;
+        if (!notas.length) return { ok: true, lancadas: 0 };
+        const montar = window.PliPagNotas && window.PliPagNotas.montar;
+        if (!montar) return { ok: true, lancadas: 0 };
+        let servidor;
+        try { servidor = await chamarApi('getAppData', [], { timeout: 20000 }); }
+        catch (e) { return { ok: false, lancadas: 0 }; }
+        const jaTem = {};
+        ((servidor && servidor.transactions) || []).forEach(function(t) { if (t.chave) jaTem[String(t.chave)] = true; });
+
+        for (const nota of notas) {
+          let j;
+          try {
+            const r = await fetch(nota.url, {
+              method: nota.metodo || 'POST',
+              headers: nota.cabecalhos || { 'Content-Type': 'text/plain;charset=utf-8' },
+              body: JSON.stringify(nota.corpo),
+              redirect: 'follow'
+            });
+            j = await r.json();
+          } catch (e) {
+            if (navigator.onLine === false || e instanceof TypeError) return { ok: false, lancadas: lancadas };
+            j = null;
+          }
+          if (j && j.ok !== false && j.loja && Array.isArray(j.itens)) {
+            const chave = String(j.chaveAcesso || nota.chave || '');
+            if (chave && jaTem[chave]) { await remover('notas', nota.seq); continue; }
+            try {
+              await chamarApi('saveTransaction', [montar(j)]);
+              if (chave) jaTem[chave] = true;
+              await remover('notas', nota.seq);
+              lancadas++;
+            } catch (e) {
+              if (e.rede) return { ok: false, lancadas: lancadas };
+              if (e.message === 'SESSAO_INVALIDA') { tokenSessao = ''; return { ok: false, lancadas: lancadas }; }
+              await remover('notas', nota.seq);
+              notificar('Uma nota gravada offline não pôde ser lançada: ' + (e.message || 'erro desconhecido'), 'erro', 9000);
+            }
+          } else {
+            const aviso = String((j && j.aviso) || '');
+            nota.tentativas = (nota.tentativas || 0) + 1;
+            if (!j || ERRO_TEMPORARIO.test(aviso)) {
+              if (nota.tentativas < 10) { await colocar('notas', nota); continue; }
+            }
+            await remover('notas', nota.seq);
+            notificar('Uma nota gravada offline não pôde ser lida' + (aviso ? ': ' + aviso : '.'), 'erro', 9000);
+          }
+        }
+        return { ok: true, lancadas: lancadas };
+      }
+
+      async function sincronizar() {
+        if (sincronizando || !usuarioAtual || navigator.onLine === false) return false;
+        sincronizando = true;
+        atualizarAviso();
+        let mudou = false, completo = false;
+        try {
+          if (!tokenSessao && !(await reautenticar())) return false;
+          const f = await enviarFila();
+          if (f.enviou) mudou = true;
+          if (!f.ok) return false;
+          const n = await enviarNotas();
+          if (n.lancadas) mudou = true;
+          completo = n.ok;
+          if (mudou) notificar('Dados feitos offline foram sincronizados com a planilha.', 'sucesso', 4000);
+          return completo;
+        } catch (e) {
+          return false;
+        } finally {
+          sincronizando = false;
+          atualizarAviso();
+          if (mudou && typeof carregarDados === 'function') { try { carregarDados(); } catch (e) {} }
+        }
+      }
+
+      function agendarSync(ms) {
+        clearTimeout(timerSync);
+        timerSync = setTimeout(function() { sincronizar(); }, ms);
+      }
+
+      // ---------- Aviso discreto (offline / pendentes) ----------
+      let avisoEl = null;
+      async function atualizarAviso() {
+        try {
+          if (!document.body) return;
+          if (!avisoEl) {
+            avisoEl = document.createElement('div');
+            avisoEl.id = 'avisoOffline';
+            avisoEl.style.cssText = 'position:fixed;top:calc(env(safe-area-inset-top, 0px) + 4px);left:50%;transform:translateX(-50%);z-index:9999;padding:3px 12px;border-radius:999px;font:600 11px/1.4 system-ui,sans-serif;color:#fff;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.25);display:none;white-space:nowrap';
+            document.body.appendChild(avisoEl);
+          }
+          const pend = await contarPendentes();
+          const off = navigator.onLine === false || semRede;
+          let txt = '', cor = '';
+          if (off) { txt = 'Sem internet · modo offline' + (pend.total ? ' · ' + pend.total + ' pendente' + (pend.total === 1 ? '' : 's') : ''); cor = '#b45309'; }
+          else if (pend.total) { txt = (sincronizando ? 'Sincronizando ' : 'Pendentes: ') + pend.total + (sincronizando ? '…' : ''); cor = '#0e7490'; }
+          avisoEl.textContent = txt;
+          avisoEl.style.background = cor;
+          avisoEl.style.display = txt ? 'block' : 'none';
+        } catch (e) {}
+      }
+
+      window.addEventListener('online', function() { semRede = false; atualizarAviso(); agendarSync(1500); });
+      window.addEventListener('offline', function() { atualizarAviso(); });
+      document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') { atualizarAviso(); agendarSync(500); } });
+      setInterval(async function() {
+        if (usuarioAtual && navigator.onLine !== false && !sincronizando && (await contarPendentes()).total) sincronizar();
+      }, 30000);
+      document.addEventListener('DOMContentLoaded', atualizarAviso);
+
+      // Usado pela tela de digitalização (nota sem internet)
+      window.PliPagOffline = {
+        online: function() { return navigator.onLine !== false; },
+        guardarNota: async function(nota) {
+          if (!usuarioAtual) throw new Error('Entre no app para gravar a nota.');
+          const todas = (await listar('notas')).filter(function(n) { return n.usuario === usuarioAtual; });
+          if (nota.chave && todas.some(function(n) { return n.chave === nota.chave; })) return 'repetida';
+          await adicionar('notas', Object.assign({}, nota, { usuario: usuarioAtual, criadoEm: Date.now(), tentativas: 0 }));
+          atualizarAviso();
+          if (navigator.onLine !== false) agendarSync(5000);
+          return 'ok';
+        },
+        sincronizar: sincronizar
+      };
+
+      // ---------- google.script.run ----------
+      async function executar(nome, args) {
+        if (nome === 'autenticarUsuario') return loginUsuario(args);
+
+        if (nome === 'getAppData') return lerDados();
+
+        if (nome === 'getUsuarioAtual') {
+          try {
+            const u = await chamarApi(nome, args);
+            if (u && u.usuario) { usuarioAtual = String(u.usuario).trim().toLowerCase(); serial(async function() { const rec = (await kvGet(chaveApp())) || { data: null }; rec.usuario = usuarioAtual; rec.perfil = { usuario: u.usuario, nome: u.nome || '' }; await kvSet(chaveApp(), rec); }).catch(function() {}); }
+            return u;
+          } catch (e) {
+            if (!e.rede) throw e;
+            const rec = usuarioAtual ? await kvGet(chaveApp()).catch(function() { return null; }) : null;
+            if (rec && rec.perfil) return rec.perfil;
+            throw e;
+          }
+        }
+
+        if (ESCRITAS.indexOf(nome) !== -1) return escrever(nome, args);
+
+        if (nome === 'logoutUsuario') {
+          try { return await chamarApi(nome, args); }
+          finally { tokenSessao = ''; senhaSessao = ''; modoOffline = false; }
+        }
+
+        const res = await chamarApi(nome, args);
+        if (nome === 'autenticarBiometria' && res && res.token) { tokenSessao = res.token; delete res.token; }
+        if (nome === 'autenticarBiometria' && res && res.status === 'success') { modoOffline = false; senhaSessao = ''; aoEntrar(String(args[0] || '').trim().toLowerCase()); }
+        return res;
       }
 
       function criarRunner(onOk, onFail) {
@@ -910,9 +1486,7 @@
             return function() {
               const args = Array.prototype.slice.call(arguments).map(function(a) { return a === undefined ? null : a; });
               if (nome === 'autenticarUsuario') { while (args.length < 3) args.push(null); args.push(idDispositivo()); }
-              chamarApi(nome, args).then(function(res) {
-                if ((nome === 'autenticarUsuario' || nome === 'autenticarBiometria') && res && res.token) { tokenSessao = res.token; delete res.token; }
-                if (nome === 'logoutUsuario') tokenSessao = '';
+              executar(nome, args).then(function(res) {
                 if (onOk) onOk(res);
               }).catch(function(err) {
                 if (err && err.message === 'SESSAO_INVALIDA') {
@@ -4998,17 +5572,32 @@
       win.__plipagGancho = true;
       win.fetch = function(entrada, opcoes) {
         // No PliPag a nota só é LIDA: troca "lancar" por "ler" para o servidor não gravar nas abas Compras/Itens
+        let consulta = null;
         try {
           if (opcoes && typeof opcoes.body === 'string') {
             const corpo = JSON.parse(opcoes.body);
-            if (corpo && String(corpo.acao || '').toLowerCase() === 'lancar') {
+            const acao = String((corpo && corpo.acao) || '').toLowerCase();
+            if (corpo && (acao === 'lancar' || acao === 'ler') && corpo.link) {
               corpo.acao = 'ler';
               opcoes = Object.assign({}, opcoes, { body: JSON.stringify(corpo) });
               arguments[1] = opcoes;
+              consulta = dadosConsultaNota(win, entrada, opcoes, corpo);
             }
           }
         } catch (e) {}
-        const promessa = original.apply(this, arguments);
+
+        // Consultar a nota depende da internet (site da SEFAZ): sem internet, avisa e oferece gravar para depois
+        if (consulta && window.PliPagOffline && !window.PliPagOffline.online()) return respostaNotaSemInternet(win, consulta);
+
+        let promessa = original.apply(this, arguments);
+        if (consulta) {
+          promessa = promessa.catch(function(err) {
+            if (err && (err.name === 'TypeError' || /network|failed to fetch|load failed/i.test(String(err.message || '')))) {
+              return respostaNotaSemInternet(win, consulta);
+            }
+            throw err;
+          });
+        }
         try {
           promessa.then(function(resp) {
             try { resp.clone().json().then(receberDadosNota).catch(function() {}); } catch (e) {}
@@ -5017,6 +5606,80 @@
         return promessa;
       };
     }
+
+    // ----- Nota consultada sem internet: gravar para transmitir depois -----
+    function dadosConsultaNota(win, entrada, opcoes, corpo) {
+      let url = typeof entrada === 'string' ? entrada : ((entrada && entrada.url) || String(entrada));
+      try { url = new URL(url, win.location.href).href; } catch (e) {}
+      let cabecalhos = null;
+      try {
+        const h = opcoes && opcoes.headers;
+        if (h && typeof h.entries === 'function') { cabecalhos = {}; for (const par of h.entries()) cabecalhos[par[0]] = par[1]; }
+        else if (h && typeof h === 'object') cabecalhos = Object.assign({}, h);
+      } catch (e) { cabecalhos = null; }
+      let chave = '';
+      try {
+        const m = /(?:^|[?&])p=(\d{44})/.exec(decodeURIComponent(String(corpo.link)));
+        if (m) chave = m[1];
+      } catch (e) {}
+      return { url: url, metodo: (opcoes && opcoes.method) || 'POST', cabecalhos: cabecalhos, corpo: corpo, chave: chave };
+    }
+
+    let perguntaNotaOffline = null;
+    function perguntarGravarNotaOffline() {
+      if (perguntaNotaOffline) return perguntaNotaOffline;
+      perguntaNotaOffline = new Promise(function(resolve) {
+        const modal = document.getElementById('modalNotaOffline');
+        const fim = function(sim) {
+          modal.classList.add('hidden');
+          perguntaNotaOffline = null;
+          resolve(sim);
+        };
+        document.getElementById('btnNotaOffSim').onclick = function() { fim(true); };
+        document.getElementById('btnNotaOffNao').onclick = function() { fim(false); };
+        modal.classList.remove('hidden');
+      });
+      return perguntaNotaOffline;
+    }
+
+    async function respostaNotaSemInternet(win, consulta) {
+      const gravar = await perguntarGravarNotaOffline();
+      let aviso = 'Sem internet: não foi possível consultar a nota na SEFAZ.';
+      if (gravar) {
+        let r = 'erro';
+        try { r = await window.PliPagOffline.guardarNota(consulta); } catch (e) {}
+        if (r === 'ok') {
+          aviso = 'Sem internet. A nota foi gravada e será transmitida automaticamente quando a internet voltar.';
+          setTimeout(function() { fecharNotaScan(); exibirToast('Nota gravada. Será lançada sozinha quando a internet voltar.', 'sucesso', 6000); }, 800);
+        } else if (r === 'repetida') {
+          aviso = 'Esta nota já está gravada para ser transmitida quando a internet voltar.';
+        } else {
+          aviso = 'Não foi possível gravar a nota neste aparelho.';
+        }
+      }
+      const Resp = win.Response || Response;
+      return new Resp(JSON.stringify({ ok: false, aviso: aviso }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+
+    // Lançamento criado a partir de uma nota gravada offline (mesmos campos que o formulário preenche)
+    function montarLancamentoDeNota(j) {
+      const cat = String(j.categoria || '').trim();
+      const total = Number(j.total);
+      return {
+        id: null,
+        type: 'Despesa',
+        description: String(j.loja || ''),
+        category: cat,
+        amount: (isFinite(total) && total > 0) ? total.toFixed(2) : '0.00',
+        date: dataDeNota(j.data),
+        formapagto: formaPagtoDeNota(j.pagamento) || 'Pix',
+        instituicao: '',
+        parcelas: 1,
+        salvarPadraoLoja: !!(cat && cat.toLowerCase() !== 'outros'),
+        chave: String(j.chaveAcesso || '')
+      };
+    }
+    window.PliPagNotas = { montar: montarLancamentoDeNota };
 
     window.addEventListener('message', function(ev) {
       if (ev.origin !== location.origin) return;
