@@ -852,19 +852,6 @@
     </div>
   </div>
 
-  <!-- Nota consultada sem internet: oferece gravar para transmitir depois -->
-  <div id="modalNotaOffline" class="hidden fixed inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" style="z-index: 10002;">
-    <div class="glass-panel w-full max-w-sm p-6 rounded-2xl border border-slate-700 text-center">
-      <div class="w-16 h-16 rounded-full bg-amber-500/20 text-amber-500 mx-auto flex items-center justify-center text-3xl mb-4"><i class="fa-solid fa-wifi"></i></div>
-      <h3 class="text-lg font-bold theme-text mb-2">Sem internet</h3>
-      <p class="text-xs theme-subtext mb-5">Não é possível consultar os dados da nota no site da SEFAZ porque não há internet. Deseja gravar a nota para ser transmitida assim que a internet voltar?</p>
-      <div class="flex gap-2">
-        <button type="button" id="btnNotaOffNao" class="flex-1 py-3 bg-slate-800 text-white rounded-xl text-sm font-semibold">Não gravar</button>
-        <button type="button" id="btnNotaOffSim" class="flex-1 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-semibold">Gravar para depois</button>
-      </div>
-    </div>
-  </div>
-
   <!-- Progresso da leitura do cupom (digitalização feita dentro do formulário) -->
   <div id="modalProgressoScan" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
     <div class="glass-panel w-full max-w-sm p-6 rounded-2xl border border-slate-700 text-center">
@@ -1020,8 +1007,7 @@
       async function contarPendentes() {
         if (!usuarioAtual) return { ops: 0, notas: 0, total: 0 };
         const ops = (await listar('fila').catch(function() { return []; })).filter(function(o) { return o.usuario === usuarioAtual; }).length;
-        const notas = (await listar('notas').catch(function() { return []; })).filter(function(o) { return o.usuario === usuarioAtual; }).length;
-        return { ops: ops, notas: notas, total: ops + notas };
+        return { ops: ops, notas: 0, total: ops };
       }
 
       async function lerDados() {
@@ -1270,8 +1256,6 @@
       }
 
       // ---------- Sincronização automática ----------
-      const ERRO_TEMPORARIO = /acessar a SEFAZ|HTTP \d|p[áa]gina vazia|incompleta|Erro interno|tempo|timeout/i;
-
       async function jaNoServidor(op, servidor) {
         // conferência de segurança para uma gravação interrompida no meio: evita lançar duas vezes
         if (!op.tmp || !op.base) return false;
@@ -1321,59 +1305,6 @@
         }
       }
 
-      async function enviarNotas() {
-        const notas = (await listar('notas')).filter(function(n) { return n.usuario === usuarioAtual; });
-        let lancadas = 0;
-        if (!notas.length) return { ok: true, lancadas: 0 };
-        const montar = window.PliPagNotas && window.PliPagNotas.montar;
-        if (!montar) return { ok: true, lancadas: 0 };
-        let servidor;
-        try { servidor = await chamarApi('getAppData', [], { timeout: 45000 }); }
-        catch (e) { return { ok: false, lancadas: 0 }; }
-        const jaTem = {};
-        ((servidor && servidor.transactions) || []).forEach(function(t) { if (t.chave) jaTem[String(t.chave)] = true; });
-
-        for (const nota of notas) {
-          let j;
-          try {
-            const r = await fetch(nota.url, {
-              method: nota.metodo || 'POST',
-              headers: nota.cabecalhos || { 'Content-Type': 'text/plain;charset=utf-8' },
-              body: JSON.stringify(nota.corpo),
-              redirect: 'follow'
-            });
-            j = await r.json();
-          } catch (e) {
-            if (navigator.onLine === false || e instanceof TypeError) return { ok: false, lancadas: lancadas };
-            j = null;
-          }
-          if (j && j.ok !== false && j.loja && Array.isArray(j.itens)) {
-            const chave = String(j.chaveAcesso || nota.chave || '');
-            if (chave && jaTem[chave]) { await remover('notas', nota.seq); continue; }
-            try {
-              await chamarApi('saveTransaction', [montar(j)]);
-              if (chave) jaTem[chave] = true;
-              await remover('notas', nota.seq);
-              lancadas++;
-            } catch (e) {
-              if (e.rede) return { ok: false, lancadas: lancadas };
-              if (e.message === 'SESSAO_INVALIDA') { tokenSessao = ''; return { ok: false, lancadas: lancadas }; }
-              await remover('notas', nota.seq);
-              notificar('Uma nota gravada offline não pôde ser lançada: ' + (e.message || 'erro desconhecido'), 'erro', 9000);
-            }
-          } else {
-            const aviso = String((j && j.aviso) || '');
-            nota.tentativas = (nota.tentativas || 0) + 1;
-            if (!j || ERRO_TEMPORARIO.test(aviso)) {
-              if (nota.tentativas < 10) { await colocar('notas', nota); continue; }
-            }
-            await remover('notas', nota.seq);
-            notificar('Uma nota gravada offline não pôde ser lida' + (aviso ? ': ' + aviso : '.'), 'erro', 9000);
-          }
-        }
-        return { ok: true, lancadas: lancadas };
-      }
-
       async function sincronizar() {
         if (sincronizando || !usuarioAtual || navigator.onLine === false) return false;
         sincronizando = true;
@@ -1384,9 +1315,7 @@
           const f = await enviarFila();
           if (f.enviou) mudou = true;
           if (!f.ok) return false;
-          const n = await enviarNotas();
-          if (n.lancadas) mudou = true;
-          completo = n.ok;
+          completo = true;
           if (mudou) notificar('Dados feitos offline foram sincronizados com a planilha.', 'sucesso', 4000);
           return completo;
         } catch (e) {
@@ -1433,20 +1362,7 @@
       }, 30000);
       document.addEventListener('DOMContentLoaded', atualizarAviso);
 
-      // Usado pela tela de digitalização (nota sem internet)
-      window.PliPagOffline = {
-        online: function() { return navigator.onLine !== false; },
-        guardarNota: async function(nota) {
-          if (!usuarioAtual) throw new Error('Entre no app para gravar a nota.');
-          const todas = (await listar('notas')).filter(function(n) { return n.usuario === usuarioAtual; });
-          if (nota.chave && todas.some(function(n) { return n.chave === nota.chave; })) return 'repetida';
-          await adicionar('notas', Object.assign({}, nota, { usuario: usuarioAtual, criadoEm: Date.now(), tentativas: 0 }));
-          atualizarAviso();
-          if (navigator.onLine !== false) agendarSync(5000);
-          return 'ok';
-        },
-        sincronizar: sincronizar
-      };
+      window.PliPagOffline = { sincronizar: sincronizar };
 
       // ---------- google.script.run ----------
       async function executar(nome, args) {
@@ -5575,32 +5491,17 @@
       win.__plipagGancho = true;
       win.fetch = function(entrada, opcoes) {
         // No PliPag a nota só é LIDA: troca "lancar" por "ler" para o servidor não gravar nas abas Compras/Itens
-        let consulta = null;
         try {
           if (opcoes && typeof opcoes.body === 'string') {
             const corpo = JSON.parse(opcoes.body);
-            const acao = String((corpo && corpo.acao) || '').toLowerCase();
-            if (corpo && (acao === 'lancar' || acao === 'ler') && corpo.link) {
+            if (corpo && String(corpo.acao || '').toLowerCase() === 'lancar') {
               corpo.acao = 'ler';
               opcoes = Object.assign({}, opcoes, { body: JSON.stringify(corpo) });
               arguments[1] = opcoes;
-              consulta = dadosConsultaNota(win, entrada, opcoes, corpo);
             }
           }
         } catch (e) {}
-
-        // Consultar a nota depende da internet (site da SEFAZ): sem internet, avisa e oferece gravar para depois
-        if (consulta && window.PliPagOffline && !window.PliPagOffline.online()) return respostaNotaSemInternet(win, consulta);
-
-        let promessa = original.apply(this, arguments);
-        if (consulta) {
-          promessa = promessa.catch(function(err) {
-            if (err && (err.name === 'TypeError' || /network|failed to fetch|load failed/i.test(String(err.message || '')))) {
-              return respostaNotaSemInternet(win, consulta);
-            }
-            throw err;
-          });
-        }
+        const promessa = original.apply(this, arguments);
         try {
           promessa.then(function(resp) {
             try { resp.clone().json().then(receberDadosNota).catch(function() {}); } catch (e) {}
@@ -5609,80 +5510,6 @@
         return promessa;
       };
     }
-
-    // ----- Nota consultada sem internet: gravar para transmitir depois -----
-    function dadosConsultaNota(win, entrada, opcoes, corpo) {
-      let url = typeof entrada === 'string' ? entrada : ((entrada && entrada.url) || String(entrada));
-      try { url = new URL(url, win.location.href).href; } catch (e) {}
-      let cabecalhos = null;
-      try {
-        const h = opcoes && opcoes.headers;
-        if (h && typeof h.entries === 'function') { cabecalhos = {}; for (const par of h.entries()) cabecalhos[par[0]] = par[1]; }
-        else if (h && typeof h === 'object') cabecalhos = Object.assign({}, h);
-      } catch (e) { cabecalhos = null; }
-      let chave = '';
-      try {
-        const m = /(?:^|[?&])p=(\d{44})/.exec(decodeURIComponent(String(corpo.link)));
-        if (m) chave = m[1];
-      } catch (e) {}
-      return { url: url, metodo: (opcoes && opcoes.method) || 'POST', cabecalhos: cabecalhos, corpo: corpo, chave: chave };
-    }
-
-    let perguntaNotaOffline = null;
-    function perguntarGravarNotaOffline() {
-      if (perguntaNotaOffline) return perguntaNotaOffline;
-      perguntaNotaOffline = new Promise(function(resolve) {
-        const modal = document.getElementById('modalNotaOffline');
-        const fim = function(sim) {
-          modal.classList.add('hidden');
-          perguntaNotaOffline = null;
-          resolve(sim);
-        };
-        document.getElementById('btnNotaOffSim').onclick = function() { fim(true); };
-        document.getElementById('btnNotaOffNao').onclick = function() { fim(false); };
-        modal.classList.remove('hidden');
-      });
-      return perguntaNotaOffline;
-    }
-
-    async function respostaNotaSemInternet(win, consulta) {
-      const gravar = await perguntarGravarNotaOffline();
-      let aviso = 'Sem internet: não foi possível consultar a nota na SEFAZ.';
-      if (gravar) {
-        let r = 'erro';
-        try { r = await window.PliPagOffline.guardarNota(consulta); } catch (e) {}
-        if (r === 'ok') {
-          aviso = 'Sem internet. A nota foi gravada e será transmitida automaticamente quando a internet voltar.';
-          setTimeout(function() { fecharNotaScan(); exibirToast('Nota gravada. Será lançada sozinha quando a internet voltar.', 'sucesso', 6000); }, 800);
-        } else if (r === 'repetida') {
-          aviso = 'Esta nota já está gravada para ser transmitida quando a internet voltar.';
-        } else {
-          aviso = 'Não foi possível gravar a nota neste aparelho.';
-        }
-      }
-      const Resp = win.Response || Response;
-      return new Resp(JSON.stringify({ ok: false, aviso: aviso }), { status: 200, headers: { 'Content-Type': 'application/json' } });
-    }
-
-    // Lançamento criado a partir de uma nota gravada offline (mesmos campos que o formulário preenche)
-    function montarLancamentoDeNota(j) {
-      const cat = String(j.categoria || '').trim();
-      const total = Number(j.total);
-      return {
-        id: null,
-        type: 'Despesa',
-        description: String(j.loja || ''),
-        category: cat,
-        amount: (isFinite(total) && total > 0) ? total.toFixed(2) : '0.00',
-        date: dataDeNota(j.data),
-        formapagto: formaPagtoDeNota(j.pagamento) || 'Pix',
-        instituicao: '',
-        parcelas: 1,
-        salvarPadraoLoja: !!(cat && cat.toLowerCase() !== 'outros'),
-        chave: String(j.chaveAcesso || '')
-      };
-    }
-    window.PliPagNotas = { montar: montarLancamentoDeNota };
 
     window.addEventListener('message', function(ev) {
       if (ev.origin !== location.origin) return;
