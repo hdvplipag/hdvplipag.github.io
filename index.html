@@ -181,7 +181,15 @@
       .print-table .print-repeat-title th { background: #ffffff; color: #0f172a; text-align: center; text-transform: none; padding: 0 0 8px 0; }
       .print-table .print-repeat-title .print-header h1 { font-size: 18px; }
     }
-    </style>
+    
+    /* Indicador de salvamento */
+    .salvando-anel { border: 6px solid rgba(255,255,255,.25); border-top-color: #34d399; animation: salvandoGirar .9s linear infinite; }
+    .salvando-ponto { display: block; width: 9px; height: 9px; border-radius: 50%; background: #34d399; animation: salvandoPulsar 1.2s ease-in-out infinite; }
+    .salvando-ponto:nth-child(2) { animation-delay: .2s; }
+    .salvando-ponto:nth-child(3) { animation-delay: .4s; }
+    @keyframes salvandoGirar { to { transform: rotate(360deg); } }
+    @keyframes salvandoPulsar { 0%, 80%, 100% { opacity: .25; transform: scale(.8); } 40% { opacity: 1; transform: scale(1.1); } }
+  </style>
 </head>
 <body id="appBody" class="light bg-slate-100/70 text-slate-900 min-h-screen font-sans pb-24 md:pb-8 transition-colors duration-300">
 
@@ -276,7 +284,7 @@
   <input type="file" id="inputFotoPerfil" accept="image/*" class="hidden" onchange="salvarFotoPerfil(event)">
 
   <!-- Header -->
-  <header class="border-b border-slate-200 dark:border-slate-800 bg-slate-800 dark:bg-slate-900/90 backdrop-blur-md sticky top-0 z-40 px-3 sm:px-4 py-2.5 transition-colors">
+  <header class="border-b border-slate-200 dark:border-slate-800 bg-slate-700 dark:bg-slate-800 backdrop-blur-md sticky top-0 z-40 px-3 sm:px-4 py-2.5 transition-colors">
     <div class="max-w-7xl mx-auto flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2.5">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2.5">
@@ -331,7 +339,7 @@
 
         <button onclick="abrirModalNovaTransacao()" class="hidden md:flex px-3.5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs sm:text-sm font-semibold rounded-xl items-center gap-2 transition">
           <i class="fa-solid fa-plus"></i>
-          <span>Nova Transação</span>
+          <span>Novo Lançamento</span>
         </button>
 
         <div class="hidden lg:flex items-center gap-1.5 ml-1">
@@ -443,13 +451,13 @@
     <!-- Tabela de Lançamentos -->
     <div class="glass-panel rounded-2xl border border-slate-800 p-5 space-y-4">
       <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-        <h2 class="text-lg font-bold flex items-center gap-2 theme-text shrink-0"><i class="fa-solid fa-list text-emerald-500"></i> Histórico de Transações</h2>
+        <h2 class="text-lg font-bold flex items-center gap-2 theme-text shrink-0"><i class="fa-solid fa-list text-emerald-500"></i> Histórico de Lançamentos</h2>
         
         <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:flex-1 lg:ml-6">
           <div class="flex items-center gap-2 w-full sm:flex-1 min-w-0">
           <div class="relative flex-1 w-full min-w-0">
             <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-            <input type="text" id="filtroDescricao" oninput="gerenciarBotaoLimparBusca(); aplicarFiltroDatas();" placeholder="Pesquisar transações..." class="w-full bg-slate-900 text-white pl-8 pr-8 py-2 rounded-xl text-xs border border-slate-700 focus:outline-none">
+            <input type="text" id="filtroDescricao" oninput="gerenciarBotaoLimparBusca(); aplicarFiltroDatas();" placeholder="Pesquisar lançamentos..." class="w-full bg-slate-900 text-white pl-8 pr-8 py-2 rounded-xl text-xs border border-slate-700 focus:outline-none">
             <button id="btnLimparBusca" onclick="limparCampoBusca()" class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 text-rose-500 font-bold text-xs p-1"><i class="fa-solid fa-xmark"></i></button>
           </div>
             <div class="relative shrink-0 sm:hidden menu-ferramentas-wrap">
@@ -484,6 +492,8 @@
         </div>
       </div>
 
+      <div id="totalRegistrosFooter" class="text-xs theme-subtext font-medium text-left">Total de lançamentos: 0</div>
+
       <!-- Container da Tabela Adaptável -->
       <div>
         <table class="tabela-estavel text-left text-sm theme-text">
@@ -508,15 +518,12 @@
             </tr>
           </thead>
           <tbody id="tabelaTransacoes">
-            <tr><td colspan="7" class="text-center p-6 theme-subtext">Nenhuma transação encontrada.</td></tr>
+            <tr><td colspan="7" class="text-center p-6 theme-subtext">Nenhum lançamento encontrado.</td></tr>
           </tbody>
         </table>
       </div>
 
-      <div class="pt-3 border-t border-slate-800/60 flex items-center justify-end gap-3">
-        <input type="file" id="inputImportarCSV" accept=".csv,text/csv,text/plain" class="hidden" onchange="importarCSV(this)">
-        <div id="totalRegistrosFooter" class="text-xs theme-subtext font-medium">Total de registros: 0</div>
-      </div>
+      <input type="file" id="inputImportarCSV" accept=".csv,text/csv,text/plain" class="hidden" onchange="importarCSV(this)">
     </div>
 
   </main>
@@ -652,26 +659,35 @@
     </div>
   </div>
 
-  <!-- Modal Nova Transação -->
+  <!-- Modal Novo Lançamento -->
   <div id="modalTransacao" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
     <div class="glass-panel w-full max-w-md p-6 rounded-2xl border border-slate-700 relative max-h-[90vh] overflow-y-auto">
-      <button onclick="fecharXModalTransacao()" class="absolute top-4 right-4 theme-subtext hover:text-emerald-500"><i class="fa-solid fa-xmark text-lg"></i></button>
-      <h3 id="modalTransacaoTitulo" class="text-lg font-bold mb-3 theme-text">Nova Transação</h3>
-      <div id="btnDigitalizarForm" class="md:hidden flex items-center justify-center gap-2 mb-3">
-        <button type="button" onclick="abrirNotaScan()" class="px-3 py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs rounded-xl flex items-center gap-1.5 shadow-md transition">
-          <i class="fa-solid fa-camera"></i> Digitalizar
+      <div class="-mx-6 -mt-6 mb-3 px-6 py-2.5 rounded-t-2xl bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-400 flex items-center gap-3 shadow-md">
+        <div class="w-9 h-9 shrink-0 rounded-xl bg-white/20 border border-white/30 text-white flex items-center justify-center text-base shadow-inner">
+          <i class="fa-solid fa-file-invoice-dollar"></i>
+        </div>
+        <div class="min-w-0 flex-1 pr-8">
+          <h3 id="modalTransacaoTitulo" class="text-base font-bold leading-tight text-white truncate">Novo Lançamento</h3>
+          <p class="text-[11px] font-medium text-emerald-50/90 leading-tight">Registre uma receita ou despesa</p>
+        </div>
+        <button type="button" onclick="fecharXModalTransacao()" aria-label="Fechar" class="absolute top-2.5 right-4 w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div id="btnDigitalizarForm" class="md:hidden flex items-center justify-end gap-2 mb-2">
+        <button type="button" onclick="abrirNotaScan()" aria-label="Digitalizar" title="Digitalizar" class="w-14 h-10 bg-cyan-600 hover:bg-cyan-500 text-white text-lg rounded-xl flex items-center justify-center shadow-md transition">
+          <i class="fa-solid fa-camera"></i>
         </button>
-        <button type="button" onclick="abrirVozDoFormulario()" class="px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs rounded-xl flex items-center gap-1.5 shadow-md transition">
-          <i class="fa-solid fa-microphone"></i> Voz
+        <button type="button" onclick="abrirVozDoFormulario()" aria-label="Voz" title="Voz" class="w-14 h-10 bg-purple-600 hover:bg-purple-500 text-white text-lg rounded-xl flex items-center justify-center shadow-md transition">
+          <i class="fa-solid fa-microphone"></i>
         </button>
       </div>
       <form id="formTransacao" onsubmit="salvarLancamento(event)" class="space-y-3">
         <input type="hidden" id="inputIdTransacao" value="">
         <input type="hidden" id="inputVemDeScan" value="false">
+        <input type="hidden" id="inputChaveNota" value="">
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-xs font-semibold theme-subtext mb-1">Tipo</label>
-            <select id="inputTipo" onchange="aoMudarTipoLancamento()" required class="w-full bg-slate-900 text-white border border-slate-700 rounded-xl p-2.5 text-sm">
+            <select id="inputTipo" onchange="aoMudarTipoLancamento()" required class="w-full bg-white text-slate-900 border border-slate-300 rounded-xl p-2.5 text-sm">
               <option value="" selected></option>
               <option value="Receita">Receita</option>
               <option value="Despesa">Despesa</option>
@@ -681,27 +697,27 @@
             <label class="block text-xs font-semibold theme-subtext mb-1">Data</label>
             <!-- O campo real (data nativa, valor AAAA-MM-DD) fica invisível por cima; o que se vê é a data no formato DD/MM/AAAA -->
             <div class="relative" style="position: relative;">
-              <div id="dataExibida" class="w-full bg-slate-900 text-white border border-slate-700 rounded-xl p-2.5 text-sm text-left select-none" style="pointer-events: none; min-height: 2.5rem;">dd/mm/aaaa</div>
+              <div id="dataExibida" class="w-full bg-white text-slate-900 border border-slate-300 rounded-xl p-2.5 text-sm text-left select-none" style="pointer-events: none; min-height: 2.5rem;">dd/mm/aaaa</div>
               <input type="date" id="inputData" required aria-label="Data" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; min-width: 0; margin: 0; padding: 0; border: 0; box-sizing: border-box; -webkit-appearance: none; appearance: none;">
             </div>
           </div>
         </div>
         <div>
           <label class="block text-xs font-semibold theme-subtext mb-1">Descrição</label>
-          <div class="relative"><input type="text" id="inputDescricao" required class="w-full bg-slate-900 text-white border border-slate-700 rounded-xl p-2.5 pr-9 text-sm"><button type="button" onclick="limparCampoForm('inputDescricao')" tabindex="-1" aria-label="Limpar" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500"><i class="fa-solid fa-circle-xmark"></i></button></div>
+          <div class="relative"><input type="text" id="inputDescricao" required class="w-full bg-white text-slate-900 border border-slate-300 rounded-xl p-2.5 pr-9 text-sm"><button type="button" onclick="limparCampoForm('inputDescricao')" tabindex="-1" aria-label="Limpar" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500"><i class="fa-solid fa-circle-xmark"></i></button></div>
         </div>
         <div>
           <label class="block text-xs font-semibold theme-subtext mb-1">Categoria</label>
-          <div class="relative"><input type="text" id="inputCategoria" list="listaCategoriasForm" onfocus="atualizarListaCategoriasForm()" autocomplete="off" required class="w-full bg-slate-900 text-white border border-slate-700 rounded-xl p-2.5 pr-9 text-sm"><button type="button" onclick="limparCampoForm('inputCategoria')" tabindex="-1" aria-label="Limpar" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500"><i class="fa-solid fa-circle-xmark"></i></button></div><datalist id="listaCategoriasForm"></datalist>
+          <div class="relative"><input type="text" id="inputCategoria" list="listaCategoriasForm" onfocus="atualizarListaCategoriasForm()" autocomplete="off" required class="w-full bg-white text-slate-900 border border-slate-300 rounded-xl p-2.5 pr-9 text-sm"><button type="button" onclick="limparCampoForm('inputCategoria')" tabindex="-1" aria-label="Limpar" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500"><i class="fa-solid fa-circle-xmark"></i></button></div><datalist id="listaCategoriasForm"></datalist>
         </div>
         <div>
           <label id="labelValorForm" class="block text-xs font-semibold theme-subtext mb-1">Valor (R$)</label>
-          <div class="relative"><input type="number" step="0.01" inputmode="decimal" id="inputValor" oninput="atualizarRotuloValor()" required class="w-full bg-slate-900 text-white border border-slate-700 rounded-xl p-2.5 pr-9 text-sm"><button type="button" onclick="limparCampoForm('inputValor')" tabindex="-1" aria-label="Limpar" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500"><i class="fa-solid fa-circle-xmark"></i></button></div>
+          <div class="relative"><input type="number" step="0.01" inputmode="decimal" id="inputValor" oninput="atualizarRotuloValor()" required class="w-full bg-white text-slate-900 border border-slate-300 rounded-xl p-2.5 pr-9 text-sm"><button type="button" onclick="limparCampoForm('inputValor')" tabindex="-1" aria-label="Limpar" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500"><i class="fa-solid fa-circle-xmark"></i></button></div>
         </div>
         <div id="linhaPagto" class="grid grid-cols-1 gap-3">
           <div>
             <label class="block text-xs font-semibold theme-subtext mb-1">Forma de Pagamento</label>
-            <select id="inputFormaPagto" onchange="atualizarCampoParcelas()" required class="w-full bg-slate-900 text-white border border-slate-700 rounded-xl p-2.5 text-sm">
+            <select id="inputFormaPagto" onchange="atualizarCampoParcelas()" required class="w-full bg-white text-slate-900 border border-slate-300 rounded-xl p-2.5 text-sm">
               <option value="" selected></option>
               <option value="Pix">Pix</option>
               <option value="Dinheiro">Dinheiro</option>
@@ -711,13 +727,13 @@
           </div>
           <div id="blocoParcelas" class="hidden">
             <label class="block text-xs font-semibold theme-subtext mb-1">Número de parcelas</label>
-            <input type="number" id="inputParcelas" oninput="atualizarRotuloValor()" min="1" max="99" step="1" value="1" inputmode="numeric" class="w-full bg-slate-900 text-white border border-slate-700 rounded-xl p-2.5 text-sm">
+            <input type="number" id="inputParcelas" oninput="atualizarRotuloValor()" min="1" max="99" step="1" value="1" inputmode="numeric" class="w-full bg-white text-slate-900 border border-slate-300 rounded-xl p-2.5 text-sm">
             <p id="dicaParcelas" class="text-xs theme-subtext mt-1"></p>
           </div>
         </div>
         <div>
             <label class="block text-xs font-semibold theme-subtext mb-1">Instituição</label>
-            <div class="relative"><input type="text" id="inputInstituicao" class="w-full bg-slate-900 text-white border border-slate-700 rounded-xl p-2.5 pr-9 text-sm"><button type="button" onclick="limparCampoForm('inputInstituicao')" tabindex="-1" aria-label="Limpar" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500"><i class="fa-solid fa-circle-xmark"></i></button></div>
+            <div class="relative"><input type="text" id="inputInstituicao" class="w-full bg-white text-slate-900 border border-slate-300 rounded-xl p-2.5 pr-9 text-sm"><button type="button" onclick="limparCampoForm('inputInstituicao')" tabindex="-1" aria-label="Limpar" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500"><i class="fa-solid fa-circle-xmark"></i></button></div>
         </div>
         <details id="detalhesTextoCupom" class="hidden mt-3 text-xs theme-subtext">
           <summary class="cursor-pointer font-semibold">Ver texto lido do cupom</summary>
@@ -726,9 +742,9 @@
         <div class="flex items-center justify-center gap-2 mt-5">
           <input type="file" id="cameraInputModal" accept="image/*" capture="environment" class="hidden" onchange="processarFotoModal(event)">
           <input type="file" id="galeriaInputModal" accept="image/*" class="hidden" onchange="processarFotoModal(event)">
-          <div class="flex items-center justify-center gap-2 mx-auto">
-            <button type="button" onclick="cancelarModalTransacao()" class="px-3.5 py-2 bg-slate-800 text-white rounded-xl text-xs font-semibold">Cancelar</button>
-            <button type="submit" id="btnSalvar" class="px-4 py-2 bg-emerald-500 text-white rounded-xl text-xs font-semibold">Salvar</button>
+          <div class="flex items-center justify-center gap-3 w-full">
+            <button type="button" onclick="cancelarModalTransacao()" class="flex-1 min-w-[7rem] h-12 px-6 bg-slate-800 text-white rounded-xl text-sm font-semibold">Cancelar</button>
+            <button type="submit" id="btnSalvar" class="flex-1 min-w-[7rem] h-12 px-6 bg-emerald-500 text-white rounded-xl text-sm font-semibold">Salvar</button>
           </div>
         </div>
       </form>
@@ -784,6 +800,17 @@
         <textarea id="inputFraseVoz" rows="1" aria-label="Lançamento por voz" enterkeyhint="send" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" oninput="mostrarCampoVoz()" class="flex-1 min-w-0 bg-slate-900 text-white border border-slate-700 rounded-xl p-2.5 text-sm resize-none overflow-hidden break-words" style="max-height:8rem"></textarea>
       </form>
     </div>
+  </div>
+
+  <!-- Indicador "Salvando..." do lançamento: círculo girando com três pontinhos, centralizado na tela -->
+  <div id="overlaySalvando" class="hidden fixed inset-0 flex flex-col items-center justify-center bg-black/55 backdrop-blur-[2px]" style="z-index: 10002;" role="status" aria-live="polite">
+    <div class="relative" style="width: 84px; height: 84px;">
+      <div class="salvando-anel absolute inset-0 rounded-full"></div>
+      <div class="absolute inset-0 flex items-center justify-center gap-1.5">
+        <i class="salvando-ponto"></i><i class="salvando-ponto"></i><i class="salvando-ponto"></i>
+      </div>
+    </div>
+    <p class="mt-4 text-white text-base font-semibold">Salvando...</p>
   </div>
 
   <!-- Digitalizar nota: abre a página nota/index.html (leitura do QR Code via notas.gs) dentro do app -->
@@ -1951,6 +1978,7 @@
     }
 
     function aplicarFiltroDatas() { 
+      limparFixosTopo();
       limiteExibicaoAtual = TAMANHO_LOTE;
       renderizarDados(obterTransacoesFiltradas()); 
     }
@@ -1962,11 +1990,13 @@
       document.getElementById('filtroTipo').value = '';
       document.getElementById('filtroCategoria').value = '';
       gerenciarBotaoLimparBusca();
+      limparFixosTopo();
       limiteExibicaoAtual = TAMANHO_LOTE;
       renderizarDados(obterTransacoesFiltradas());
     }
 
     function ordenarTabela(coluna) {
+      limparFixosTopo();
       if (colunaOrdenacaoAtual === coluna) {
         ordemAscendente = !ordemAscendente;
       } else {
@@ -1976,6 +2006,11 @@
       limiteExibicaoAtual = TAMANHO_LOTE;
       renderizarDados(obterTransacoesFiltradas());
     }
+
+    // Lançamentos digitalizados (QR Code) ficam no início da lista até o usuário fazer outra ação
+    // (rolar a página, filtrar, ordenar, atualizar). Depois a ordem normal é restaurada.
+    let idsFixosTopo = [];
+    function limparFixosTopo() { idsFixosTopo = []; }
 
     function obterTransacoesFiltradas() {
       const dInicio = document.getElementById('filtroDataInicio').value;
@@ -2017,11 +2052,24 @@
         return 0;
       });
 
+      if (idsFixosTopo.length) {
+        const fixos = [];
+        idsFixosTopo.forEach(id => {
+          const k = filtradas.findIndex(t => String(t.id) === id);
+          if (k !== -1) fixos.push(filtradas.splice(k, 1)[0]);
+        });
+        filtradas = fixos.concat(filtradas);
+      }
+
       transacoesFiltradasCache = filtradas;
       return filtradas;
     }
 
     window.addEventListener('scroll', function() {
+      if (idsFixosTopo.length && window.scrollY > 60) {
+        limparFixosTopo();
+        renderizarTabelaLote(obterTransacoesFiltradas());
+      }
       if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 100) {
         if (limiteExibicaoAtual < transacoesFiltradasCache.length) {
           limiteExibicaoAtual += TAMANHO_LOTE;
@@ -2208,7 +2256,11 @@
       txt += '.';
       if (passados) txt += ` ${passados} de meses anteriores não serão alterado${passados === 1 ? '' : 's'}.`;
       document.getElementById('textoMover').innerText = txt;
-      const cats = Array.from(new Set((listaTransacoesGlobal || []).map(t => (t.category || '').trim()).filter(Boolean))).sort();
+      // Com filtro de tipo (Receita ou Despesa) só oferece categorias desse tipo; sem filtro, todas as categorias em uso
+      const tipoMover = ((document.getElementById('filtroTipo') || {}).value || '').trim().toLowerCase();
+      const cats = (tipoMover === 'receita' || tipoMover === 'despesa')
+        ? categoriasDoTipo(tipoMover)
+        : Array.from(new Set((listaTransacoesGlobal || []).map(t => (t.category || '').trim()).filter(Boolean))).sort();
       let html = '<option value="">Selecione...</option>';
       cats.forEach(c => { html += `<option value="${c.replace(/"/g, '&quot;')}">${c.replace(/</g, '&lt;')}</option>`; });
       html += '<option value="__nova__">+ Nova categoria...</option>';
@@ -2330,6 +2382,7 @@
       atualizandoDados = true;
       const icons = document.querySelectorAll('#refreshIcon, .refreshIconMobile');
       icons.forEach(icon => icon.classList.add('fa-spin'));
+      limparFixosTopo();
       limiteExibicaoAtual = TAMANHO_LOTE;
       carregarDados((ok) => {
         icons.forEach(icon => icon.classList.remove('fa-spin'));
@@ -2802,11 +2855,13 @@
     }
 
     function abrirModalNovaTransacao() {
-      document.getElementById('modalTransacaoTitulo').innerText = "Nova Transação";
+      document.getElementById('modalTransacaoTitulo').innerText = "Novo Lançamento";
       document.getElementById('inputIdTransacao').value = "";
       document.getElementById('inputVemDeScan').value = "false";
+      document.getElementById('inputChaveNota').value = '';
       document.getElementById('formTransacao').reset();
       definirModoVozFormulario(false);
+      formularioPorNota = false;
       document.getElementById('modalTransacao').classList.remove('hidden');
       document.getElementById('inputData').value = dataLocalISO();
       atualizarListaCategoriasForm();
@@ -2819,6 +2874,10 @@
     function definirModoVozFormulario(ativo) {
       formularioPorVoz = !!ativo;
     }
+
+    // Formulário preenchido a partir da leitura do QR Code (página de notas): ao salvar e responder "Sim" em
+    // "Deseja realizar outros lançamentos?", volta para a leitura do QR Code; "Não" fecha e mostra os lançamentos.
+    let formularioPorNota = false;
 
     function responderOutroLancamento(outro) {
       document.getElementById('modalOutroLancamento').classList.add('hidden');
@@ -2850,11 +2909,13 @@
 
     function fecharModalNovaTransacao() {
       definirModoVozFormulario(false);
+      formularioPorNota = false;
       document.getElementById('modalOutroLancamento').classList.add('hidden');
       document.getElementById('modalTransacao').classList.add('hidden');
       document.getElementById('formTransacao').reset();
       document.getElementById('inputIdTransacao').value = "";
       document.getElementById('inputVemDeScan').value = "false";
+      document.getElementById('inputChaveNota').value = '';
     }
 
     function abrirModalMeta() {
@@ -2985,12 +3046,12 @@
 
         tabela.innerHTML = html;
       } else {
-        tabela.innerHTML = '<tr><td colspan="7" class="text-center p-6 theme-subtext">Nenhuma transação encontrada.</td></tr>';
+        tabela.innerHTML = '<tr><td colspan="7" class="text-center p-6 theme-subtext">Nenhum lançamento encontrado.</td></tr>';
       }
 
       const footerTotal = document.getElementById('totalRegistrosFooter');
       if (footerTotal) {
-        footerTotal.innerText = `Total de registros: ${transacoes ? transacoes.length : 0}`;
+        footerTotal.innerText = `Total de lançamentos: ${transacoes ? transacoes.length : 0}`;
       }
 
       atualizarEstilosTexto();
@@ -3157,9 +3218,10 @@
       if (!item) return;
       if (lancamentoMesPassado(item.date)) { exibirToast(MSG_MES_PASSADO, "erro"); return; }
 
-      document.getElementById('modalTransacaoTitulo').innerText = "Editar Transação";
+      document.getElementById('modalTransacaoTitulo').innerText = "Editar Lançamento";
       document.getElementById('inputIdTransacao').value = (item.id !== undefined && item.id !== null) ? item.id : "";
       document.getElementById('inputVemDeScan').value = "false";
+      document.getElementById('inputChaveNota').value = '';
       document.getElementById('inputTipo').value = item.type || 'Despesa';
       document.getElementById('inputDescricao').value = item.description || '';
       document.getElementById('inputCategoria').value = item.category || '';
@@ -3266,6 +3328,20 @@
       }
     };
 
+    // Cores do gráfico de categorias: as 6 originais primeiro, depois cores distintas extras;
+    // nunca repete cor entre categorias diferentes (além da paleta, gera tons novos pelo ângulo áureo).
+    const CORES_CATEGORIAS_BASE = ['#f59e0b', '#10b981', '#3b82f6', '#ec4899', '#8b5cf6', '#06b6d4',
+      '#ef4444', '#84cc16', '#92400e', '#1e3a8a', '#c026d3', '#0f766e', '#64748b', '#166534', '#fdba74', '#a5b4fc'];
+    function coresCategorias(qtd) {
+      const cores = CORES_CATEGORIAS_BASE.slice(0, qtd);
+      for (let i = cores.length; i < qtd; i++) {
+        const matiz = Math.round((i * 137.508) % 360);
+        const luz = 42 + (Math.floor(i / 16) % 3) * 9;
+        cores.push('hsl(' + matiz + ', 68%, ' + luz + '%)');
+      }
+      return cores;
+    }
+
     function renderizarDadosGraficos(categoriasMap, formaPagtoMap, receitas, despesas, serieRec, serieDesp, tipoFiltro) {
       const isDark = currentTheme === 'dark';
       const subtextColor = isDark ? '#94a3b8' : '#475569';
@@ -3287,7 +3363,7 @@
         type: 'doughnut',
         data: {
           labels: catLabels,
-          datasets: [{ data: catData, valoresReais: catReais, backgroundColor: temCat ? ['#f59e0b', '#10b981', '#3b82f6', '#ec4899', '#8b5cf6', '#06b6d4'] : ['#94a3b8'], borderWidth: 0 }]
+          datasets: [{ data: catData, valoresReais: catReais, backgroundColor: temCat ? coresCategorias(catLabels.length) : ['#94a3b8'], borderWidth: 0 }]
         },
         options: {
           responsive: true, maintainAspectRatio: false, animation: false,
@@ -3401,10 +3477,17 @@
       }
     }
 
+    function mostrarSalvando(ligado) {
+      const ov = document.getElementById('overlaySalvando');
+      if (ov) ov.classList.toggle('hidden', !ligado);
+    }
+
     const TEMPO_MENSAGEM_SALVAR_MS = 10000;   // quanto tempo a mensagem de gravação do lançamento fica na tela
     function salvarLancamento(event, outroLancamento) {
       if (event) event.preventDefault();
       const porVoz = formularioPorVoz;
+      const porNota = formularioPorNota;
+      const idsAntes = new Set(listaTransacoesGlobal.map(t => String(t.id)));
       const ehNovo = document.getElementById('inputIdTransacao').value === "";
       if (!ehNovo && lancamentoMesPassado(document.getElementById('inputData').value)) {
         exibirToast(MSG_MES_PASSADO, "erro");
@@ -3416,7 +3499,7 @@
       }
       const btnSalvar = document.getElementById('btnSalvar');
       btnSalvar.disabled = true;
-      btnSalvar.innerText = "Salvando...";
+      mostrarSalvando(true);   // círculo girando no centro da tela; o botão continua escrito "Salvar"
 
       const idTrans = document.getElementById('inputIdTransacao').value;
       const vemDeScan = document.getElementById('inputVemDeScan').value === "true";
@@ -3431,24 +3514,39 @@
         formapagto: document.getElementById('inputFormaPagto').value,
         instituicao: document.getElementById('inputInstituicao').value,
         parcelas: document.getElementById('inputFormaPagto').value === 'Crédito' ? (Math.min(99, Math.max(1, parseInt(document.getElementById('inputParcelas').value, 10) || 1))) : 1,
-        salvarPadraoLoja: vemDeScan
+        salvarPadraoLoja: vemDeScan,
+        chave: document.getElementById('inputChaveNota').value
       };
 
       if (typeof google !== 'undefined' && google.script && google.script.run) {
         const runner = google.script.run
           .withSuccessHandler(function() {
             btnSalvar.disabled = false;
-            btnSalvar.innerText = "Salvar";
+            btnSalvar.innerText = "Salvar"; mostrarSalvando(false);
             fecharModalNovaTransacao();
-            carregarDados();
+            if (ehNovo) {
+              // qualquer lançamento novo (digitalizado, digitado ou por voz) fica no início da lista
+              carregarDados(function() {
+                const novos = listaTransacoesGlobal.map(t => String(t.id)).filter(id => !idsAntes.has(id));
+                if (novos.length) {
+                  idsFixosTopo = novos.concat(idsFixosTopo.filter(id => novos.indexOf(id) === -1));
+                  limiteExibicaoAtual = TAMANHO_LOTE;
+                  renderizarDados(obterTransacoesFiltradas());
+                  irParaTopo();
+                }
+              });
+            } else {
+              carregarDados();
+            }
             exibirToast("Lançamento salvo com sucesso!", "sucesso", TEMPO_MENSAGEM_SALVAR_MS);
-            if (outroLancamento === 'sim') { if (porVoz) abrirModalVoz(); else abrirModalNovaTransacao(); }
+            if (outroLancamento === 'sim') { if (porVoz) abrirModalVoz(); else if (porNota) abrirNotaScan(); else abrirModalNovaTransacao(); }
           })
           .withFailureHandler(function(err) {
             btnSalvar.disabled = false;
-            btnSalvar.innerText = "Salvar";
+            btnSalvar.innerText = "Salvar"; mostrarSalvando(false);
             const recusado = err && err.message && err.message.indexOf('mês vigente') !== -1;
-            exibirToast(recusado ? err.message : "Erro ao salvar lançamento.", "erro", TEMPO_MENSAGEM_SALVAR_MS);
+            const detalheErro = (!recusado && err && err.message && err.message !== 'Erro no servidor.' && err.message !== 'Erro no servidor') ? ' (' + escaparHtml(err.message) + ')' : '';
+            exibirToast(recusado ? err.message : "Erro ao salvar lançamento." + detalheErro, "erro", TEMPO_MENSAGEM_SALVAR_MS);
           });
         if (dados.id === null && dados.parcelas > 1) runner.importTransactions(gerarParcelas(dados));
         else runner.saveTransaction(dados);
@@ -3464,13 +3562,14 @@
           dados.id = new Date().getTime().toString();
           listaTransacoesGlobal.unshift(dados);
         }
+        if (ehNovo) { idsFixosTopo = [String(listaTransacoesGlobal[0].id)].concat(idsFixosTopo); limiteExibicaoAtual = TAMANHO_LOTE; }
         btnSalvar.disabled = false;
-        btnSalvar.innerText = "Salvar";
+        btnSalvar.innerText = "Salvar"; mostrarSalvando(false);
         fecharModalNovaTransacao();
         atualizarOpcoesCategorias(listaTransacoesGlobal);
         renderizarDados(obterTransacoesFiltradas());
         exibirToast("Lançamento salvo!", "sucesso", TEMPO_MENSAGEM_SALVAR_MS);
-        if (outroLancamento === 'sim') { if (porVoz) abrirModalVoz(); else abrirModalNovaTransacao(); }
+        if (outroLancamento === 'sim') { if (porVoz) abrirModalVoz(); else if (porNota) abrirNotaScan(); else abrirModalNovaTransacao(); }
       }
     }
 
@@ -3709,7 +3808,7 @@
     }
 
     // ===================== RECONHECIMENTO DE VOZ =====================
-    // X da tela de comando de voz: fecha e volta para a tela Nova Transação
+    // X da tela de comando de voz: fecha e volta para a tela Novo Lançamento
     function fecharXModalVoz() {
       fecharModalVoz();
       abrirModalNovaTransacao();
@@ -4819,6 +4918,7 @@
       atualizarCampoParcelas();
       document.getElementById('inputInstituicao').value = '';
       document.getElementById('inputVemDeScan').value = 'false';
+      document.getElementById('inputChaveNota').value = '';
       const detCupomLimpar = document.getElementById('detalhesTextoCupom');
       if (detCupomLimpar) detCupomLimpar.classList.add('hidden');
       const preCupomLimpar = document.getElementById('textoCupomLido');
@@ -4896,7 +4996,18 @@
       if (!win || win.__plipagGancho || typeof win.fetch !== 'function') return;
       const original = win.fetch;
       win.__plipagGancho = true;
-      win.fetch = function() {
+      win.fetch = function(entrada, opcoes) {
+        // No PliPag a nota só é LIDA: troca "lancar" por "ler" para o servidor não gravar nas abas Compras/Itens
+        try {
+          if (opcoes && typeof opcoes.body === 'string') {
+            const corpo = JSON.parse(opcoes.body);
+            if (corpo && String(corpo.acao || '').toLowerCase() === 'lancar') {
+              corpo.acao = 'ler';
+              opcoes = Object.assign({}, opcoes, { body: JSON.stringify(corpo) });
+              arguments[1] = opcoes;
+            }
+          }
+        } catch (e) {}
         const promessa = original.apply(this, arguments);
         try {
           promessa.then(function(resp) {
@@ -4915,6 +5026,10 @@
 
     // Só vale a resposta de "lançar nota": tem loja, total e lista de itens (a troca de categoria não tem total)
     function receberDadosNota(j) {
+      if (j && j.ok === false && /A[cç][aã]o inv[aá]lida/i.test(String(j.aviso || ''))) {
+        exibirToast('O servidor ainda está com a versão antiga do notas.gs (sem a ação "ler"). Cole o notas.gs novo no Apps Script e publique uma Nova versão.', 'erro', 12000);
+        return;
+      }
       if (!j || typeof j !== 'object' || !j.loja || j.total === undefined || j.total === null || !Array.isArray(j.itens)) return;
       if (Date.now() - ultimaNotaRecebida < 3000) return;
       ultimaNotaRecebida = Date.now();
@@ -4941,6 +5056,7 @@
     function preencherLancamentoDeNota(j) {
       // garante o formulário de novo lançamento aberto
       if (document.getElementById('modalTransacao').classList.contains('hidden')) abrirModalNovaTransacao();
+      formularioPorNota = true;
       document.getElementById('inputIdTransacao').value = '';
       document.getElementById('inputTipo').value = 'Despesa';
       document.getElementById('inputDescricao').value = String(j.loja || '');
@@ -4955,13 +5071,12 @@
       document.getElementById('inputInstituicao').value = '';
       // só aprende a categoria da loja quando ela não é a padrão "Outros"
       document.getElementById('inputVemDeScan').value = (cat && cat.toLowerCase() !== 'outros') ? 'true' : 'false';
-      const linhas = ['Nota lida pela página de notas.', 'Loja: ' + (j.loja || ''), 'Pagamento: ' + (j.pagamento || ''), 'Total: ' + (isFinite(total) ? total.toFixed(2) : '')];
-      (j.itens || []).forEach(function(it) {
-        linhas.push('- ' + (it.descricao || '') + ' (' + (it.quantidade || '') + ' ' + (it.unidade || '') + ') = ' + (isFinite(Number(it.total)) ? Number(it.total).toFixed(2) : ''));
-      });
-      mostrarTextoCupom(linhas.join('\n'));
+      document.getElementById('inputChaveNota').value = String(j.chaveAcesso || '');   // chave da nota vai para a coluna "chave" da planilha
+      // sem "Ver texto lido do cupom" neste fluxo
+      const detNota = document.getElementById('detalhesTextoCupom'); if (detNota) detNota.classList.add('hidden');
+      const preNota = document.getElementById('textoCupomLido'); if (preNota) preNota.innerText = '';
       if (j.ok === false) exibirToast('Essa nota já tinha sido lançada na planilha de notas. Dados preenchidos: confira antes de salvar.', 'erro', 7000);
-      else exibirToast('Nota lida e gravada na planilha de notas. Confira os dados e salve.', 'sucesso', 6000);
+      else exibirToast('Nota lida. Confira os dados e salve.', 'sucesso', 6000);
     }
 
     document.addEventListener('DOMContentLoaded', () => {
