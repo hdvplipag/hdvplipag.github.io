@@ -623,6 +623,20 @@
     .item-lista .info { flex: 1; min-width: 0; }
     .item-lista .nome { font-weight: 800; overflow-wrap: anywhere; }
     .item-lista .loja { font-size: .8rem; color: #526171; }
+    /* Licença: login por e-mail e tela de licença vencida */
+    html.sem-licenca main, html.sem-licenca #rodapeAcoes { visibility: hidden; }
+    .licenca-fundo { position: fixed; inset: 0; z-index: 100; display: none; align-items: center; justify-content: center; padding: 20px; background: #f4f7fb; }
+    .licenca-fundo.visivel { display: flex; }
+    .licenca-caixa { width: 100%; max-width: 380px; background: #fff; border: 1px solid #e4ecf4; border-radius: 16px; padding: 22px 20px; box-shadow: 0 8px 28px rgba(15, 30, 45, .12); }
+    .licenca-caixa h2 { margin: 0 0 14px; font-size: 1.1rem; color: #15202b; }
+    .licenca-caixa label { display: block; font-size: .72rem; font-weight: 800; text-transform: uppercase; color: #526171; margin: 12px 0 4px; }
+    .licenca-caixa input { width: 100%; box-sizing: border-box; min-height: 44px; padding: 8px 12px; border: 1px solid #b9cde2; border-radius: 10px; font-size: 1rem; background: #fff; color: #15202b; }
+    .licenca-erro { color: #b3261e; font-size: .85rem; margin: 10px 0 0; }
+    .licenca-botoes { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+    .licenca-bloqueio { border: 2px solid #c62828; text-align: center; }
+    .licenca-bloqueio p { color: #c62828; font-weight: 800; font-size: 1.05rem; line-height: 1.35; margin: 0 0 18px; }
+    .rodape-licenca { text-align: center; font-size: .78rem; color: #526171; margin: 22px 0 8px; cursor: pointer; }
+    .rodape-licenca strong { color: #15202b; }
     .fila-notas { margin-top: 12px; }
     .fila-notas .fila-topo { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
     .fila-notas .fila-aviso { font-size: .8rem; color: #526171; margin-top: 4px; }
@@ -887,6 +901,11 @@
     <div id="listaCupons"></div>
     <p id="fimCupons" class="dica" style="text-align:center"></p>
   </section>
+
+  <!-- Licenciado: toque para trocar de e-mail -->
+  <div id="rodapeLicenca" class="rodape-licenca" style="display:none" role="button" tabindex="0" title="Trocar de e-mail">
+    Licenciado para: <strong id="licencaNome"></strong>
+  </div>
   </div>
 
   <!-- Indicador de carregamento (fora de #telaLeitura para aparecer em todas as telas) -->
@@ -987,12 +1006,37 @@
   </p>
 </main>
 
+<!-- Licença vencida ou não registrada -->
+<div id="licencaBloco" class="licenca-fundo" role="alertdialog" aria-modal="true" aria-labelledby="licencaMensagem">
+  <div class="licenca-caixa licenca-bloqueio">
+    <p id="licencaMensagem"></p>
+    <button id="licencaOutroEmail" class="botao-principal" type="button">Entrar com outro e-mail</button>
+  </div>
+</div>
+
+<!-- Acesso por e-mail e senha -->
+<div id="licencaModal" class="licenca-fundo" role="dialog" aria-modal="true" aria-labelledby="licencaTitulo">
+  <form id="licencaForm" class="licenca-caixa" autocomplete="on">
+    <h2 id="licencaTitulo">Acessar com e-mail</h2>
+    <label for="licencaEmail">E-mail cadastrado *</label>
+    <input type="email" id="licencaEmail" required autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false">
+    <label for="licencaSenha">Senha *</label>
+    <input type="password" id="licencaSenha" required maxlength="8" autocomplete="off" inputmode="numeric">
+    <p id="licencaErro" class="licenca-erro" style="display:none"></p>
+    <div class="licenca-botoes">
+      <button id="licencaCancelar" class="botao-secundario" type="button" style="display:none">Cancelar</button>
+      <button class="botao-principal" type="submit">Entrar</button>
+    </div>
+  </form>
+</div>
+
 <nav id="rodapeAcoes" aria-label="Ações">
   <button id="btnNovaCaptura" class="botao-rodape botao-rodape-camera" type="button" aria-label="Voltar para a digitalização" title="Digitalizar"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></button>
   <button id="btnProdutos" class="botao-rodape botao-rodape-produtos" type="button" aria-label="Produtos" title="Produtos"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg><span>Produtos</span></button>
   <button id="btnLista" class="botao-rodape botao-rodape-produtos" type="button" aria-label="Lista" title="Lista"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3.5" cy="6" r="1"/><circle cx="3.5" cy="12" r="1"/><circle cx="3.5" cy="18" r="1"/></svg><span>Lista</span><b id="contadorRodape" class="contador-lista" style="display:none"></b></button>
 </nav>
 
+<script>document.write('<script src="usuarios.js?t=' + Date.now() + '"><\/script>');</script>
 <script>
 "use strict";
 
@@ -1073,7 +1117,7 @@ window.addEventListener("online", () => setTimeout(guardarBibliotecasQr, 1000));
  * ENDEREÇO DO GOOGLE APPS SCRIPT
  * Mantido conforme o arquivo enviado.
  */
-const URL_DO_MOTOR =
+let URL_DO_MOTOR =
   "https://script.google.com/macros/s/AKfycby7bScgVxp5wJxV0KZ26kvU0Awd8az-pMZXSg8kTM137bvnQxQxvgpXJ39zutU8gC_Xew/exec";
 
 const EH_IOS = /iPad|iPhone|iPod/i.test(navigator.userAgent) ||
@@ -1106,6 +1150,152 @@ let iosZbar = null;
 let iosQuadro = 0;
 
 const el = (id) => document.getElementById(id);
+
+
+/* LICENÇA: licenciados do usuarios.js (e-mail + senha do dia).
+   A licença validada fica guardada no aparelho, para o app abrir também sem internet.
+   Dentro do PliPag (iframe) o acesso é controlado pelo próprio PliPag e nada muda. */
+const MENSAGEM_LICENCA_VENCIDA =
+  "Cópia não registrada, entrar em contato com o desenvolvedor pelo telefone: 82987340685 para regularização da licença";
+const CHAVE_EMAIL_LICENCA = "nota_user_email";
+const CHAVE_LICENCA = "nota_licenca";
+let LICENCA_OK = EMBUTIDO;
+let PLANILHA_ATIVA = "";
+
+function hojeISO() {
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+
+function senhaDoDia() {
+  return hojeISO().replace(/-/g, "");   // AAAAMMDD
+}
+
+function lerEmailLicenca() {
+  try { return localStorage.getItem(CHAVE_EMAIL_LICENCA) || ""; } catch (_) { return ""; }
+}
+
+function lerLicencaGuardada() {
+  try {
+    const v = JSON.parse(localStorage.getItem(CHAVE_LICENCA) || "null");
+    return v && typeof v === "object" ? v : null;
+  } catch (_) { return null; }
+}
+
+// Com o usuarios.js carregado (internet): ele manda, e a licença é guardada no aparelho.
+// Sem ele (sem internet): vale a licença guardada da última vez que esse e-mail entrou.
+function buscarLicenciado(email) {
+  const alvo = String(email || "").trim().toLowerCase();
+  if (!alvo) return null;
+  if (typeof notasBuscarUsuario === "function") {
+    const u = notasBuscarUsuario(alvo);
+    if (u) { try { localStorage.setItem(CHAVE_LICENCA, JSON.stringify(u)); } catch (_) {} }
+    return u;
+  }
+  const guardada = lerLicencaGuardada();
+  if (guardada && String(guardada.email || "").toLowerCase() === alvo) {
+    guardada.vencida = !!guardada.validade && hojeISO() > guardada.validade;
+    return guardada;
+  }
+  return null;
+}
+
+// true = liberado, "vencida" = licença vencida, false = e-mail não cadastrado
+function aplicarLicenca(email) {
+  const u = buscarLicenciado(email);
+  if (!u) return false;
+  if (u.vencida) { LICENCA_OK = false; return "vencida"; }
+  if (u.url) URL_DO_MOTOR = u.url;
+  PLANILHA_ATIVA = u.planilha || "";
+  LICENCA_OK = true;
+  el("licencaNome").textContent = u.nome || u.email;
+  el("rodapeLicenca").style.display = "";
+  document.documentElement.classList.remove("sem-licenca");
+  return true;
+}
+
+function abrirLoginLicenca(podeCancelar, mensagem) {
+  el("licencaBloco").classList.remove("visivel");
+  el("licencaEmail").value = lerEmailLicenca();
+  el("licencaSenha").value = "";
+  const erro = el("licencaErro");
+  erro.textContent = mensagem || "";
+  erro.style.display = mensagem ? "" : "none";
+  el("licencaCancelar").style.display = podeCancelar ? "" : "none";
+  el("licencaModal").classList.add("visivel");
+  setTimeout(() => { try { el(el("licencaEmail").value ? "licencaSenha" : "licencaEmail").focus(); } catch (_) {} }, 100);
+}
+
+function fecharLoginLicenca() {
+  el("licencaModal").classList.remove("visivel");
+}
+
+function mostrarBloqueioLicenca() {
+  document.documentElement.classList.add("sem-licenca");
+  el("licencaMensagem").textContent = MENSAGEM_LICENCA_VENCIDA;
+  el("licencaBloco").classList.add("visivel");
+}
+
+// Outro usuário entrando neste aparelho não herda a lista, as notas nem os produtos do anterior
+function limparDadosLocais() {
+  ["nota_lista", "nota_minhas_chaves", "nota_apelidos"].forEach((k) => {
+    try { localStorage.removeItem(k); } catch (_) {}
+  });
+  return new Promise((resolver) => {
+    try {
+      const pedido = indexedDB.deleteDatabase("plipag_offline");
+      pedido.onsuccess = pedido.onerror = pedido.onblocked = () => resolver();
+      setTimeout(resolver, 1500);
+    } catch (_) { resolver(); }
+  });
+}
+
+async function enviarLoginLicenca(ev) {
+  ev.preventDefault();
+  const email = el("licencaEmail").value.trim().toLowerCase();
+  const senha = el("licencaSenha").value.trim();
+  const erro = el("licencaErro");
+  const mostrarErro = (t) => { erro.textContent = t; erro.style.display = ""; };
+
+  if (senha !== senhaDoDia()) { mostrarErro("Senha incorreta."); return; }
+
+  const u = buscarLicenciado(email);
+  if (!u) {
+    mostrarErro(typeof notasBuscarUsuario === "function"
+      ? "E-mail não cadastrado. Entre em contato com o desenvolvedor."
+      : "Sem internet e este e-mail ainda não foi validado neste aparelho. Conecte-se para o primeiro acesso.");
+    return;
+  }
+  if (u.vencida) { fecharLoginLicenca(); mostrarBloqueioLicenca(); return; }
+
+  const anterior = lerEmailLicenca();
+  if (anterior && anterior !== u.email) await limparDadosLocais();
+  try { localStorage.setItem(CHAVE_EMAIL_LICENCA, u.email); } catch (_) {}
+  location.reload();   // recomeça já liberado: câmera, lista e sincronização iniciam normalmente
+}
+
+function iniciarLicenca() {
+  el("licencaForm").addEventListener("submit", enviarLoginLicenca);
+  el("licencaCancelar").addEventListener("click", fecharLoginLicenca);
+  el("licencaOutroEmail").addEventListener("click", () => abrirLoginLicenca(false));
+  el("rodapeLicenca").addEventListener("click", () => abrirLoginLicenca(true));
+
+  if (EMBUTIDO) return;
+  const salvo = lerEmailLicenca();
+  const r = salvo ? aplicarLicenca(salvo) : false;
+  if (r === true) return;
+
+  document.documentElement.classList.add("sem-licenca");
+  if (r === "vencida") mostrarBloqueioLicenca(); else abrirLoginLicenca(false);
+}
+iniciarLicenca();
+
+// Voltou para o app: se a licença venceu (ou foi retirada) enquanto ele estava aberto, recomeça
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "visible" || EMBUTIDO || !LICENCA_OK) return;
+  const u = buscarLicenciado(lerEmailLicenca());
+  if (!u || u.vencida) location.reload();
+});
 
 
 /* MENSAGENS */
@@ -1155,6 +1345,13 @@ function validarMotor() {
 }
 
 async function enviarMotor(dados) {
+  // Sem licença válida nada é consultado nem enviado
+  if (!LICENCA_OK) {
+    const semLicenca = new Error("Licença não validada.");
+    semLicenca.name = "SemLicenca";
+    throw semLicenca;
+  }
+
   // Busca de produtos e lojas: usa a base guardada no celular (IndexedDB) quando existe;
   // assim a pesquisa é instantânea e funciona sem internet.
   if (dados.acao === "produtos" && baseLocalPronta()) {
@@ -1170,6 +1367,7 @@ async function enviarMotor(dados) {
     categoria: dados.categoria || ""
   };
 
+  if (PLANILHA_ATIVA) corpo.planilha = PLANILHA_ATIVA;   // planilha do licenciado
   if (dados.offset !== undefined) corpo.offset = dados.offset;
   if (dados.limite !== undefined) corpo.limite = dados.limite;
   if (dados.chaves !== undefined) corpo.chaves = dados.chaves;
@@ -1522,6 +1720,7 @@ let spinnerListaAtivo = false;
  */
 async function carregarLista(reiniciar) {
   if (EMBUTIDO) return;   // dentro do PliPag não mostra a lista de notas
+  if (!LICENCA_OK) return;
   if (carregandoLista && !reiniciar) return;
   if (!reiniciar && fimDaLista) return;
 
@@ -3287,7 +3486,7 @@ if (EH_IOS) {
   el("btnLer").textContent = "📷 Capturar";
 }
 
-window.addEventListener("load", () => iniciarCamera(), { once: true });
+window.addEventListener("load", () => { if (LICENCA_OK) iniciarCamera(); }, { once: true });
 
 
 /*
@@ -3486,7 +3685,7 @@ function atualizarStatusSync() {}
 // Baixa toda a base da planilha (em lotes) e troca a cópia do IndexedDB.
 // forcar = true ignora a validade. validade = quanto tempo a cópia vale (padrão: 30 minutos).
 async function sincronizarProdutos(forcar, manual, validade) {
-  if (sincronizando) return;
+  if (sincronizando || !LICENCA_OK) return;
   const fresca = baseLocalPronta() && !baseDesatualizada && (Date.now() - baseLocal.quando) < (validade || VALIDADE_BASE_MS);
   if (!forcar && fresca) return;
   if (navigator.onLine === false) {
@@ -3696,7 +3895,7 @@ async function renderizarFila() {
 
 // Envia as notas da fila, uma a uma, da mais antiga para a mais nova
 async function processarFila(manual) {
-  if (processandoFila || requisicaoEmAndamento) return;
+  if (processandoFila || requisicaoEmAndamento || !LICENCA_OK) return;
   if (navigator.onLine === false) {
     if (manual) mostrarMensagem("Sem internet. As notas continuam guardadas na fila.", "erro");
     return;
