@@ -881,16 +881,6 @@
     </div>
   </section>
 
-  <!-- Notas lidas sem internet: ficam guardadas aqui e são lançadas quando a conexão voltar -->
-  <section id="filaNotas" class="cartao fila-notas" style="display:none" aria-live="polite">
-    <div class="fila-topo">
-      <strong id="filaTitulo"></strong>
-      <button id="btnFilaAgora" class="btn-fila" type="button">Lançar agora</button>
-    </div>
-    <div id="filaAviso" class="fila-aviso"></div>
-    <div id="filaLista"></div>
-  </section>
-
   <section id="cupons" aria-label="Notas digitalizadas">
     <div id="barraCupons" class="barra-cupons" style="display:none">
       <span id="resumoCupons"></span>
@@ -2041,9 +2031,8 @@ async function lancarLink(link) {
     return;
   }
 
-  // Sem internet: guarda o link na fila (IndexedDB) para lançar quando a conexão voltar
   if (navigator.onLine === false) {
-    await enfileirarNota(valor);
+    mostrarMensagem(MENSAGEM_SEM_INTERNET_QR, "erro");
     return;
   }
 
@@ -2063,14 +2052,6 @@ async function lancarLink(link) {
     });
 
     if (!dados) {
-      return;
-    }
-
-    // contingência: a SEFAZ ainda não tem a nota; guarda na fila e consulta de novo depois
-    if (dados.ok === false && notaEmContingencia(valor) &&
-        !/j[aá]\s+foi\s+lan[cç]ada|duplicad/i.test(String(dados.aviso || ""))) {
-      await enfileirarNota(valor);
-      mostrarMensagem(MSG_CONTINGENCIA, "info");
       return;
     }
 
@@ -2111,8 +2092,7 @@ async function lancarLink(link) {
     }
   } catch (erro) {
     if (erro && erro.name === "SemConexao") {
-      // a conexão caiu (ou o celular acha que está online, mas não está): guarda na fila
-      await enfileirarNota(valor);
+      mostrarMensagem(MENSAGEM_SEM_INTERNET_QR, "erro");
     } else {
       mostrarMensagem(
         erro.message || "Ocorreu um erro ao lançar a nota.",
@@ -3792,229 +3772,6 @@ setInterval(() => {
   sincronizarProdutos(false);
 }, 60000);
 iniciarBaseLocal();
-
-
-/* FILA DE NOTAS (IndexedDB): QR lidos sem internet ficam guardados e são lançados quando a conexão voltar.
-   O servidor recusa nota repetida, então reenviar da fila nunca duplica o lançamento. */
-const MAX_TENTATIVAS_FILA = 5;   // depois disso a nota só é reenviada pelo botão "Lançar agora"
-const ESPERA_CONTINGENCIA_MS = 60 * 60 * 1000;        // nota em contingência: nova consulta a cada 1 h
-const LIMITE_CONTINGENCIA_MS = 48 * 60 * 60 * 1000;   // e desiste do automático depois de 48 h
-const MSG_CONTINGENCIA = "Nota emitida em contingência: aguardando a loja transmitir e a SEFAZ autorizar. Será consultada de novo sozinha.";
-
-// NFC-e em contingência offline tem tpEmis = 9 (35º dígito da chave de 44 dígitos)
-function notaEmContingencia(link) {
-  const m = String(link || "").match(/(?<!\d)(\d{44})(?!\d)/);
-  return !!m && m[1].charAt(34) === "9";
-}
-let processandoFila = false;
-let resumoFila = "";
-let timerResumoFila = null;
-
-async function operarFila_(modo, fn) {
-  const db = await abrirBanco();
-  try {
-    return await new Promise((resolver, rejeitar) => {
-      const tx = db.transaction(["fila"], modo);
-      const pedido = fn(tx.objectStore("fila"));
-      tx.oncomplete = () => resolver(pedido ? pedido.result : undefined);
-      tx.onerror = () => rejeitar(tx.error || new Error("Falha na fila de notas."));
-      tx.onabort = () => rejeitar(tx.error || new Error("Operação na fila de notas cancelada."));
-    });
-  } finally {
-    db.close();
-  }
-}
-
-async function filaListar() {
-  const itens = (await operarFila_("readonly", (s) => s.getAll())) || [];
-  return itens.sort((a, b) => (a.criado || 0) - (b.criado || 0));
-}
-function filaSalvar(item) { return operarFila_("readwrite", (s) => s.put(item)); }
-function filaRemover(id) { return operarFila_("readwrite", (s) => s.delete(id)); }
-
-// Guarda o link na fila (sem repetir o mesmo link) e mostra o aviso na tela
-async function enfileirarNota(link) {
-  limparMensagem();
-  try {
-    const atuais = await filaListar();
-    if (!atuais.some((i) => i.link === link)) {
-      await operarFila_("readwrite", (s) => s.add({ link: link, criado: Date.now(), tentativas: 0, erro: "" }));
-    }
-    el("linkNota").value = "";
-    resumoFila = "";
-  } catch (erro) {
-    console.warn("Fila:", erro);
-    mostrarMensagem("Sem internet e não foi possível guardar a nota neste aparelho. Tente de novo quando a conexão voltar.", "erro");
-    return;
-  }
-  await renderizarFila();
-  mostrarPerguntaOutraCaptura_();
-}
-
-async function renderizarFila() {
-  const caixa = el("filaNotas");
-  let itens = [];
-  try { itens = await filaListar(); } catch (_) {}
-
-  if (!itens.length && !resumoFila) { caixa.style.display = "none"; return; }
-  caixa.style.display = "";
-
-  el("filaTitulo").textContent = itens.length
-    ? itens.length + (itens.length === 1 ? " nota aguardando lançamento" : " notas aguardando lançamento")
-    : resumoFila;
-  el("filaAviso").textContent = !itens.length ? "" : (
-    (resumoFila ? resumoFila + " · " : "") +
-    (navigator.onLine === false
-      ? "Sem internet: serão lançadas sozinhas quando a conexão voltar."
-      : "Elas são lançadas sozinhas; se não for, toque em Lançar agora.")
-  );
-
-  const botao = el("btnFilaAgora");
-  botao.style.display = itens.length ? "" : "none";
-  botao.disabled = processandoFila;
-  botao.textContent = processandoFila ? "Lançando…" : "Lançar agora";
-
-  const lista = el("filaLista");
-  lista.replaceChildren();
-  itens.forEach((item, i) => {
-    const linha = document.createElement("div");
-    linha.className = "fila-item";
-    const info = document.createElement("div");
-    const nome = document.createElement("b");
-    nome.textContent = "Nota " + (i + 1);
-    const quando = document.createElement("small");
-    quando.textContent = "guardada " + formatarQuandoSync(item.criado);
-    info.appendChild(nome);
-    info.appendChild(quando);
-    if (item.erro) {
-      const erro = document.createElement("small");
-      erro.className = "fila-erro";
-      erro.textContent = item.erro;
-      info.appendChild(erro);
-    }
-    const remover = document.createElement("button");
-    remover.type = "button";
-    remover.setAttribute("aria-label", "Remover da fila");
-    remover.textContent = "✕";
-    remover.addEventListener("click", async () => {
-      const ok = await confirmarAcao("Remover da fila?", "Esta nota não será lançada.", "Remover");
-      if (!ok) return;
-      try { await filaRemover(item.id); } catch (_) {}
-      renderizarFila();
-    });
-    linha.appendChild(info);
-    linha.appendChild(remover);
-    lista.appendChild(linha);
-  });
-}
-
-// Envia as notas da fila, uma a uma, da mais antiga para a mais nova
-async function processarFila(manual) {
-  if (processandoFila || requisicaoEmAndamento || !LICENCA_OK) return;
-  if (navigator.onLine === false) {
-    if (manual) mostrarMensagem("Sem internet. As notas continuam guardadas na fila.", "erro");
-    return;
-  }
-
-  let itens = [];
-  try { itens = await filaListar(); } catch (_) { return; }
-  if (!itens.length) return;
-
-  processandoFila = true;
-  renderizarFila();
-  let lancadas = 0, repetidas = 0, pendentes = 0;
-
-  try {
-    for (const item of itens) {
-      const conting = notaEmContingencia(item.link);
-      if (!manual) {
-        if (conting) {
-          const idade = Date.now() - (item.criado || 0);
-          if (idade > LIMITE_CONTINGENCIA_MS || (item.ultima && Date.now() - item.ultima < ESPERA_CONTINGENCIA_MS)) { pendentes++; continue; }
-        } else if ((item.tentativas || 0) >= MAX_TENTATIVAS_FILA) { pendentes++; continue; }
-      }
-
-      let dados;
-      try {
-        dados = await enviarMotor({ acao: "lancar", link: item.link });
-      } catch (erro) {
-        if (erro && erro.name === "SemConexao") {   // sem rede: tenta depois
-          pendentes += 1;
-          item.erro = navigator.onLine === false
-            ? "Sem internet."
-            : "Não foi possível falar com o servidor" + (erro.detalhe ? " (" + erro.detalhe + ")" : "") + ". Nova tentativa em instantes.";
-          try { await filaSalvar(item); } catch (_) {}
-          agendarNovaTentativaFila();
-          break;
-        }
-        item.tentativas = (item.tentativas || 0) + 1;
-        item.ultima = Date.now();
-        item.erro = (erro && erro.message) || "Falha ao lançar a nota.";
-        await filaSalvar(item);
-        pendentes++;
-        continue;
-      }
-
-      const aviso = String((dados && dados.aviso) || "");
-      const repetida = /notinha\s+j[aá]\s+foi\s+lan[cç]ada|nota\s+j[aá]\s+foi\s+lan[cç]ada|duplicad/i.test(aviso);
-
-      if (repetida) {
-        await filaRemover(item.id);
-        repetidas++;
-      } else if (dados && dados.ok !== false) {
-        await filaRemover(item.id);
-        lancadas++;
-        if (dados.chaveAcesso && !EMBUTIDO) guardarMinhaNota(dados.chaveAcesso);
-      } else {
-        // por exemplo, a nota ainda não está disponível na SEFAZ: tenta de novo mais tarde
-        item.tentativas = (item.tentativas || 0) + 1;
-        item.ultima = Date.now();
-        item.erro = conting ? MSG_CONTINGENCIA : (aviso || "Não foi possível lançar a nota.");
-        await filaSalvar(item);
-        pendentes++;
-      }
-    }
-  } catch (erro) {
-    console.warn("Fila:", erro);
-  } finally {
-    processandoFila = false;
-  }
-
-  if (manual && !lancadas && !repetidas && pendentes) {
-    mostrarMensagem("A nota ainda não pôde ser lançada. O motivo aparece na caixa da fila.", "erro");
-  }
-
-  if (lancadas || repetidas) {
-    resumoFila = (lancadas ? lancadas + (lancadas === 1 ? " nota lançada" : " notas lançadas") : "") +
-      (lancadas && repetidas ? " · " : "") +
-      (repetidas ? repetidas + (repetidas === 1 ? " já estava lançada" : " já estavam lançadas") : "");
-    clearTimeout(timerResumoFila);
-    timerResumoFila = setTimeout(() => { resumoFila = ""; renderizarFila(); }, 12000);
-    // a lista de notas da tela precisa mostrar as novas
-    try { if (typeof carregarLista === "function") carregarLista(true); } catch (_) {}
-  }
-  await renderizarFila();
-}
-
-// Rede instável logo após reconectar: tenta de novo depois de 5 s, 15 s, 45 s e 2 min
-let tentativasRedeFila = 0;
-function agendarNovaTentativaFila() {
-  const esperas = [5000, 15000, 45000, 120000];
-  if (tentativasRedeFila >= esperas.length) return;
-  setTimeout(() => processarFila(false), esperas[tentativasRedeFila++]);
-}
-
-el("btnFilaAgora").addEventListener("click", () => processarFila(true));
-window.addEventListener("online", () => { tentativasRedeFila = 0; renderizarFila(); setTimeout(() => processarFila(false), 1500); });
-setInterval(() => {
-  if (document.visibilityState !== "visible" || navigator.onLine === false) return;
-  processarFila(false);
-}, 60000);
-window.addEventListener("offline", renderizarFila);
-document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") processarFila(false);
-});
-renderizarFila().then(() => processarFila(false));
 </script>
 </body>
 </html>
