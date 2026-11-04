@@ -1467,6 +1467,11 @@ async function enviarMotor(dados) {
     resultado.aviso = mensagemMotor;
   }
 
+  // Nota recém-lançada: grava os produtos na hora no IndexedDB (a pesquisa já os enxerga)
+  if (corpo.acao === "lancar" && resultado && resultado.ok !== false && !resultado.somenteLeitura) {
+    incluirNotaNaBaseLocal(resultado);
+  }
+
   // Notas lançadas, excluídas ou alteradas: a cópia local precisa ser atualizada
   if (["lancar", "categoria", "apelido", "excluir"].indexOf(corpo.acao) !== -1 &&
       resultado && resultado.ok !== false) {
@@ -3751,6 +3756,69 @@ function agendarNovaTentativaSync() {
   const esperas = [5000, 15000, 45000, 120000];
   if (tentativasSync >= esperas.length) return;
   setTimeout(() => sincronizarProdutos(false), esperas[tentativasSync++]);
+}
+
+// Nota recém-lançada: grava os produtos dela na base local (memória + IndexedDB) sem esperar a
+// sincronização completa. Segue a regra do servidor: um registro por produto e loja, o mais recente.
+// Só age se a base já foi baixada uma vez (senão a pesquisa passaria a usar uma base quase vazia).
+async function incluirNotaNaBaseLocal(nota) {
+  try {
+    if (!baseLocalPronta() || !nota || !Array.isArray(nota.itens) || !nota.itens.length) return;
+
+    const lojaNorm = normalizarTextoBusca(nota.loja);
+    const msData = nota.data ? Date.parse(nota.data) : NaN;
+    const msNota = isFinite(msData) ? msData : Date.now();
+
+    // produtos já conhecidos desta loja e o endereço mais recente dela
+    const existentes = new Map();
+    let ref = null;
+    baseLocal.itens.forEach((a, i) => {
+      if (normalizarTextoBusca(a.loja) !== lojaNorm) return;
+      existentes.set(a.nome, i);
+      if (a.endereco && (!ref || (Number(a.ms) || 0) > (Number(ref.ms) || 0))) ref = a;
+    });
+    const apelido = String(nota.apelido || (ref && ref.apelido) || "");
+
+    const novos = new Map();
+    const substituir = new Set();
+    nota.itens.forEach((it) => {
+      const nome = normalizarTextoBusca(it.descricao);
+      if (!nome) return;
+      const i = existentes.get(nome);
+      if (i !== undefined && (Number(baseLocal.itens[i].ms) || 0) >= msNota) return;   // já há um mais recente
+      if (i !== undefined) substituir.add(i);
+      novos.set(nome, {
+        ms: msNota,
+        dataTxt: "",
+        loja: nota.loja,
+        endereco: ref ? ref.endereco : "",
+        bairro: ref ? ref.bairro : "",
+        cidade: ref ? ref.cidade : "",
+        apelido: apelido,
+        descricao: it.descricao,
+        quantidade: it.quantidade,
+        unidade: it.unidade,
+        preco: it.precoUnitario,
+        total: it.total
+      });
+    });
+    if (!novos.size) return;
+
+    const mantidos = baseLocal.itens.filter((_, i) => !substituir.has(i));
+    baseLocal = { itens: prepararBaseLocal(mantidos.concat(Array.from(novos.values()))), quando: baseLocal.quando };
+
+    // grava no IndexedDB (se uma sincronização estiver rodando, ela traz a nota e regrava tudo)
+    if (!sincronizando) {
+      const brutos = baseLocal.itens.map((a) => {
+        const copia = Object.assign({}, a);
+        delete copia.nome; delete copia.palavrasDesc; delete copia.textoLoja;
+        return copia;
+      });
+      await gravarBaseNoBanco(brutos, baseLocal.quando);
+    }
+  } catch (erro) {
+    console.warn("Base local (nota nova):", erro);
+  }
 }
 
 // Depois de lançar, excluir ou alterar notas: atualiza a cópia local em segundo plano
