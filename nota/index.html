@@ -1434,6 +1434,7 @@ async function enviarMotor(dados) {
       "Não foi possível conectar ao Google Apps Script. " +
       "Confira a conexão com a internet, o endereço /exec e as permissões da implantação."
     );
+    semConexao.detalhe = (erro && erro.message) || "";
     semConexao.name = "SemConexao";   // permite à fila de notas reconhecer a falta de internet
     throw semConexao;
   }
@@ -2062,6 +2063,14 @@ async function lancarLink(link) {
     });
 
     if (!dados) {
+      return;
+    }
+
+    // contingência: a SEFAZ ainda não tem a nota; guarda na fila e consulta de novo depois
+    if (dados.ok === false && notaEmContingencia(valor) &&
+        !/j[aá]\s+foi\s+lan[cç]ada|duplicad/i.test(String(dados.aviso || ""))) {
+      await enfileirarNota(valor);
+      mostrarMensagem(MSG_CONTINGENCIA, "info");
       return;
     }
 
@@ -3782,6 +3791,15 @@ iniciarBaseLocal();
 /* FILA DE NOTAS (IndexedDB): QR lidos sem internet ficam guardados e são lançados quando a conexão voltar.
    O servidor recusa nota repetida, então reenviar da fila nunca duplica o lançamento. */
 const MAX_TENTATIVAS_FILA = 5;   // depois disso a nota só é reenviada pelo botão "Lançar agora"
+const ESPERA_CONTINGENCIA_MS = 60 * 60 * 1000;        // nota em contingência: nova consulta a cada 1 h
+const LIMITE_CONTINGENCIA_MS = 48 * 60 * 60 * 1000;   // e desiste do automático depois de 48 h
+const MSG_CONTINGENCIA = "Nota emitida em contingência: aguardando a loja transmitir e a SEFAZ autorizar. Será consultada de novo sozinha.";
+
+// NFC-e em contingência offline tem tpEmis = 9 (35º dígito da chave de 44 dígitos)
+function notaEmContingencia(link) {
+  const m = String(link || "").match(/(?<!\d)(\d{44})(?!\d)/);
+  return !!m && m[1].charAt(34) === "9";
+}
 let processandoFila = false;
 let resumoFila = "";
 let timerResumoFila = null;
@@ -3902,7 +3920,13 @@ async function processarFila(manual) {
 
   try {
     for (const item of itens) {
-      if (!manual && (item.tentativas || 0) >= MAX_TENTATIVAS_FILA) { pendentes++; continue; }
+      const conting = notaEmContingencia(item.link);
+      if (!manual) {
+        if (conting) {
+          const idade = Date.now() - (item.criado || 0);
+          if (idade > LIMITE_CONTINGENCIA_MS || (item.ultima && Date.now() - item.ultima < ESPERA_CONTINGENCIA_MS)) { pendentes++; continue; }
+        } else if ((item.tentativas || 0) >= MAX_TENTATIVAS_FILA) { pendentes++; continue; }
+      }
 
       let dados;
       try {
@@ -3910,10 +3934,15 @@ async function processarFila(manual) {
       } catch (erro) {
         if (erro && erro.name === "SemConexao") {   // sem rede: tenta depois
           pendentes += 1;
+          item.erro = navigator.onLine === false
+            ? "Sem internet."
+            : "Não foi possível falar com o servidor" + (erro.detalhe ? " (" + erro.detalhe + ")" : "") + ". Nova tentativa em instantes.";
+          try { await filaSalvar(item); } catch (_) {}
           agendarNovaTentativaFila();
           break;
         }
         item.tentativas = (item.tentativas || 0) + 1;
+        item.ultima = Date.now();
         item.erro = (erro && erro.message) || "Falha ao lançar a nota.";
         await filaSalvar(item);
         pendentes++;
@@ -3933,7 +3962,8 @@ async function processarFila(manual) {
       } else {
         // por exemplo, a nota ainda não está disponível na SEFAZ: tenta de novo mais tarde
         item.tentativas = (item.tentativas || 0) + 1;
-        item.erro = aviso || "Não foi possível lançar a nota.";
+        item.ultima = Date.now();
+        item.erro = conting ? MSG_CONTINGENCIA : (aviso || "Não foi possível lançar a nota.");
         await filaSalvar(item);
         pendentes++;
       }
@@ -3942,6 +3972,10 @@ async function processarFila(manual) {
     console.warn("Fila:", erro);
   } finally {
     processandoFila = false;
+  }
+
+  if (manual && !lancadas && !repetidas && pendentes) {
+    mostrarMensagem("A nota ainda não pôde ser lançada. O motivo aparece na caixa da fila.", "erro");
   }
 
   if (lancadas || repetidas) {
