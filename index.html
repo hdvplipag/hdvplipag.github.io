@@ -950,7 +950,7 @@
 
       // ---------- Utilidades ----------
       function erroRede(msg) {
-        const e = new Error(msg || 'Sem conexão com a internet.');
+        const e = new Error(msg || 'Não foi possível conectar ao servidor. Verifique a internet.');
         e.rede = true;
         return e;
       }
@@ -995,8 +995,11 @@
           if (t) clearTimeout(t);
           if (semRede) { semRede = false; atualizarAviso(); }
           return r.json();
-        }, function() {
+        }, function(err) {
           if (t) clearTimeout(t);
+          // demora do servidor (Apps Script lento) não é falta de internet
+          if (ctl && ctl.signal.aborted) { const e = new Error('O servidor demorou para responder. Tente novamente.'); e.tempo = true; throw e; }
+          try { console.warn('PliPag: falha de conexão com o servidor', err); } catch (x) {}
           semRede = true; atualizarAviso();
           throw erroRede();
         }).then(function(j) {
@@ -1010,7 +1013,7 @@
 
       async function cacheLocal() {
         const rec = usuarioAtual ? await kvGet(chaveApp()) : null;
-        if (!rec || !rec.data) throw erroRede('Sem internet e ainda não há dados salvos neste aparelho. Abra o app uma vez com internet.');
+        if (!rec || !rec.data) throw erroRede('Não foi possível carregar os dados e ainda não há cópia salva neste aparelho. Abra o app uma vez com internet.');
         return copiar(rec.data);
       }
 
@@ -1028,7 +1031,7 @@
         if (pend.total && navigator.onLine !== false) { await sincronizar(); pend = await contarPendentes(); }
         if (pend.ops > 0) return cacheLocal();
         try {
-          const r = await chamarApi('getAppData', [], { timeout: 20000 });
+          const r = await chamarApi('getAppData', [], { timeout: 45000 });
           const gravou = await serial(async function() {
             const p2 = await contarPendentes();
             if (p2.ops > 0) return false;   // surgiu uma alteração offline durante a consulta: vale o cache local
@@ -1041,7 +1044,7 @@
           }).catch(function() { return true; });
           return gravou ? r : cacheLocal();
         } catch (e) {
-          if (!e.rede) throw e;
+          if (!e.rede && !e.tempo) throw e;
           return cacheLocal();
         }
       }
@@ -1085,7 +1088,7 @@
         const senha = String(args[1] || '');
         const confirmacao = args[2];
         try {
-          const res = await chamarApi('autenticarUsuario', args, { timeout: 15000 });
+          const res = await chamarApi('autenticarUsuario', args);
           if (res && res.token) { tokenSessao = res.token; delete res.token; }
           if (res && res.status === 'success') {
             modoOffline = false; senhaSessao = '';
@@ -1097,7 +1100,7 @@
           if (!e.rede || confirmacao) throw e;
           // sem internet: confere a senha com a verificação guardada neste aparelho
           const cred = await kvGet('cred:' + email).catch(function() { return null; });
-          if (!cred) throw erroRede('Sem internet. Entre uma vez com internet para liberar o uso sem conexão neste aparelho.');
+          if (!cred) throw erroRede('Não foi possível conectar ao servidor. Verifique a internet. (O uso sem conexão é liberado depois de entrar uma vez com internet neste aparelho.)');
           if (!(await senhaConfere(cred, senha))) return { status: 'erro', message: 'E-mail ou senha incorretos.' };
           modoOffline = true; senhaSessao = senha; tokenSessao = '';
           aoEntrar(email);
@@ -1110,7 +1113,7 @@
         if (tokenSessao) return true;
         if (!usuarioAtual || !senhaSessao) return false;
         try {
-          const res = await chamarApi('autenticarUsuario', [usuarioAtual, senhaSessao, null, idDispositivo()], { timeout: 15000 });
+          const res = await chamarApi('autenticarUsuario', [usuarioAtual, senhaSessao, null, idDispositivo()]);
           if (res && res.status === 'success' && res.token) {
             tokenSessao = res.token; modoOffline = false; senhaSessao = '';
             return true;
@@ -1289,7 +1292,7 @@
           const op = ops[0];
           if (op.enviando && op.tmp) {
             let servidor = null;
-            try { servidor = await chamarApi('getAppData', [], { timeout: 20000 }); }
+            try { servidor = await chamarApi('getAppData', [], { timeout: 45000 }); }
             catch (e) { return { ok: false, enviou: enviou }; }
             if (await jaNoServidor(op, servidor)) { await remover('fila', op.seq); enviou++; continue; }
           }
@@ -1325,7 +1328,7 @@
         const montar = window.PliPagNotas && window.PliPagNotas.montar;
         if (!montar) return { ok: true, lancadas: 0 };
         let servidor;
-        try { servidor = await chamarApi('getAppData', [], { timeout: 20000 }); }
+        try { servidor = await chamarApi('getAppData', [], { timeout: 45000 }); }
         catch (e) { return { ok: false, lancadas: 0 }; }
         const jaTem = {};
         ((servidor && servidor.transactions) || []).forEach(function(t) { if (t.chave) jaTem[String(t.chave)] = true; });
@@ -1414,7 +1417,7 @@
           const pend = await contarPendentes();
           const off = navigator.onLine === false || semRede;
           let txt = '', cor = '';
-          if (off) { txt = 'Sem internet · modo offline' + (pend.total ? ' · ' + pend.total + ' pendente' + (pend.total === 1 ? '' : 's') : ''); cor = '#b45309'; }
+          if (off) { txt = 'Sem conexão · modo offline' + (pend.total ? ' · ' + pend.total + ' pendente' + (pend.total === 1 ? '' : 's') : ''); cor = '#b45309'; }
           else if (pend.total) { txt = (sincronizando ? 'Sincronizando ' : 'Pendentes: ') + pend.total + (sincronizando ? '…' : ''); cor = '#0e7490'; }
           avisoEl.textContent = txt;
           avisoEl.style.background = cor;
