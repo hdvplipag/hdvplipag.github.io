@@ -1057,63 +1057,6 @@ if ("serviceWorker" in navigator) {
   });
 }
 
-/* BIBLIOTECAS DE LEITURA DE QR: uma cópia fica guardada no aparelho (Cache Storage)
-   para a câmera abrir mesmo sem internet. A cópia é feita na primeira vez que o app abre online. */
-const BIBLIOTECAS_QR = [
-  { url: "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js", carregada: () => typeof jsQR === "function" },
-  { url: "https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js", carregada: () => typeof Html5Qrcode !== "undefined" }
-];
-const CACHE_BIBLIOTECAS_QR = "plipag-bibliotecas-qr-v1";
-
-// Com internet: guarda as bibliotecas que ainda não estão guardadas
-async function guardarBibliotecasQr() {
-  if (!window.caches || navigator.onLine === false) return;
-  try {
-    const cache = await caches.open(CACHE_BIBLIOTECAS_QR);
-    for (const b of BIBLIOTECAS_QR) {
-      if (await cache.match(b.url)) continue;
-      const r = await fetch(b.url);
-      if (r.ok) await cache.put(b.url, r);
-    }
-  } catch (_) {}
-}
-
-function executarScriptQr_(texto) {
-  return new Promise((resolver, rejeitar) => {
-    const endereco = URL.createObjectURL(new Blob([texto], { type: "text/javascript" }));
-    const s = document.createElement("script");
-    s.src = endereco;
-    s.onload = () => { URL.revokeObjectURL(endereco); resolver(); };
-    s.onerror = () => { URL.revokeObjectURL(endereco); rejeitar(new Error("script")); };
-    document.head.appendChild(s);
-  });
-}
-
-// Se a página abriu sem as bibliotecas (sem internet), carrega a cópia guardada
-async function garantirBibliotecasQr() {
-  for (const b of BIBLIOTECAS_QR) {
-    if (b.carregada()) continue;
-    try {
-      const cache = window.caches ? await caches.open(CACHE_BIBLIOTECAS_QR) : null;
-      const guardada = cache ? await cache.match(b.url) : null;
-      let texto = "";
-      if (guardada) {
-        texto = await guardada.text();
-      } else if (navigator.onLine !== false) {
-        const r = await fetch(b.url);
-        if (r.ok) {
-          if (cache) cache.put(b.url, r.clone());
-          texto = await r.text();
-        }
-      }
-      if (texto) await executarScriptQr_(texto);
-    } catch (_) {}
-  }
-}
-
-window.addEventListener("load", () => setTimeout(guardarBibliotecasQr, 3000));
-window.addEventListener("online", () => setTimeout(guardarBibliotecasQr, 1000));
-
 /*
  * ENDEREÇO DO GOOGLE APPS SCRIPT
  * Mantido conforme o arquivo enviado.
@@ -2259,9 +2202,23 @@ async function pararCamera() {
   await operacaoCamera;
 }
 
-function mensagemErroCamera(erro) {
-  if (erro && erro.name === "BibliotecaQr") return erro.message;
+// A internet caiu com a câmera aberta: fecha a leitura e avisa. Quando voltar, a câmera reabre sozinha.
+window.addEventListener("offline", async () => {
+  if (!cameraAtiva && !cameraIniciando) return;
+  try { await pararCamera(); } catch (_) {}
+  avisoSemInternetQr = true;
+  mostrarMensagem(MENSAGEM_SEM_INTERNET_QR, "erro");
+});
+window.addEventListener("online", () => {
+  if (!avisoSemInternetQr) return;
+  avisoSemInternetQr = false;
+  if (!LICENCA_OK || requisicaoEmAndamento) return;
+  if (el("telaLeitura").style.display === "none") return;   // está em Produtos ou Lista
+  limparMensagem();
+  iniciarCamera();
+});
 
+function mensagemErroCamera(erro) {
   const nome = String(
     erro && (erro.name || erro.message) || erro || ""
   );
@@ -2322,32 +2279,15 @@ async function iniciarLeituraAoVivoNoIphone_() {
 
   const [stream, zbar] = await Promise.all([pedidoCamera, pedidoZbar]);
 
-  // sem internet o leitor não veio da rede: usa a cópia guardada no aparelho
-  if (!zbar && typeof jsQR !== "function") await garantirBibliotecasQr();
-
   if (!zbar && typeof jsQR !== "function") {
     stream.getTracks().forEach(track => track.stop());
-    const erroQr = new Error(
-      "Sem internet, e o leitor de QR ainda não foi guardado neste aparelho. " +
-      "Abra o app uma vez com internet e espere uns segundos; depois ele funciona offline."
-    );
-    erroQr.name = "BibliotecaQr";
-    throw erroQr;
+    throw new Error("Os leitores de QR não carregaram. Confira a internet e tente novamente.");
   }
 
   iosCameraStream = stream;
   iosZbar = zbar;
   iosQuadro = 0;
   atualizarBotaoLanterna_(stream.getVideoTracks()[0]);
-
-  // foco contínuo: QR denso só lê bem com a imagem nítida (ignora se o aparelho não aceitar)
-  try {
-    const trilha = stream.getVideoTracks()[0];
-    const cap = trilha.getCapabilities ? trilha.getCapabilities() : {};
-    if (cap.focusMode && cap.focusMode.indexOf("continuous") !== -1) {
-      await trilha.applyConstraints({ advanced: [{ focusMode: "continuous" }] });
-    }
-  } catch (_) {}
 
   const video = document.createElement("video");
   video.autoplay = true;
@@ -2391,68 +2331,7 @@ async function iniciarLeituraAoVivoNoIphone_() {
 
 function agendarLeituraDoQuadroIphone_() {
   if (!cameraAtiva || !iosCameraVideo || processandoLeitura) return;
-  // sem o zbar (sem internet) o jsQR trabalha em todo quadro, então a pausa entre quadros é menor
-  iosTimerLeitura = setTimeout(processarQuadroIphone_, iosZbar ? 180 : 60);
-}
-
-/* Leitura com o jsQR (funciona sem internet). A cada quadro olha a imagem de um jeito diferente:
-   o QR da nota é denso, então o recorte central em resolução máxima costuma ser o que acerta. */
-let iosCanvasReduzido = null;
-let iosDetectorNativo = null;
-
-function pixelsDoRecorte_(sx, sy, lado) {
-  return iosContextoCanvas.getImageData(sx, sy, lado, lado);
-}
-
-async function lerComJsQr_(largura, altura) {
-  // alguns navegadores já trazem um leitor de QR nativo (rápido e sensível): usa se existir
-  if (iosDetectorNativo === null) {
-    iosDetectorNativo = false;
-    try {
-      if ("BarcodeDetector" in window) iosDetectorNativo = new BarcodeDetector({ formats: ["qr_code"] });
-    } catch (_) { iosDetectorNativo = false; }
-  }
-  if (iosDetectorNativo) {
-    try {
-      const achados = await iosDetectorNativo.detect(iosCanvas);
-      if (achados && achados.length && achados[0].rawValue) return achados[0].rawValue;
-    } catch (_) {}
-  }
-
-  if (typeof jsQR !== "function") return "";
-
-  const lado = Math.min(largura, altura);
-  const passo = iosQuadro % 4;
-  let qr = null;
-
-  if (passo === 0 || passo === 2) {
-    // recorte central quadrado em resolução máxima (o QR costuma ficar no meio da tela)
-    const sx = Math.round((largura - lado) / 2);
-    const sy = Math.round((altura - lado) / 2);
-    const px = pixelsDoRecorte_(sx, sy, lado);
-    qr = jsQR(px.data, lado, lado, { inversionAttempts: passo === 2 ? "attemptBoth" : "dontInvert" });
-  } else if (passo === 1) {
-    // quadro inteiro reduzido: acha o QR quando ele está longe ou fora do centro
-    if (!iosCanvasReduzido) iosCanvasReduzido = document.createElement("canvas");
-    const k = Math.min(1, 960 / largura);
-    const w = Math.max(1, Math.round(largura * k));
-    const h = Math.max(1, Math.round(altura * k));
-    iosCanvasReduzido.width = w;
-    iosCanvasReduzido.height = h;
-    const ctx = iosCanvasReduzido.getContext("2d", { willReadFrequently: true });
-    ctx.drawImage(iosCanvas, 0, 0, w, h);
-    const px = ctx.getImageData(0, 0, w, h);
-    qr = jsQR(px.data, w, h, { inversionAttempts: "dontInvert" });
-  } else {
-    // recorte menor (60%) em resolução máxima: QR pequeno e perto do centro
-    const menor = Math.round(lado * 0.6);
-    const sx = Math.round((largura - menor) / 2);
-    const sy = Math.round((altura - menor) / 2);
-    const px = pixelsDoRecorte_(sx, sy, menor);
-    qr = jsQR(px.data, menor, menor, { inversionAttempts: "dontInvert" });
-  }
-
-  return qr && qr.data ? qr.data : "";
+  iosTimerLeitura = setTimeout(processarQuadroIphone_, 180);
 }
 
 async function processarQuadroIphone_() {
@@ -2469,7 +2348,7 @@ async function processarQuadroIphone_() {
   }
 
   try {
-    const escala = Math.min(1, 1920 / video.videoWidth);
+    const escala = Math.min(1, 1600 / video.videoWidth);
     const largura = Math.max(1, Math.round(video.videoWidth * escala));
     const altura = Math.max(1, Math.round(video.videoHeight * escala));
     if (iosCanvas.width !== largura || iosCanvas.height !== altura) {
@@ -2477,18 +2356,22 @@ async function processarQuadroIphone_() {
       iosCanvas.height = altura;
     }
     iosContextoCanvas.drawImage(video, 0, 0, largura, altura);
+    const pixels = iosContextoCanvas.getImageData(0, 0, largura, altura);
     let textoLido = "";
 
     if (iosZbar) {
-      // com internet: zbar (o mais sensível) olhando o quadro inteiro
-      const pixels = iosContextoCanvas.getImageData(0, 0, largura, altura);
       const simbolos = await iosZbar.scanImageData(pixels);
       const qr = simbolos.find(simbolo => /qr/i.test(simbolo.typeName || ""));
       if (qr) textoLido = qr.decode();
     }
 
     iosQuadro += 1;
-    if (!textoLido) textoLido = await lerComJsQr_(largura, altura);
+    if (!textoLido && typeof jsQR === "function" && iosQuadro % 2 === 0) {
+      const qr = jsQR(pixels.data, largura, altura, {
+        inversionAttempts: "attemptBoth"
+      });
+      if (qr) textoLido = qr.data;
+    }
 
     if (textoLido) {
       processandoLeitura = true;
@@ -2527,10 +2410,21 @@ async function iniciarCamera() {
   }
 }
 
+// Sem internet o QR Code não é lido: a câmera nem abre e o app avisa
+const MENSAGEM_SEM_INTERNET_QR = "Sem internet. Conecte-se à internet para ler o QR Code.";
+let avisoSemInternetQr = false;
+
 async function executarInicioCamera() {
   limparMensagem();
   esconderPerguntaOutraCaptura_();
   el("ajudaCamera").classList.remove("visivel");
+  avisoSemInternetQr = false;
+
+  if (navigator.onLine === false) {
+    avisoSemInternetQr = true;
+    mostrarMensagem(MENSAGEM_SEM_INTERNET_QR, "erro");
+    return;
+  }
 
   if (!window.isSecureContext) {
     el("ajudaCamera").classList.add("visivel");
@@ -2555,13 +2449,11 @@ async function executarInicioCamera() {
     return;
   }
 
-  if (!EH_IOS && typeof Html5Qrcode === "undefined") await garantirBibliotecasQr();
-
   if (
     !EH_IOS && typeof Html5Qrcode === "undefined"
   ) {
     mostrarMensagem(
-      "A biblioteca de leitura não carregou. Abra o app uma vez com internet para guardá-la no aparelho.",
+      "A biblioteca de leitura não carregou. Confira a internet e recarregue a página.",
       "erro"
     );
 
