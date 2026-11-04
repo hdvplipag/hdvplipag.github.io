@@ -969,7 +969,6 @@
       // ---------- Chamada ao servidor ----------
       // opc.timeout (ms): só para leituras e login; gravações nunca são interrompidas no meio.
       function chamarApi(fn, args, opc) {
-        if (navigator.onLine === false) { semRede = true; atualizarAviso(); return Promise.reject(erroRede()); }
         const ctl = (opc && opc.timeout && window.AbortController) ? new AbortController() : null;
         const t = ctl ? setTimeout(function() { ctl.abort(); }, opc.timeout) : null;
         return fetch(API_URL, {
@@ -988,7 +987,8 @@
           if (ctl && ctl.signal.aborted) { const e = new Error('O servidor demorou para responder. Tente novamente.'); e.tempo = true; throw e; }
           try { console.warn('PliPag: falha de conexão com o servidor', err); } catch (x) {}
           semRede = true; atualizarAviso();
-          throw erroRede();
+          const motivo = err ? (String(err.name || '') + (err.message ? ': ' + err.message : '')) : '';
+          throw erroRede('Não foi possível conectar ao servidor. Verifique a internet.' + (motivo ? ' (' + motivo + ')' : ''));
         }).then(function(j) {
           if (!j || !j.ok) throw new Error((j && j.error) || 'Erro no servidor');
           return j.result;
@@ -1014,7 +1014,7 @@
         if (!usuarioAtual) return chamarApi('getAppData', []);
         let pend = await contarPendentes();
         // primeiro envia o que foi feito offline, senão os dados do servidor apagariam esses lançamentos da tela
-        if (pend.total && navigator.onLine !== false) { await sincronizar(); pend = await contarPendentes(); }
+        if (pend.total) { await sincronizar(); pend = await contarPendentes(); }
         if (pend.ops > 0) return cacheLocal();
         try {
           const r = await chamarApi('getAppData', [], { timeout: 45000 });
@@ -1245,13 +1245,13 @@
       async function escrever(nome, args) {
         const pend = await contarPendentes();
         if (!usuarioAtual) return chamarApi(nome, args);
-        if (!pend.ops && !modoOffline && tokenSessao && navigator.onLine !== false) {
+        if (!pend.ops && !modoOffline && tokenSessao) {
           try { return await chamarApi(nome, args); }
           catch (e) { if (!e.rede) throw e; }   // caiu a internet: guarda na fila
         }
         const r = await serial(function() { return aplicarOffline(nome, args); });
         atualizarAviso();
-        if (navigator.onLine !== false) agendarSync(10000);
+        agendarSync(10000);
         return r;
       }
 
@@ -1289,7 +1289,6 @@
             enviou++;
           } catch (e) {
             if (e.rede) {
-              if (navigator.onLine === false) { op.enviando = reenvio; await colocar('fila', op); }   // nem chegou a sair: não é uma gravação incerta
               return { ok: false, enviou: enviou };
             }
             if (e.message === 'SESSAO_INVALIDA') {
@@ -1306,7 +1305,7 @@
       }
 
       async function sincronizar() {
-        if (sincronizando || !usuarioAtual || navigator.onLine === false) return false;
+        if (sincronizando || !usuarioAtual) return false;
         sincronizando = true;
         atualizarAviso();
         let mudou = false, completo = false;
@@ -1344,7 +1343,7 @@
             document.body.appendChild(avisoEl);
           }
           const pend = await contarPendentes();
-          const off = navigator.onLine === false || semRede;
+          const off = semRede;
           let txt = '', cor = '';
           if (off) { txt = 'Sem conexão · modo offline' + (pend.total ? ' · ' + pend.total + ' pendente' + (pend.total === 1 ? '' : 's') : ''); cor = '#b45309'; }
           else if (pend.total) { txt = (sincronizando ? 'Sincronizando ' : 'Pendentes: ') + pend.total + (sincronizando ? '…' : ''); cor = '#0e7490'; }
@@ -1355,10 +1354,10 @@
       }
 
       window.addEventListener('online', function() { semRede = false; atualizarAviso(); agendarSync(1500); });
-      window.addEventListener('offline', function() { atualizarAviso(); });
+      window.addEventListener('offline', function() { semRede = true; atualizarAviso(); });
       document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') { atualizarAviso(); agendarSync(500); } });
       setInterval(async function() {
-        if (usuarioAtual && navigator.onLine !== false && !sincronizando && (await contarPendentes()).total) sincronizar();
+        if (usuarioAtual && !sincronizando && (await contarPendentes()).total) sincronizar();
       }, 30000);
       document.addEventListener('DOMContentLoaded', atualizarAviso);
 
