@@ -1458,8 +1458,14 @@ async function enviarMotor(dados) {
   }
 
   const mensagemMotor = String(
-    resultado.aviso || resultado.mensagem || ""
+    (resultado && (resultado.aviso || resultado.mensagem || resultado.erro || resultado.error)) || ""
   );
+
+  // Falha sem "aviso": repassa o motivo que o servidor mandou em outro campo,
+  // para a tela mostrar a causa real em vez da mensagem genérica.
+  if (resultado && resultado.ok === false && !resultado.aviso && mensagemMotor) {
+    resultado.aviso = mensagemMotor;
+  }
 
   // Notas lançadas, excluídas ou alteradas: a cópia local precisa ser atualizada
   if (["lancar", "categoria", "apelido", "excluir"].indexOf(corpo.acao) !== -1 &&
@@ -2075,7 +2081,8 @@ async function lancarLink(link) {
       );
     } else if (dados.ok === false) {
       mostrarMensagem(
-        "O motor não conseguiu lançar a nota. Confira o link e tente novamente.",
+        "O motor não conseguiu lançar a nota. Confira o link e tente novamente." +
+          (dados.mensagem || dados.erro ? " (" + String(dados.mensagem || dados.erro) + ")" : ""),
         "erro"
       );
     } else {
