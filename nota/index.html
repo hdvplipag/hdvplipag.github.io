@@ -3684,8 +3684,14 @@ function atualizarStatusSync() {}
 
 // Baixa toda a base da planilha (em lotes) e troca a cópia do IndexedDB.
 // forcar = true ignora a validade. validade = quanto tempo a cópia vale (padrão: 30 minutos).
+let sincAdiada = false;
 async function sincronizarProdutos(forcar, manual, validade) {
   if (sincronizando || !LICENCA_OK) return;
+  // não disputa processador com a leitura do QR Code: espera a câmera parar de trabalhar
+  if (!forcar && !manual && (cameraAtiva || cameraIniciando || processandoLeitura)) {
+    if (!sincAdiada) { sincAdiada = true; setTimeout(() => { sincAdiada = false; sincronizarProdutos(false, false, validade); }, 20000); }
+    return;
+  }
   const fresca = baseLocalPronta() && !baseDesatualizada && (Date.now() - baseLocal.quando) < (validade || VALIDADE_BASE_MS);
   if (!forcar && fresca) return;
   if (navigator.onLine === false) {
