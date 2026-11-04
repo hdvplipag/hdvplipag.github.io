@@ -181,15 +181,7 @@
       .print-table .print-repeat-title th { background: #ffffff; color: #0f172a; text-align: center; text-transform: none; padding: 0 0 8px 0; }
       .print-table .print-repeat-title .print-header h1 { font-size: 18px; }
     }
-    
-    /* Indicador de salvamento */
-    .salvando-anel { border: 6px solid rgba(255,255,255,.25); border-top-color: #34d399; animation: salvandoGirar .9s linear infinite; }
-    .salvando-ponto { display: block; width: 9px; height: 9px; border-radius: 50%; background: #34d399; animation: salvandoPulsar 1.2s ease-in-out infinite; }
-    .salvando-ponto:nth-child(2) { animation-delay: .2s; }
-    .salvando-ponto:nth-child(3) { animation-delay: .4s; }
-    @keyframes salvandoGirar { to { transform: rotate(360deg); } }
-    @keyframes salvandoPulsar { 0%, 80%, 100% { opacity: .25; transform: scale(.8); } 40% { opacity: 1; transform: scale(1.1); } }
-  </style>
+    </style>
 </head>
 <body id="appBody" class="light bg-slate-100/70 text-slate-900 min-h-screen font-sans pb-24 md:pb-8 transition-colors duration-300">
 
@@ -284,7 +276,7 @@
   <input type="file" id="inputFotoPerfil" accept="image/*" class="hidden" onchange="salvarFotoPerfil(event)">
 
   <!-- Header -->
-  <header class="border-b border-slate-200 dark:border-slate-800 bg-slate-700 dark:bg-slate-800 backdrop-blur-md sticky top-0 z-40 px-3 sm:px-4 py-2.5 transition-colors">
+  <header class="border-b border-slate-200 dark:border-slate-800 bg-slate-800 dark:bg-slate-900/90 backdrop-blur-md sticky top-0 z-40 px-3 sm:px-4 py-2.5 transition-colors">
     <div class="max-w-7xl mx-auto flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2.5">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2.5">
@@ -339,7 +331,7 @@
 
         <button onclick="abrirModalNovaTransacao()" class="hidden md:flex px-3.5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs sm:text-sm font-semibold rounded-xl items-center gap-2 transition">
           <i class="fa-solid fa-plus"></i>
-          <span>Novo Lançamento</span>
+          <span>Nova Transação</span>
         </button>
 
         <div class="hidden lg:flex items-center gap-1.5 ml-1">
@@ -451,13 +443,13 @@
     <!-- Tabela de Lançamentos -->
     <div class="glass-panel rounded-2xl border border-slate-800 p-5 space-y-4">
       <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-        <h2 class="text-lg font-bold flex items-center gap-2 theme-text shrink-0"><i class="fa-solid fa-list text-emerald-500"></i> Histórico de Lançamentos</h2>
+        <h2 class="text-lg font-bold flex items-center gap-2 theme-text shrink-0"><i class="fa-solid fa-list text-emerald-500"></i> Histórico de Transações</h2>
         
         <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:flex-1 lg:ml-6">
           <div class="flex items-center gap-2 w-full sm:flex-1 min-w-0">
           <div class="relative flex-1 w-full min-w-0">
             <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-            <input type="text" id="filtroDescricao" oninput="gerenciarBotaoLimparBusca(); aplicarFiltroDatas();" placeholder="Pesquisar lançamentos..." class="w-full bg-slate-900 text-white pl-8 pr-8 py-2 rounded-xl text-xs border border-slate-700 focus:outline-none">
+            <input type="text" id="filtroDescricao" oninput="gerenciarBotaoLimparBusca(); aplicarFiltroDatas();" placeholder="Pesquisar transações..." class="w-full bg-slate-900 text-white pl-8 pr-8 py-2 rounded-xl text-xs border border-slate-700 focus:outline-none">
             <button id="btnLimparBusca" onclick="limparCampoBusca()" class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 text-rose-500 font-bold text-xs p-1"><i class="fa-solid fa-xmark"></i></button>
           </div>
             <div class="relative shrink-0 sm:hidden menu-ferramentas-wrap">
@@ -492,8 +484,6 @@
         </div>
       </div>
 
-      <div id="totalRegistrosFooter" class="text-xs theme-subtext font-medium text-left">Total de lançamentos: 0</div>
-
       <!-- Container da Tabela Adaptável -->
       <div>
         <table class="tabela-estavel text-left text-sm theme-text">
@@ -518,12 +508,15 @@
             </tr>
           </thead>
           <tbody id="tabelaTransacoes">
-            <tr><td colspan="7" class="text-center p-6 theme-subtext">Nenhum lançamento encontrado.</td></tr>
+            <tr><td colspan="7" class="text-center p-6 theme-subtext">Nenhuma transação encontrada.</td></tr>
           </tbody>
         </table>
       </div>
 
-      <input type="file" id="inputImportarCSV" accept=".csv,text/csv,text/plain" class="hidden" onchange="importarCSV(this)">
+      <div class="pt-3 border-t border-slate-800/60 flex items-center justify-end gap-3">
+        <input type="file" id="inputImportarCSV" accept=".csv,text/csv,text/plain" class="hidden" onchange="importarCSV(this)">
+        <div id="totalRegistrosFooter" class="text-xs theme-subtext font-medium">Total de registros: 0</div>
+      </div>
     </div>
 
   </main>
@@ -659,35 +652,26 @@
     </div>
   </div>
 
-  <!-- Modal Novo Lançamento -->
+  <!-- Modal Nova Transação -->
   <div id="modalTransacao" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
     <div class="glass-panel w-full max-w-md p-6 rounded-2xl border border-slate-700 relative max-h-[90vh] overflow-y-auto">
-      <div class="-mx-6 -mt-6 mb-3 px-6 py-2.5 rounded-t-2xl bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-400 flex items-center gap-3 shadow-md">
-        <div class="w-9 h-9 shrink-0 rounded-xl bg-white/20 border border-white/30 text-white flex items-center justify-center text-base shadow-inner">
-          <i class="fa-solid fa-file-invoice-dollar"></i>
-        </div>
-        <div class="min-w-0 flex-1 pr-8">
-          <h3 id="modalTransacaoTitulo" class="text-base font-bold leading-tight text-white truncate">Novo Lançamento</h3>
-          <p class="text-[11px] font-medium text-emerald-50/90 leading-tight">Registre uma receita ou despesa</p>
-        </div>
-        <button type="button" onclick="fecharXModalTransacao()" aria-label="Fechar" class="absolute top-2.5 right-4 w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition"><i class="fa-solid fa-xmark"></i></button>
-      </div>
-      <div id="btnDigitalizarForm" class="md:hidden flex items-center justify-end gap-2 mb-2">
-        <button type="button" onclick="abrirNotaScan()" aria-label="Digitalizar" title="Digitalizar" class="w-14 h-10 bg-cyan-600 hover:bg-cyan-500 text-white text-lg rounded-xl flex items-center justify-center shadow-md transition">
-          <i class="fa-solid fa-camera"></i>
+      <button onclick="fecharXModalTransacao()" class="absolute top-4 right-4 theme-subtext hover:text-emerald-500"><i class="fa-solid fa-xmark text-lg"></i></button>
+      <h3 id="modalTransacaoTitulo" class="text-lg font-bold mb-3 theme-text">Nova Transação</h3>
+      <div id="btnDigitalizarForm" class="md:hidden flex items-center justify-center gap-2 mb-3">
+        <button type="button" onclick="abrirNotaScan()" class="px-3 py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs rounded-xl flex items-center gap-1.5 shadow-md transition">
+          <i class="fa-solid fa-camera"></i> Digitalizar
         </button>
-        <button type="button" onclick="abrirVozDoFormulario()" aria-label="Voz" title="Voz" class="w-14 h-10 bg-purple-600 hover:bg-purple-500 text-white text-lg rounded-xl flex items-center justify-center shadow-md transition">
-          <i class="fa-solid fa-microphone"></i>
+        <button type="button" onclick="abrirVozDoFormulario()" class="px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs rounded-xl flex items-center gap-1.5 shadow-md transition">
+          <i class="fa-solid fa-microphone"></i> Voz
         </button>
       </div>
       <form id="formTransacao" onsubmit="salvarLancamento(event)" class="space-y-3">
         <input type="hidden" id="inputIdTransacao" value="">
         <input type="hidden" id="inputVemDeScan" value="false">
-        <input type="hidden" id="inputChaveNota" value="">
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-xs font-semibold theme-subtext mb-1">Tipo</label>
-            <select id="inputTipo" onchange="aoMudarTipoLancamento()" required class="w-full bg-white text-slate-900 border border-slate-300 rounded-xl p-2.5 text-sm">
+            <select id="inputTipo" onchange="aoMudarTipoLancamento()" required class="w-full bg-slate-900 text-white border border-slate-700 rounded-xl p-2.5 text-sm">
               <option value="" selected></option>
               <option value="Receita">Receita</option>
               <option value="Despesa">Despesa</option>
@@ -697,27 +681,27 @@
             <label class="block text-xs font-semibold theme-subtext mb-1">Data</label>
             <!-- O campo real (data nativa, valor AAAA-MM-DD) fica invisível por cima; o que se vê é a data no formato DD/MM/AAAA -->
             <div class="relative" style="position: relative;">
-              <div id="dataExibida" class="w-full bg-white text-slate-900 border border-slate-300 rounded-xl p-2.5 text-sm text-left select-none" style="pointer-events: none; min-height: 2.5rem;">dd/mm/aaaa</div>
+              <div id="dataExibida" class="w-full bg-slate-900 text-white border border-slate-700 rounded-xl p-2.5 text-sm text-left select-none" style="pointer-events: none; min-height: 2.5rem;">dd/mm/aaaa</div>
               <input type="date" id="inputData" required aria-label="Data" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; min-width: 0; margin: 0; padding: 0; border: 0; box-sizing: border-box; -webkit-appearance: none; appearance: none;">
             </div>
           </div>
         </div>
         <div>
           <label class="block text-xs font-semibold theme-subtext mb-1">Descrição</label>
-          <div class="relative"><input type="text" id="inputDescricao" required class="w-full bg-white text-slate-900 border border-slate-300 rounded-xl p-2.5 pr-9 text-sm"><button type="button" onclick="limparCampoForm('inputDescricao')" tabindex="-1" aria-label="Limpar" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500"><i class="fa-solid fa-circle-xmark"></i></button></div>
+          <div class="relative"><input type="text" id="inputDescricao" required class="w-full bg-slate-900 text-white border border-slate-700 rounded-xl p-2.5 pr-9 text-sm"><button type="button" onclick="limparCampoForm('inputDescricao')" tabindex="-1" aria-label="Limpar" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500"><i class="fa-solid fa-circle-xmark"></i></button></div>
         </div>
         <div>
           <label class="block text-xs font-semibold theme-subtext mb-1">Categoria</label>
-          <div class="relative"><input type="text" id="inputCategoria" list="listaCategoriasForm" onfocus="atualizarListaCategoriasForm()" autocomplete="off" required class="w-full bg-white text-slate-900 border border-slate-300 rounded-xl p-2.5 pr-9 text-sm"><button type="button" onclick="limparCampoForm('inputCategoria')" tabindex="-1" aria-label="Limpar" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500"><i class="fa-solid fa-circle-xmark"></i></button></div><datalist id="listaCategoriasForm"></datalist>
+          <div class="relative"><input type="text" id="inputCategoria" list="listaCategoriasForm" onfocus="atualizarListaCategoriasForm()" autocomplete="off" required class="w-full bg-slate-900 text-white border border-slate-700 rounded-xl p-2.5 pr-9 text-sm"><button type="button" onclick="limparCampoForm('inputCategoria')" tabindex="-1" aria-label="Limpar" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500"><i class="fa-solid fa-circle-xmark"></i></button></div><datalist id="listaCategoriasForm"></datalist>
         </div>
         <div>
           <label id="labelValorForm" class="block text-xs font-semibold theme-subtext mb-1">Valor (R$)</label>
-          <div class="relative"><input type="number" step="0.01" inputmode="decimal" id="inputValor" oninput="atualizarRotuloValor()" required class="w-full bg-white text-slate-900 border border-slate-300 rounded-xl p-2.5 pr-9 text-sm"><button type="button" onclick="limparCampoForm('inputValor')" tabindex="-1" aria-label="Limpar" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500"><i class="fa-solid fa-circle-xmark"></i></button></div>
+          <div class="relative"><input type="number" step="0.01" inputmode="decimal" id="inputValor" oninput="atualizarRotuloValor()" required class="w-full bg-slate-900 text-white border border-slate-700 rounded-xl p-2.5 pr-9 text-sm"><button type="button" onclick="limparCampoForm('inputValor')" tabindex="-1" aria-label="Limpar" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500"><i class="fa-solid fa-circle-xmark"></i></button></div>
         </div>
         <div id="linhaPagto" class="grid grid-cols-1 gap-3">
           <div>
             <label class="block text-xs font-semibold theme-subtext mb-1">Forma de Pagamento</label>
-            <select id="inputFormaPagto" onchange="atualizarCampoParcelas()" required class="w-full bg-white text-slate-900 border border-slate-300 rounded-xl p-2.5 text-sm">
+            <select id="inputFormaPagto" onchange="atualizarCampoParcelas()" required class="w-full bg-slate-900 text-white border border-slate-700 rounded-xl p-2.5 text-sm">
               <option value="" selected></option>
               <option value="Pix">Pix</option>
               <option value="Dinheiro">Dinheiro</option>
@@ -727,13 +711,13 @@
           </div>
           <div id="blocoParcelas" class="hidden">
             <label class="block text-xs font-semibold theme-subtext mb-1">Número de parcelas</label>
-            <input type="number" id="inputParcelas" oninput="atualizarRotuloValor()" min="1" max="99" step="1" value="1" inputmode="numeric" class="w-full bg-white text-slate-900 border border-slate-300 rounded-xl p-2.5 text-sm">
+            <input type="number" id="inputParcelas" oninput="atualizarRotuloValor()" min="1" max="99" step="1" value="1" inputmode="numeric" class="w-full bg-slate-900 text-white border border-slate-700 rounded-xl p-2.5 text-sm">
             <p id="dicaParcelas" class="text-xs theme-subtext mt-1"></p>
           </div>
         </div>
         <div>
             <label class="block text-xs font-semibold theme-subtext mb-1">Instituição</label>
-            <div class="relative"><input type="text" id="inputInstituicao" class="w-full bg-white text-slate-900 border border-slate-300 rounded-xl p-2.5 pr-9 text-sm"><button type="button" onclick="limparCampoForm('inputInstituicao')" tabindex="-1" aria-label="Limpar" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500"><i class="fa-solid fa-circle-xmark"></i></button></div>
+            <div class="relative"><input type="text" id="inputInstituicao" class="w-full bg-slate-900 text-white border border-slate-700 rounded-xl p-2.5 pr-9 text-sm"><button type="button" onclick="limparCampoForm('inputInstituicao')" tabindex="-1" aria-label="Limpar" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500"><i class="fa-solid fa-circle-xmark"></i></button></div>
         </div>
         <details id="detalhesTextoCupom" class="hidden mt-3 text-xs theme-subtext">
           <summary class="cursor-pointer font-semibold">Ver texto lido do cupom</summary>
@@ -742,9 +726,9 @@
         <div class="flex items-center justify-center gap-2 mt-5">
           <input type="file" id="cameraInputModal" accept="image/*" capture="environment" class="hidden" onchange="processarFotoModal(event)">
           <input type="file" id="galeriaInputModal" accept="image/*" class="hidden" onchange="processarFotoModal(event)">
-          <div class="flex items-center justify-center gap-3 w-full">
-            <button type="button" onclick="cancelarModalTransacao()" class="flex-1 min-w-[7rem] h-12 px-6 bg-slate-800 text-white rounded-xl text-sm font-semibold">Cancelar</button>
-            <button type="submit" id="btnSalvar" class="flex-1 min-w-[7rem] h-12 px-6 bg-emerald-500 text-white rounded-xl text-sm font-semibold">Salvar</button>
+          <div class="flex items-center justify-center gap-2 mx-auto">
+            <button type="button" onclick="cancelarModalTransacao()" class="px-3.5 py-2 bg-slate-800 text-white rounded-xl text-xs font-semibold">Cancelar</button>
+            <button type="submit" id="btnSalvar" class="px-4 py-2 bg-emerald-500 text-white rounded-xl text-xs font-semibold">Salvar</button>
           </div>
         </div>
       </form>
@@ -802,17 +786,6 @@
     </div>
   </div>
 
-  <!-- Indicador "Salvando..." do lançamento: círculo girando com três pontinhos, centralizado na tela -->
-  <div id="overlaySalvando" class="hidden fixed inset-0 flex flex-col items-center justify-center bg-black/55 backdrop-blur-[2px]" style="z-index: 10002;" role="status" aria-live="polite">
-    <div class="relative" style="width: 84px; height: 84px;">
-      <div class="salvando-anel absolute inset-0 rounded-full"></div>
-      <div class="absolute inset-0 flex items-center justify-center gap-1.5">
-        <i class="salvando-ponto"></i><i class="salvando-ponto"></i><i class="salvando-ponto"></i>
-      </div>
-    </div>
-    <p class="mt-4 text-white text-base font-semibold">Salvando...</p>
-  </div>
-
   <!-- Digitalizar nota: abre a página nota/index.html (leitura do QR Code via notas.gs) dentro do app -->
   <div id="modalNotaScan" class="hidden fixed inset-0 flex flex-col bg-slate-900" style="z-index: 10001;">
     <div class="shrink-0 flex items-center justify-between gap-2 px-3 bg-slate-900 text-white shadow-lg" style="height: 52px; padding-top: env(safe-area-inset-top, 0px);">
@@ -864,93 +837,15 @@
   </div>
 
     <script>
-    // ===== Ponte com o servidor (Apps Script) + MODO OFFLINE (IndexedDB) =====
+    // ===== Ponte com o servidor (Apps Script) =====
     // Dentro do Apps Script, usa o google.script.run original. Hospedado fora dele (site estático),
     // cria um google.script.run equivalente que chama a API publicada no Apps Script.
-    //
-    // MODO OFFLINE: os dados ficam gravados no IndexedDB do aparelho. Sem internet o app continua
-    // mostrando os lançamentos e aceitando novos lançamentos, edições e exclusões; tudo vai para uma
-    // fila (também no IndexedDB) e é enviado à planilha sozinho quando a internet volta.
     (function() {
       if (typeof google !== 'undefined' && google.script && google.script.run) return;
 
       // URL do Apps Script: a mesma registrada em usuarios.gs (PLIPAG_URL_APPS_SCRIPT). Se mudar, atualize nos dois.
       const API_URL = 'https://script.google.com/macros/s/AKfycby7bScgVxp5wJxV0KZ26kvU0Awd8az-pMZXSg8kTM137bvnQxQxvgpXJ39zutU8gC_Xew/exec';
       let tokenSessao = '';
-
-      // ---------- Estado do modo offline ----------
-      let usuarioAtual = '';        // e-mail de quem está usando o app (cada usuário tem seu próprio cache e sua fila)
-      let modoOffline = false;      // entrou no app sem internet (login conferido no próprio aparelho)
-      let senhaSessao = '';         // só na memória, só se entrou offline: serve para reconectar sozinho quando a internet voltar
-      let ultimoErroRede = '';      // motivo técnico da última falha de conexão (aparece na etiqueta do topo)
-      let semRede = false;          // a última tentativa de falar com o servidor falhou por falta de internet
-      let sincronizando = false;
-      let timerSync = null;
-
-      // Chamadas que alteram dados: sem internet, entram na fila e são enviadas depois
-      const ESCRITAS = ['saveTransaction', 'deleteTransaction', 'deleteTransactions', 'clearTransactions', 'importTransactions', 'moverCategoria', 'setBudgetMeta'];
-
-      // ---------- IndexedDB ----------
-      let bdPromessa = null;
-      function abrirBD() {
-        if (bdPromessa) return bdPromessa;
-        bdPromessa = new Promise(function(resolve, reject) {
-          if (!window.indexedDB) { reject(new Error('IndexedDB indisponível')); return; }
-          const rq = indexedDB.open('plipag_offline', 1);
-          rq.onupgradeneeded = function() {
-            const db = rq.result;
-            if (!db.objectStoreNames.contains('kv')) db.createObjectStore('kv');
-            if (!db.objectStoreNames.contains('fila')) db.createObjectStore('fila', { keyPath: 'seq', autoIncrement: true });
-            if (!db.objectStoreNames.contains('notas')) db.createObjectStore('notas', { keyPath: 'seq', autoIncrement: true });
-          };
-          rq.onsuccess = function() { resolve(rq.result); };
-          rq.onerror = function() { reject(rq.error); };
-        });
-        bdPromessa.catch(function() { bdPromessa = null; });
-        return bdPromessa;
-      }
-      function bd(store, modo, fn) {
-        return abrirBD().then(function(db) {
-          return new Promise(function(resolve, reject) {
-            const t = db.transaction(store, modo);
-            let saida;
-            const rq = fn(t.objectStore(store));
-            if (rq) rq.onsuccess = function() { saida = rq.result; };
-            t.oncomplete = function() { resolve(saida); };
-            t.onerror = t.onabort = function() { reject(t.error); };
-          });
-        });
-      }
-      function kvGet(k) { return bd('kv', 'readonly', function(s) { return s.get(k); }); }
-      function kvSet(k, v) { return bd('kv', 'readwrite', function(s) { return s.put(v, k); }); }
-      function listar(store) { return bd(store, 'readonly', function(s) { return s.getAll(); }); }
-      function adicionar(store, obj) { return bd(store, 'readwrite', function(s) { return s.add(obj); }); }
-      function colocar(store, obj) { return bd(store, 'readwrite', function(s) { return s.put(obj); }); }
-      function remover(store, seq) { return bd(store, 'readwrite', function(s) { return s.delete(seq); }); }
-
-      // Uma alteração local por vez (evita duas gravações misturando o cache)
-      let cadeia = Promise.resolve();
-      function serial(fn) {
-        const p = cadeia.then(function() { return fn(); });
-        cadeia = p.catch(function() {});
-        return p;
-      }
-
-      // ---------- Utilidades ----------
-      function erroRede(msg) {
-        const e = new Error(msg || 'Não foi possível conectar ao servidor. Verifique a internet.');
-        e.rede = true;
-        return e;
-      }
-      function copiar(o) { return JSON.parse(JSON.stringify(o)); }
-      function novoId() { return 'offline-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
-      function ehTemp(id) { return String(id).indexOf('offline-') === 0; }
-      function mesPassado(it) { return typeof lancamentoMesPassado === 'function' && !!it && lancamentoMesPassado(it.date); }
-      function msgMesPassado() {
-        return (typeof MSG_MES_PASSADO !== 'undefined') ? MSG_MES_PASSADO
-          : 'Só é permitido alterar ou excluir lançamentos do mês vigente. Meses anteriores não podem ser alterados nem excluídos.';
-      }
-      function notificar(msg, tipo, ms) { try { if (typeof exibirToast === 'function') exibirToast(typeof escaparHtml === 'function' ? escaparHtml(String(msg)) : String(msg), tipo || 'sucesso', ms); } catch (e) {} }
 
       // Identificador aleatório deste aparelho (guardado no navegador): o servidor usa para não deixar
       // que tentativas erradas de outras pessoas bloqueiem o seu acesso.
@@ -967,437 +862,16 @@
         } catch (e) { return ''; }
       }
 
-      // ---------- Chamada ao servidor ----------
-      // opc.timeout (ms): só para leituras e login; gravações nunca são interrompidas no meio.
-      function chamarApi(fn, args, opc) {
-        const ctl = (opc && opc.timeout && window.AbortController) ? new AbortController() : null;
-        const t = ctl ? setTimeout(function() { ctl.abort(); }, opc.timeout) : null;
-        // mesma requisição do app original; o sinal de cancelamento só entra nas leituras com limite de tempo
-        const opcoesFetch = {
+      function chamarApi(fn, args) {
+        return fetch(API_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({ fn: fn, args: args, token: tokenSessao }),
           redirect: 'follow'
-        };
-        if (ctl) opcoesFetch.signal = ctl.signal;
-        return fetch(API_URL, opcoesFetch).then(function(r) {
-          if (t) clearTimeout(t);
-          if (semRede) { semRede = false; ultimoErroRede = ''; atualizarAviso(); }
-          return r.json();
-        }, function(err) {
-          if (t) clearTimeout(t);
-          // demora do servidor (Apps Script lento) não é falta de internet
-          if (ctl && ctl.signal.aborted) { const e = new Error('O servidor demorou para responder. Tente novamente.'); e.tempo = true; throw e; }
-          try { console.warn('PliPag: falha de conexão com o servidor', err); } catch (x) {}
-          semRede = true; atualizarAviso();
-          const motivo = err ? (String(err.name || '') + (err.message ? ': ' + err.message : '')) : '';
-          ultimoErroRede = motivo;
-          throw erroRede('Não foi possível conectar ao servidor. Verifique a internet.' + (motivo ? ' (' + motivo + ')' : ''));
-        }).then(function(j) {
+        }).then(function(r) { return r.json(); }).then(function(j) {
           if (!j || !j.ok) throw new Error((j && j.error) || 'Erro no servidor');
           return j.result;
         });
-      }
-
-      // ---------- Cache dos dados (IndexedDB) ----------
-      function chaveApp() { return 'app:' + usuarioAtual; }
-
-      async function cacheLocal() {
-        const rec = usuarioAtual ? await kvGet(chaveApp()) : null;
-        if (!rec || !rec.data) throw erroRede('Não foi possível carregar os dados e ainda não há cópia salva neste aparelho. Abra o app uma vez com internet.');
-        return copiar(rec.data);
-      }
-
-      async function contarPendentes() {
-        if (!usuarioAtual) return { ops: 0, notas: 0, total: 0 };
-        const ops = (await listar('fila').catch(function() { return []; })).filter(function(o) { return o.usuario === usuarioAtual; }).length;
-        return { ops: ops, notas: 0, total: ops };
-      }
-
-      async function lerDados() {
-        if (!usuarioAtual) return chamarApi('getAppData', []);
-        let pend = await contarPendentes();
-        // primeiro envia o que foi feito offline, senão os dados do servidor apagariam esses lançamentos da tela
-        if (pend.total) { await sincronizar(); pend = await contarPendentes(); }
-        if (pend.ops > 0) return cacheLocal();
-        try {
-          const r = await chamarApi('getAppData', [], { timeout: 45000 });
-          const gravou = await serial(async function() {
-            const p2 = await contarPendentes();
-            if (p2.ops > 0) return false;   // surgiu uma alteração offline durante a consulta: vale o cache local
-            const rec = (await kvGet(chaveApp())) || {};
-            rec.usuario = usuarioAtual;
-            rec.data = r;
-            rec.atualizadoEm = Date.now();
-            await kvSet(chaveApp(), rec);
-            return true;
-          }).catch(function() { return true; });
-          return gravou ? r : cacheLocal();
-        } catch (e) {
-          if (!e.rede && !e.tempo) throw e;
-          return cacheLocal();
-        }
-      }
-
-      // ---------- Login: guarda uma verificação da senha para poder entrar sem internet ----------
-      function bufParaB64(buf) {
-        const b = new Uint8Array(buf); let s = '';
-        for (let i = 0; i < b.length; i++) s += String.fromCharCode(b[i]);
-        return btoa(s);
-      }
-      function b64ParaBuf(t) {
-        const s = atob(t); const b = new Uint8Array(s.length);
-        for (let i = 0; i < s.length; i++) b[i] = s.charCodeAt(i);
-        return b;
-      }
-      async function derivarSenha(senha, saltB64, iter) {
-        const chave = await crypto.subtle.importKey('raw', new TextEncoder().encode(senha), 'PBKDF2', false, ['deriveBits']);
-        const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: b64ParaBuf(saltB64), iterations: iter }, chave, 256);
-        return bufParaB64(bits);
-      }
-      async function guardarCredencial(email, senha) {
-        try {
-          if (!(window.crypto && crypto.subtle)) return;
-          const salt = bufParaB64(crypto.getRandomValues(new Uint8Array(16)));
-          const iter = 150000;
-          await kvSet('cred:' + email, { salt: salt, iter: iter, hash: await derivarSenha(senha, salt, iter) });
-        } catch (e) {}
-      }
-      async function senhaConfere(cred, senha) {
-        try { return (await derivarSenha(senha, cred.salt, cred.iter)) === cred.hash; } catch (e) { return false; }
-      }
-
-      function aoEntrar(email) {
-        usuarioAtual = email;
-        atualizarAviso();
-        agendarSync(800);
-      }
-
-      async function loginUsuario(args) {
-        const email = String(args[0] || '').trim().toLowerCase();
-        const senha = String(args[1] || '');
-        const confirmacao = args[2];
-        try {
-          const res = await chamarApi('autenticarUsuario', args);
-          if (res && res.token) { tokenSessao = res.token; delete res.token; }
-          if (res && res.status === 'success') {
-            modoOffline = false; senhaSessao = '';
-            guardarCredencial(email, senha);
-            aoEntrar(email);
-          }
-          return res;
-        } catch (e) {
-          if (!e.rede || confirmacao) throw e;
-          // sem internet: confere a senha com a verificação guardada neste aparelho
-          const cred = await kvGet('cred:' + email).catch(function() { return null; });
-          if (!cred) throw erroRede(e.message + ' O uso sem conexão só é liberado depois de entrar uma vez com internet neste aparelho.');
-          if (!(await senhaConfere(cred, senha))) return { status: 'erro', message: 'E-mail ou senha incorretos.' };
-          modoOffline = true; senhaSessao = senha; tokenSessao = '';
-          aoEntrar(email);
-          return { status: 'success', offline: true };
-        }
-      }
-
-      // Volta a ter sessão no servidor sem pedir nada ao usuário (só quando entrou offline)
-      async function reautenticar() {
-        if (tokenSessao) return true;
-        if (!usuarioAtual || !senhaSessao) return false;
-        try {
-          const res = await chamarApi('autenticarUsuario', [usuarioAtual, senhaSessao, null, idDispositivo()]);
-          if (res && res.status === 'success' && res.token) {
-            tokenSessao = res.token; modoOffline = false; senhaSessao = '';
-            return true;
-          }
-          senhaSessao = '';   // senha mudou ou conta bloqueada: só entrando de novo
-        } catch (e) {}
-        return false;
-      }
-
-      // ---------- Alterações feitas offline ----------
-      function itensDe(op) { return op.nome === 'saveTransaction' ? [op.args[0]] : op.args[0]; }
-      function definirItem(op, idx, item) { if (op.nome === 'saveTransaction') op.args[0] = item; else op.args[0][idx] = item; }
-      function chaveItem(t) {
-        return [String(t.type || ''), String(t.description || ''), (Number(String(t.amount).replace(',', '.')) || 0).toFixed(2),
-          String(t.date || '').slice(0, 10), String(t.chave || '')].join('|');
-      }
-      function acharTemp(ops, id) {
-        for (let i = 0; i < ops.length; i++) {
-          const pos = (ops[i].tmp || []).indexOf(String(id));
-          if (pos >= 0) return { op: ops[i], idx: pos };
-        }
-        return null;
-      }
-      function ocupado() { return new Error('Aguarde a sincronização terminar para alterar este lançamento.'); }
-
-      // tira um lançamento ainda não enviado de dentro da fila
-      async function tirarDaFila(f) {
-        f.op.tmp.splice(f.idx, 1);
-        if (f.op.base) f.op.base.splice(f.idx, 1);
-        if (f.op.nome === 'saveTransaction') { await remover('fila', f.op.seq); return; }
-        f.op.args[0].splice(f.idx, 1);
-        if (!f.op.args[0].length) await remover('fila', f.op.seq); else await colocar('fila', f.op);
-      }
-
-      async function aplicarOffline(nome, args) {
-        const k = chaveApp();
-        const rec = (await kvGet(k)) || { usuario: usuarioAtual, data: {} };
-        const d = rec.data = rec.data || {};
-        d.transactions = d.transactions || [];
-        const todas = (await listar('fila')).filter(function(o) { return o.usuario === usuarioAtual; });
-        const livres = todas.filter(function(o) { return !o.enviando; });
-        let resultado = {};
-
-        function nova(dados, id) {
-          const it = Object.assign({}, dados, { id: id });
-          const n = Number(String(dados.amount).replace(',', '.'));
-          if (isFinite(n)) it.amount = n;
-          delete it.salvarPadraoLoja;
-          return it;
-        }
-        function baseDe(dados) {
-          const c = chaveItem(dados);
-          return d.transactions.filter(function(t) { return chaveItem(t) === c; }).length;
-        }
-        async function removerIds(ids) {
-          const reais = [];
-          for (const id of ids) {
-            const it = d.transactions.find(function(t) { return String(t.id) === String(id); });
-            if (it && mesPassado(it)) throw new Error(msgMesPassado());
-            if (ehTemp(id)) {
-              const f = acharTemp(livres, id);
-              if (!f) throw ocupado();
-              await tirarDaFila(f);
-            } else {
-              reais.push(id);
-            }
-            d.transactions = d.transactions.filter(function(t) { return String(t.id) !== String(id); });
-          }
-          return reais;
-        }
-
-        if (nome === 'saveTransaction') {
-          const dados = Object.assign({}, args[0]);
-          if (dados.id === null || dados.id === undefined || dados.id === '') {
-            const id = novoId();
-            const base = baseDe(dados);
-            d.transactions.unshift(nova(dados, id));
-            await adicionar('fila', { usuario: usuarioAtual, nome: nome, args: [Object.assign({}, dados, { id: null })], tmp: [id], base: [base], criadoEm: Date.now() });
-            resultado = { ok: true, offline: true, id: id };
-          } else if (ehTemp(dados.id)) {
-            const f = acharTemp(livres, dados.id);
-            if (!f) throw ocupado();
-            definirItem(f.op, f.idx, Object.assign({}, dados, { id: null }));
-            await colocar('fila', f.op);
-            d.transactions = d.transactions.map(function(t) { return String(t.id) === String(dados.id) ? nova(dados, dados.id) : t; });
-            resultado = { ok: true, offline: true, id: dados.id };
-          } else {
-            d.transactions = d.transactions.map(function(t) { return String(t.id) === String(dados.id) ? nova(dados, t.id) : t; });
-            await adicionar('fila', { usuario: usuarioAtual, nome: nome, args: [dados], criadoEm: Date.now() });
-            resultado = { ok: true, offline: true, id: dados.id };
-          }
-        } else if (nome === 'importTransactions') {
-          const itens = (args[0] || []).map(function(x) { const c = Object.assign({}, x); delete c.id; return c; });
-          const tmp = [], base = [];
-          itens.forEach(function(it) {
-            const id = novoId();
-            base.push(baseDe(it));
-            tmp.push(id);
-            d.transactions.unshift(nova(it, id));
-          });
-          if (itens.length) await adicionar('fila', { usuario: usuarioAtual, nome: nome, args: [itens], tmp: tmp, base: base, criadoEm: Date.now() });
-          resultado = { importados: itens.length, duplicados: 0 };
-        } else if (nome === 'deleteTransaction' || nome === 'deleteTransactions') {
-          const ids = nome === 'deleteTransaction' ? [args[0]] : (args[0] || []);
-          const reais = await removerIds(ids);
-          if (reais.length) {
-            await adicionar('fila', { usuario: usuarioAtual, nome: nome, args: nome === 'deleteTransaction' ? [reais[0]] : [reais], criadoEm: Date.now() });
-          }
-          resultado = {};
-        } else if (nome === 'clearTransactions') {
-          const apagar = d.transactions.filter(function(t) { return !mesPassado(t); }).map(function(t) { return t.id; });
-          await removerIds(apagar);
-          await adicionar('fila', { usuario: usuarioAtual, nome: nome, args: [], criadoEm: Date.now() });
-          resultado = { preservados: d.transactions.length };
-        } else if (nome === 'moverCategoria') {
-          const ids = (args[0] || []).map(String), destino = args[1];
-          const reais = [];
-          let movidos = 0;
-          for (const t of d.transactions) {
-            if (ids.indexOf(String(t.id)) === -1 || mesPassado(t)) continue;
-            t.category = destino; movidos++;
-            if (ehTemp(t.id)) {
-              const f = acharTemp(livres, t.id);
-              if (f) { const it = itensDe(f.op)[f.idx]; it.category = destino; definirItem(f.op, f.idx, it); await colocar('fila', f.op); }
-            } else {
-              reais.push(t.id);
-            }
-          }
-          if (reais.length) await adicionar('fila', { usuario: usuarioAtual, nome: nome, args: [reais, destino], criadoEm: Date.now() });
-          resultado = { movidos: movidos };
-        } else if (nome === 'setBudgetMeta') {
-          d.budgetMeta = args[0];
-          for (const o of livres) { if (o.nome === nome) await remover('fila', o.seq); }
-          await adicionar('fila', { usuario: usuarioAtual, nome: nome, args: [args[0]], criadoEm: Date.now() });
-          resultado = {};
-        }
-
-        rec.atualizadoEm = Date.now();
-        await kvSet(k, rec);
-        return resultado;
-      }
-
-      async function escrever(nome, args) {
-        const pend = await contarPendentes();
-        if (!usuarioAtual) return chamarApi(nome, args);
-        if (!pend.ops && !modoOffline && tokenSessao) {
-          try { return await chamarApi(nome, args); }
-          catch (e) { if (!e.rede) throw e; }   // caiu a internet: guarda na fila
-        }
-        const r = await serial(function() { return aplicarOffline(nome, args); });
-        atualizarAviso();
-        agendarSync(10000);
-        return r;
-      }
-
-      // ---------- Sincronização automática ----------
-      async function jaNoServidor(op, servidor) {
-        // conferência de segurança para uma gravação interrompida no meio: evita lançar duas vezes
-        if (!op.tmp || !op.base) return false;
-        const itens = itensDe(op);
-        const lista = (servidor && servidor.transactions) || [];
-        return itens.length > 0 && itens.every(function(it, i) {
-          const c = chaveItem(it);
-          const n = lista.filter(function(t) { return chaveItem(t) === c; }).length;
-          return n > (op.base[i] || 0);
-        });
-      }
-
-      async function enviarFila() {
-        let enviou = 0;
-        for (;;) {
-          const ops = (await listar('fila')).filter(function(o) { return o.usuario === usuarioAtual; });
-          if (!ops.length) return { ok: true, enviou: enviou };
-          const op = ops[0];
-          if (op.enviando && op.tmp) {
-            let servidor = null;
-            try { servidor = await chamarApi('getAppData', [], { timeout: 45000 }); }
-            catch (e) { return { ok: false, enviou: enviou }; }
-            if (await jaNoServidor(op, servidor)) { await remover('fila', op.seq); enviou++; continue; }
-          }
-          const reenvio = !!op.enviando;
-          op.enviando = true;
-          await colocar('fila', op);
-          try {
-            await chamarApi(op.nome, op.args);
-            await remover('fila', op.seq);
-            enviou++;
-          } catch (e) {
-            if (e.rede) {
-              return { ok: false, enviou: enviou };
-            }
-            if (e.message === 'SESSAO_INVALIDA') {
-              tokenSessao = '';
-              op.enviando = reenvio; await colocar('fila', op);
-              if (await reautenticar()) continue;
-              return { ok: false, enviou: enviou };
-            }
-            // o servidor recusou esta alteração: avisa e segue com as próximas
-            await remover('fila', op.seq);
-            if (!reenvio) notificar('Uma alteração feita offline foi recusada pelo servidor: ' + (e.message || 'erro desconhecido'), 'erro', 9000);
-          }
-        }
-      }
-
-      async function sincronizar() {
-        if (sincronizando || !usuarioAtual) return false;
-        sincronizando = true;
-        atualizarAviso();
-        let mudou = false, completo = false;
-        try {
-          if (!tokenSessao && !(await reautenticar())) return false;
-          const f = await enviarFila();
-          if (f.enviou) mudou = true;
-          if (!f.ok) return false;
-          completo = true;
-          if (mudou) notificar('Dados feitos offline foram sincronizados com a planilha.', 'sucesso', 4000);
-          return completo;
-        } catch (e) {
-          return false;
-        } finally {
-          sincronizando = false;
-          atualizarAviso();
-          if (mudou && typeof carregarDados === 'function') { try { carregarDados(); } catch (e) {} }
-        }
-      }
-
-      function agendarSync(ms) {
-        clearTimeout(timerSync);
-        timerSync = setTimeout(function() { sincronizar(); }, ms);
-      }
-
-      // ---------- Aviso discreto (offline / pendentes) ----------
-      let avisoEl = null;
-      async function atualizarAviso() {
-        try {
-          if (!document.body) return;
-          if (!avisoEl) {
-            avisoEl = document.createElement('div');
-            avisoEl.id = 'avisoOffline';
-            avisoEl.style.cssText = 'position:fixed;top:calc(env(safe-area-inset-top, 0px) + 4px);left:50%;transform:translateX(-50%);z-index:9999;padding:3px 12px;border-radius:999px;font:600 11px/1.4 system-ui,sans-serif;color:#fff;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.25);display:none;white-space:nowrap;max-width:94vw;overflow:hidden;text-overflow:ellipsis';
-            document.body.appendChild(avisoEl);
-          }
-          const pend = await contarPendentes();
-          const off = semRede;
-          let txt = '', cor = '';
-          if (off) { txt = 'Sem conexão · modo offline' + (ultimoErroRede ? ' [' + ultimoErroRede.slice(0, 60) + ']' : '') + (pend.total ? ' · ' + pend.total + ' pendente' + (pend.total === 1 ? '' : 's') : ''); cor = '#b45309'; }
-          else if (pend.total) { txt = (sincronizando ? 'Sincronizando ' : 'Pendentes: ') + pend.total + (sincronizando ? '…' : ''); cor = '#0e7490'; }
-          avisoEl.textContent = txt;
-          avisoEl.style.background = cor;
-          avisoEl.style.display = txt ? 'block' : 'none';
-        } catch (e) {}
-      }
-
-      window.addEventListener('online', function() { semRede = false; atualizarAviso(); agendarSync(1500); });
-      window.addEventListener('offline', function() { semRede = true; atualizarAviso(); });
-      document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'visible') { atualizarAviso(); agendarSync(500); } });
-      setInterval(async function() {
-        if (usuarioAtual && !sincronizando && (await contarPendentes()).total) sincronizar();
-      }, 30000);
-      document.addEventListener('DOMContentLoaded', atualizarAviso);
-
-      window.PliPagOffline = { sincronizar: sincronizar };
-
-      // ---------- google.script.run ----------
-      async function executar(nome, args) {
-        if (nome === 'autenticarUsuario') return loginUsuario(args);
-
-        if (nome === 'getAppData') return lerDados();
-
-        if (nome === 'getUsuarioAtual') {
-          try {
-            const u = await chamarApi(nome, args);
-            if (u && u.usuario) { usuarioAtual = String(u.usuario).trim().toLowerCase(); serial(async function() { const rec = (await kvGet(chaveApp())) || { data: null }; rec.usuario = usuarioAtual; rec.perfil = { usuario: u.usuario, nome: u.nome || '' }; await kvSet(chaveApp(), rec); }).catch(function() {}); }
-            return u;
-          } catch (e) {
-            if (!e.rede) throw e;
-            const rec = usuarioAtual ? await kvGet(chaveApp()).catch(function() { return null; }) : null;
-            if (rec && rec.perfil) return rec.perfil;
-            throw e;
-          }
-        }
-
-        if (ESCRITAS.indexOf(nome) !== -1) return escrever(nome, args);
-
-        if (nome === 'logoutUsuario') {
-          try { return await chamarApi(nome, args); }
-          finally { tokenSessao = ''; senhaSessao = ''; modoOffline = false; }
-        }
-
-        if (!tokenSessao && senhaSessao && nome !== 'autenticarBiometria') await reautenticar();
-        const res = await chamarApi(nome, args);
-        if (nome === 'autenticarBiometria' && res && res.token) { tokenSessao = res.token; delete res.token; }
-        if (nome === 'autenticarBiometria' && res && res.status === 'success') { modoOffline = false; senhaSessao = ''; aoEntrar(String(args[0] || '').trim().toLowerCase()); }
-        return res;
       }
 
       function criarRunner(onOk, onFail) {
@@ -1409,7 +883,9 @@
             return function() {
               const args = Array.prototype.slice.call(arguments).map(function(a) { return a === undefined ? null : a; });
               if (nome === 'autenticarUsuario') { while (args.length < 3) args.push(null); args.push(idDispositivo()); }
-              executar(nome, args).then(function(res) {
+              chamarApi(nome, args).then(function(res) {
+                if ((nome === 'autenticarUsuario' || nome === 'autenticarBiometria') && res && res.token) { tokenSessao = res.token; delete res.token; }
+                if (nome === 'logoutUsuario') tokenSessao = '';
                 if (onOk) onOk(res);
               }).catch(function(err) {
                 if (err && err.message === 'SESSAO_INVALIDA') {
@@ -2475,7 +1951,6 @@
     }
 
     function aplicarFiltroDatas() { 
-      limparFixosTopo();
       limiteExibicaoAtual = TAMANHO_LOTE;
       renderizarDados(obterTransacoesFiltradas()); 
     }
@@ -2487,13 +1962,11 @@
       document.getElementById('filtroTipo').value = '';
       document.getElementById('filtroCategoria').value = '';
       gerenciarBotaoLimparBusca();
-      limparFixosTopo();
       limiteExibicaoAtual = TAMANHO_LOTE;
       renderizarDados(obterTransacoesFiltradas());
     }
 
     function ordenarTabela(coluna) {
-      limparFixosTopo();
       if (colunaOrdenacaoAtual === coluna) {
         ordemAscendente = !ordemAscendente;
       } else {
@@ -2503,11 +1976,6 @@
       limiteExibicaoAtual = TAMANHO_LOTE;
       renderizarDados(obterTransacoesFiltradas());
     }
-
-    // Lançamentos digitalizados (QR Code) ficam no início da lista até o usuário fazer outra ação
-    // (rolar a página, filtrar, ordenar, atualizar). Depois a ordem normal é restaurada.
-    let idsFixosTopo = [];
-    function limparFixosTopo() { idsFixosTopo = []; }
 
     function obterTransacoesFiltradas() {
       const dInicio = document.getElementById('filtroDataInicio').value;
@@ -2549,24 +2017,11 @@
         return 0;
       });
 
-      if (idsFixosTopo.length) {
-        const fixos = [];
-        idsFixosTopo.forEach(id => {
-          const k = filtradas.findIndex(t => String(t.id) === id);
-          if (k !== -1) fixos.push(filtradas.splice(k, 1)[0]);
-        });
-        filtradas = fixos.concat(filtradas);
-      }
-
       transacoesFiltradasCache = filtradas;
       return filtradas;
     }
 
     window.addEventListener('scroll', function() {
-      if (idsFixosTopo.length && window.scrollY > 60) {
-        limparFixosTopo();
-        renderizarTabelaLote(obterTransacoesFiltradas());
-      }
       if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 100) {
         if (limiteExibicaoAtual < transacoesFiltradasCache.length) {
           limiteExibicaoAtual += TAMANHO_LOTE;
@@ -2753,11 +2208,7 @@
       txt += '.';
       if (passados) txt += ` ${passados} de meses anteriores não serão alterado${passados === 1 ? '' : 's'}.`;
       document.getElementById('textoMover').innerText = txt;
-      // Com filtro de tipo (Receita ou Despesa) só oferece categorias desse tipo; sem filtro, todas as categorias em uso
-      const tipoMover = ((document.getElementById('filtroTipo') || {}).value || '').trim().toLowerCase();
-      const cats = (tipoMover === 'receita' || tipoMover === 'despesa')
-        ? categoriasDoTipo(tipoMover)
-        : Array.from(new Set((listaTransacoesGlobal || []).map(t => (t.category || '').trim()).filter(Boolean))).sort();
+      const cats = Array.from(new Set((listaTransacoesGlobal || []).map(t => (t.category || '').trim()).filter(Boolean))).sort();
       let html = '<option value="">Selecione...</option>';
       cats.forEach(c => { html += `<option value="${c.replace(/"/g, '&quot;')}">${c.replace(/</g, '&lt;')}</option>`; });
       html += '<option value="__nova__">+ Nova categoria...</option>';
@@ -2879,7 +2330,6 @@
       atualizandoDados = true;
       const icons = document.querySelectorAll('#refreshIcon, .refreshIconMobile');
       icons.forEach(icon => icon.classList.add('fa-spin'));
-      limparFixosTopo();
       limiteExibicaoAtual = TAMANHO_LOTE;
       carregarDados((ok) => {
         icons.forEach(icon => icon.classList.remove('fa-spin'));
@@ -3352,13 +2802,11 @@
     }
 
     function abrirModalNovaTransacao() {
-      document.getElementById('modalTransacaoTitulo').innerText = "Novo Lançamento";
+      document.getElementById('modalTransacaoTitulo').innerText = "Nova Transação";
       document.getElementById('inputIdTransacao').value = "";
       document.getElementById('inputVemDeScan').value = "false";
-      document.getElementById('inputChaveNota').value = '';
       document.getElementById('formTransacao').reset();
       definirModoVozFormulario(false);
-      formularioPorNota = false;
       document.getElementById('modalTransacao').classList.remove('hidden');
       document.getElementById('inputData').value = dataLocalISO();
       atualizarListaCategoriasForm();
@@ -3371,10 +2819,6 @@
     function definirModoVozFormulario(ativo) {
       formularioPorVoz = !!ativo;
     }
-
-    // Formulário preenchido a partir da leitura do QR Code (página de notas): ao salvar e responder "Sim" em
-    // "Deseja realizar outros lançamentos?", volta para a leitura do QR Code; "Não" fecha e mostra os lançamentos.
-    let formularioPorNota = false;
 
     function responderOutroLancamento(outro) {
       document.getElementById('modalOutroLancamento').classList.add('hidden');
@@ -3406,13 +2850,11 @@
 
     function fecharModalNovaTransacao() {
       definirModoVozFormulario(false);
-      formularioPorNota = false;
       document.getElementById('modalOutroLancamento').classList.add('hidden');
       document.getElementById('modalTransacao').classList.add('hidden');
       document.getElementById('formTransacao').reset();
       document.getElementById('inputIdTransacao').value = "";
       document.getElementById('inputVemDeScan').value = "false";
-      document.getElementById('inputChaveNota').value = '';
     }
 
     function abrirModalMeta() {
@@ -3543,12 +2985,12 @@
 
         tabela.innerHTML = html;
       } else {
-        tabela.innerHTML = '<tr><td colspan="7" class="text-center p-6 theme-subtext">Nenhum lançamento encontrado.</td></tr>';
+        tabela.innerHTML = '<tr><td colspan="7" class="text-center p-6 theme-subtext">Nenhuma transação encontrada.</td></tr>';
       }
 
       const footerTotal = document.getElementById('totalRegistrosFooter');
       if (footerTotal) {
-        footerTotal.innerText = `Total de lançamentos: ${transacoes ? transacoes.length : 0}`;
+        footerTotal.innerText = `Total de registros: ${transacoes ? transacoes.length : 0}`;
       }
 
       atualizarEstilosTexto();
@@ -3715,10 +3157,9 @@
       if (!item) return;
       if (lancamentoMesPassado(item.date)) { exibirToast(MSG_MES_PASSADO, "erro"); return; }
 
-      document.getElementById('modalTransacaoTitulo').innerText = "Editar Lançamento";
+      document.getElementById('modalTransacaoTitulo').innerText = "Editar Transação";
       document.getElementById('inputIdTransacao').value = (item.id !== undefined && item.id !== null) ? item.id : "";
       document.getElementById('inputVemDeScan').value = "false";
-      document.getElementById('inputChaveNota').value = '';
       document.getElementById('inputTipo').value = item.type || 'Despesa';
       document.getElementById('inputDescricao').value = item.description || '';
       document.getElementById('inputCategoria').value = item.category || '';
@@ -3825,20 +3266,6 @@
       }
     };
 
-    // Cores do gráfico de categorias: as 6 originais primeiro, depois cores distintas extras;
-    // nunca repete cor entre categorias diferentes (além da paleta, gera tons novos pelo ângulo áureo).
-    const CORES_CATEGORIAS_BASE = ['#f59e0b', '#10b981', '#3b82f6', '#ec4899', '#8b5cf6', '#06b6d4',
-      '#ef4444', '#84cc16', '#92400e', '#1e3a8a', '#c026d3', '#0f766e', '#64748b', '#166534', '#fdba74', '#a5b4fc'];
-    function coresCategorias(qtd) {
-      const cores = CORES_CATEGORIAS_BASE.slice(0, qtd);
-      for (let i = cores.length; i < qtd; i++) {
-        const matiz = Math.round((i * 137.508) % 360);
-        const luz = 42 + (Math.floor(i / 16) % 3) * 9;
-        cores.push('hsl(' + matiz + ', 68%, ' + luz + '%)');
-      }
-      return cores;
-    }
-
     function renderizarDadosGraficos(categoriasMap, formaPagtoMap, receitas, despesas, serieRec, serieDesp, tipoFiltro) {
       const isDark = currentTheme === 'dark';
       const subtextColor = isDark ? '#94a3b8' : '#475569';
@@ -3860,7 +3287,7 @@
         type: 'doughnut',
         data: {
           labels: catLabels,
-          datasets: [{ data: catData, valoresReais: catReais, backgroundColor: temCat ? coresCategorias(catLabels.length) : ['#94a3b8'], borderWidth: 0 }]
+          datasets: [{ data: catData, valoresReais: catReais, backgroundColor: temCat ? ['#f59e0b', '#10b981', '#3b82f6', '#ec4899', '#8b5cf6', '#06b6d4'] : ['#94a3b8'], borderWidth: 0 }]
         },
         options: {
           responsive: true, maintainAspectRatio: false, animation: false,
@@ -3974,17 +3401,10 @@
       }
     }
 
-    function mostrarSalvando(ligado) {
-      const ov = document.getElementById('overlaySalvando');
-      if (ov) ov.classList.toggle('hidden', !ligado);
-    }
-
     const TEMPO_MENSAGEM_SALVAR_MS = 10000;   // quanto tempo a mensagem de gravação do lançamento fica na tela
     function salvarLancamento(event, outroLancamento) {
       if (event) event.preventDefault();
       const porVoz = formularioPorVoz;
-      const porNota = formularioPorNota;
-      const idsAntes = new Set(listaTransacoesGlobal.map(t => String(t.id)));
       const ehNovo = document.getElementById('inputIdTransacao').value === "";
       if (!ehNovo && lancamentoMesPassado(document.getElementById('inputData').value)) {
         exibirToast(MSG_MES_PASSADO, "erro");
@@ -3996,7 +3416,7 @@
       }
       const btnSalvar = document.getElementById('btnSalvar');
       btnSalvar.disabled = true;
-      mostrarSalvando(true);   // círculo girando no centro da tela; o botão continua escrito "Salvar"
+      btnSalvar.innerText = "Salvando...";
 
       const idTrans = document.getElementById('inputIdTransacao').value;
       const vemDeScan = document.getElementById('inputVemDeScan').value === "true";
@@ -4011,39 +3431,24 @@
         formapagto: document.getElementById('inputFormaPagto').value,
         instituicao: document.getElementById('inputInstituicao').value,
         parcelas: document.getElementById('inputFormaPagto').value === 'Crédito' ? (Math.min(99, Math.max(1, parseInt(document.getElementById('inputParcelas').value, 10) || 1))) : 1,
-        salvarPadraoLoja: vemDeScan,
-        chave: document.getElementById('inputChaveNota').value
+        salvarPadraoLoja: vemDeScan
       };
 
       if (typeof google !== 'undefined' && google.script && google.script.run) {
         const runner = google.script.run
           .withSuccessHandler(function() {
             btnSalvar.disabled = false;
-            btnSalvar.innerText = "Salvar"; mostrarSalvando(false);
+            btnSalvar.innerText = "Salvar";
             fecharModalNovaTransacao();
-            if (ehNovo) {
-              // qualquer lançamento novo (digitalizado, digitado ou por voz) fica no início da lista
-              carregarDados(function() {
-                const novos = listaTransacoesGlobal.map(t => String(t.id)).filter(id => !idsAntes.has(id));
-                if (novos.length) {
-                  idsFixosTopo = novos.concat(idsFixosTopo.filter(id => novos.indexOf(id) === -1));
-                  limiteExibicaoAtual = TAMANHO_LOTE;
-                  renderizarDados(obterTransacoesFiltradas());
-                  irParaTopo();
-                }
-              });
-            } else {
-              carregarDados();
-            }
+            carregarDados();
             exibirToast("Lançamento salvo com sucesso!", "sucesso", TEMPO_MENSAGEM_SALVAR_MS);
-            if (outroLancamento === 'sim') { if (porVoz) abrirModalVoz(); else if (porNota) abrirNotaScan(); else abrirModalNovaTransacao(); }
+            if (outroLancamento === 'sim') { if (porVoz) abrirModalVoz(); else abrirModalNovaTransacao(); }
           })
           .withFailureHandler(function(err) {
             btnSalvar.disabled = false;
-            btnSalvar.innerText = "Salvar"; mostrarSalvando(false);
+            btnSalvar.innerText = "Salvar";
             const recusado = err && err.message && err.message.indexOf('mês vigente') !== -1;
-            const detalheErro = (!recusado && err && err.message && err.message !== 'Erro no servidor.' && err.message !== 'Erro no servidor') ? ' (' + escaparHtml(err.message) + ')' : '';
-            exibirToast(recusado ? err.message : "Erro ao salvar lançamento." + detalheErro, "erro", TEMPO_MENSAGEM_SALVAR_MS);
+            exibirToast(recusado ? err.message : "Erro ao salvar lançamento.", "erro", TEMPO_MENSAGEM_SALVAR_MS);
           });
         if (dados.id === null && dados.parcelas > 1) runner.importTransactions(gerarParcelas(dados));
         else runner.saveTransaction(dados);
@@ -4059,14 +3464,13 @@
           dados.id = new Date().getTime().toString();
           listaTransacoesGlobal.unshift(dados);
         }
-        if (ehNovo) { idsFixosTopo = [String(listaTransacoesGlobal[0].id)].concat(idsFixosTopo); limiteExibicaoAtual = TAMANHO_LOTE; }
         btnSalvar.disabled = false;
-        btnSalvar.innerText = "Salvar"; mostrarSalvando(false);
+        btnSalvar.innerText = "Salvar";
         fecharModalNovaTransacao();
         atualizarOpcoesCategorias(listaTransacoesGlobal);
         renderizarDados(obterTransacoesFiltradas());
         exibirToast("Lançamento salvo!", "sucesso", TEMPO_MENSAGEM_SALVAR_MS);
-        if (outroLancamento === 'sim') { if (porVoz) abrirModalVoz(); else if (porNota) abrirNotaScan(); else abrirModalNovaTransacao(); }
+        if (outroLancamento === 'sim') { if (porVoz) abrirModalVoz(); else abrirModalNovaTransacao(); }
       }
     }
 
@@ -4305,7 +3709,7 @@
     }
 
     // ===================== RECONHECIMENTO DE VOZ =====================
-    // X da tela de comando de voz: fecha e volta para a tela Novo Lançamento
+    // X da tela de comando de voz: fecha e volta para a tela Nova Transação
     function fecharXModalVoz() {
       fecharModalVoz();
       abrirModalNovaTransacao();
@@ -5415,7 +4819,6 @@
       atualizarCampoParcelas();
       document.getElementById('inputInstituicao').value = '';
       document.getElementById('inputVemDeScan').value = 'false';
-      document.getElementById('inputChaveNota').value = '';
       const detCupomLimpar = document.getElementById('detalhesTextoCupom');
       if (detCupomLimpar) detCupomLimpar.classList.add('hidden');
       const preCupomLimpar = document.getElementById('textoCupomLido');
@@ -5493,18 +4896,7 @@
       if (!win || win.__plipagGancho || typeof win.fetch !== 'function') return;
       const original = win.fetch;
       win.__plipagGancho = true;
-      win.fetch = function(entrada, opcoes) {
-        // No PliPag a nota só é LIDA: troca "lancar" por "ler" para o servidor não gravar nas abas Compras/Itens
-        try {
-          if (opcoes && typeof opcoes.body === 'string') {
-            const corpo = JSON.parse(opcoes.body);
-            if (corpo && String(corpo.acao || '').toLowerCase() === 'lancar') {
-              corpo.acao = 'ler';
-              opcoes = Object.assign({}, opcoes, { body: JSON.stringify(corpo) });
-              arguments[1] = opcoes;
-            }
-          }
-        } catch (e) {}
+      win.fetch = function() {
         const promessa = original.apply(this, arguments);
         try {
           promessa.then(function(resp) {
@@ -5523,10 +4915,6 @@
 
     // Só vale a resposta de "lançar nota": tem loja, total e lista de itens (a troca de categoria não tem total)
     function receberDadosNota(j) {
-      if (j && j.ok === false && /A[cç][aã]o inv[aá]lida/i.test(String(j.aviso || ''))) {
-        exibirToast('O servidor ainda está com a versão antiga do notas.gs (sem a ação "ler"). Cole o notas.gs novo no Apps Script e publique uma Nova versão.', 'erro', 12000);
-        return;
-      }
       if (!j || typeof j !== 'object' || !j.loja || j.total === undefined || j.total === null || !Array.isArray(j.itens)) return;
       if (Date.now() - ultimaNotaRecebida < 3000) return;
       ultimaNotaRecebida = Date.now();
@@ -5553,7 +4941,6 @@
     function preencherLancamentoDeNota(j) {
       // garante o formulário de novo lançamento aberto
       if (document.getElementById('modalTransacao').classList.contains('hidden')) abrirModalNovaTransacao();
-      formularioPorNota = true;
       document.getElementById('inputIdTransacao').value = '';
       document.getElementById('inputTipo').value = 'Despesa';
       document.getElementById('inputDescricao').value = String(j.loja || '');
@@ -5568,12 +4955,13 @@
       document.getElementById('inputInstituicao').value = '';
       // só aprende a categoria da loja quando ela não é a padrão "Outros"
       document.getElementById('inputVemDeScan').value = (cat && cat.toLowerCase() !== 'outros') ? 'true' : 'false';
-      document.getElementById('inputChaveNota').value = String(j.chaveAcesso || '');   // chave da nota vai para a coluna "chave" da planilha
-      // sem "Ver texto lido do cupom" neste fluxo
-      const detNota = document.getElementById('detalhesTextoCupom'); if (detNota) detNota.classList.add('hidden');
-      const preNota = document.getElementById('textoCupomLido'); if (preNota) preNota.innerText = '';
+      const linhas = ['Nota lida pela página de notas.', 'Loja: ' + (j.loja || ''), 'Pagamento: ' + (j.pagamento || ''), 'Total: ' + (isFinite(total) ? total.toFixed(2) : '')];
+      (j.itens || []).forEach(function(it) {
+        linhas.push('- ' + (it.descricao || '') + ' (' + (it.quantidade || '') + ' ' + (it.unidade || '') + ') = ' + (isFinite(Number(it.total)) ? Number(it.total).toFixed(2) : ''));
+      });
+      mostrarTextoCupom(linhas.join('\n'));
       if (j.ok === false) exibirToast('Essa nota já tinha sido lançada na planilha de notas. Dados preenchidos: confira antes de salvar.', 'erro', 7000);
-      else exibirToast('Nota lida. Confira os dados e salve.', 'sucesso', 6000);
+      else exibirToast('Nota lida e gravada na planilha de notas. Confira os dados e salve.', 'sucesso', 6000);
     }
 
     document.addEventListener('DOMContentLoaded', () => {
