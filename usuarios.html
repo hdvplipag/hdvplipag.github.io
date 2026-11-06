@@ -17,7 +17,7 @@
         }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
         body { background: var(--bg); color: var(--text); padding: 1rem; line-height: 1.5; }
-        .container { max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; gap: 1rem; }
+        .container { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 1rem; }
 
         .top-bar { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
         .top-bar h1 { font-size: 1.15rem; color: #0f172a; }
@@ -31,8 +31,8 @@
         .panel { background: var(--card-bg); padding: 1rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.1); border: 1px solid var(--border); }
         .search-container { position: relative; display: flex; align-items: center; }
         .search-icon { position: absolute; left: .8rem; color: #94a3b8; pointer-events: none; }
-        input { padding: .6rem .8rem; border: 1px solid var(--border); border-radius: 6px; font-size: .95rem; outline: none; width: 100%; transition: border-color .2s; }
-        input:focus { border-color: var(--primary); }
+        input, select { padding: .6rem .8rem; border: 1px solid var(--border); border-radius: 6px; font-size: .95rem; outline: none; width: 100%; transition: border-color .2s; background: #fff; color: var(--text); }
+        input:focus, select:focus { border-color: var(--primary); }
         input[readonly] { background: #f1f5f9; color: var(--muted); }
         .search-container input { padding-left: 2.5rem; }
 
@@ -55,9 +55,11 @@
         .row { display: flex; align-items: baseline; gap: .4rem; font-size: .8rem; min-width: 0; }
         .row .lbl { color: var(--muted); flex-shrink: 0; }
         .row code { background: #f1f5f9; padding: .1rem .35rem; border-radius: 4px; font-size: .75rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-        .badge { align-self: flex-start; margin-top: .25rem; padding: .2rem .55rem; border-radius: 4px; font-size: .72rem; font-weight: bold; }
+        .badges { display: flex; gap: .35rem; flex-wrap: wrap; margin-top: .25rem; }
+        .badge { align-self: flex-start; padding: .2rem .55rem; border-radius: 4px; font-size: .72rem; font-weight: bold; }
         .badge-active { background: #d1fae5; color: #065f46; }
         .badge-expired { background: #fee2e2; color: #991b1b; }
+        .badge-app { background: #dbeafe; color: #1e40af; }
 
         /* Menu de três pontinhos */
         .menu { position: absolute; top: .55rem; right: .55rem; }
@@ -89,7 +91,8 @@
         .table-view thead th:last-child { border-top-right-radius: 8px; }
         .table-view tbody tr:last-child td { border-bottom: none; }
         .table-view tbody tr:hover { background: #f8fafc; }
-        .table-view td.col-plan code { display: inline-block; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; background: #f1f5f9; padding: .1rem .35rem; border-radius: 4px; font-size: .75rem; }
+        .table-view td.col-plan .row { margin-bottom: .15rem; }
+        .table-view td.col-plan code { display: inline-block; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; background: #f1f5f9; padding: .1rem .35rem; border-radius: 4px; font-size: .75rem; }
         .table-view .col-acoes { width: 70px; text-align: center; }
         .table-view .badge { margin-top: 0; }
         .table-view .menu { position: relative; top: auto; right: auto; display: inline-block; }
@@ -121,6 +124,7 @@
         .close-btn:hover { color: var(--danger); }
         .form-grid { display: grid; grid-template-columns: 1fr; gap: .9rem; }
         .form-group { display: flex; flex-direction: column; gap: .3rem; }
+        .form-group.oculto { display: none; }
         label { font-size: .85rem; font-weight: 600; }
         .hint { font-size: .75rem; color: var(--muted); font-weight: 400; }
         .btn-group { margin-top: 1.1rem; display: flex; gap: .5rem; justify-content: flex-end; flex-wrap: wrap; }
@@ -140,7 +144,7 @@
     <div class="panel">
         <div class="search-container">
             <span class="search-icon">🔍</span>
-            <input type="search" id="buscaNome" placeholder="Pesquisar nome" oninput="render()">
+            <input type="search" id="buscaNome" placeholder="Pesquisar nome ou e-mail" oninput="render()">
         </div>
     </div>
 
@@ -152,7 +156,8 @@
                 <tr>
                     <th>Nome</th>
                     <th>E-mail</th>
-                    <th>ID da planilha</th>
+                    <th>Aplicativo</th>
+                    <th>Planilha(s)</th>
                     <th>Validade</th>
                     <th>Status</th>
                     <th class="col-acoes">Ações</th>
@@ -199,8 +204,21 @@
                     <input type="text" id="nome" placeholder="Nome do Titular" required>
                 </div>
                 <div class="form-group">
-                    <label for="planilha">Link ou ID da Planilha do Google *</label>
+                    <label for="aplicativo">Aplicativo *</label>
+                    <select id="aplicativo" required>
+                        <option value="">Escolha…</option>
+                        <option value="plipag">PliPag</option>
+                        <option value="notas">Notas</option>
+                        <option value="plipag, notas">PliPag e Notas</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="planilha" id="rotuloPlanilha">Link ou ID da Planilha do Google *</label>
                     <input type="text" id="planilha" placeholder="" required autocomplete="off" autocapitalize="none" spellcheck="false">
+                </div>
+                <div class="form-group oculto" id="grupoPlanilhaNotas">
+                    <label for="planilhaNotas">Link ou ID da Planilha das Notas *</label>
+                    <input type="text" id="planilhaNotas" placeholder="" autocomplete="off" autocapitalize="none" spellcheck="false">
                 </div>
                 <div class="form-group">
                     <label for="validade">Validade <span class="hint">(deixe vazio para sem vencimento)</span></label>
@@ -236,10 +254,17 @@
     // URL do Web App do Apps Script (a mesma usada no index.html, termina em /exec)
     const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby7bScgVxp5wJxV0KZ26kvU0Awd8az-pMZXSg8kTM137bvnQxQxvgpXJ39zutU8gC_Xew/exec';
 
-    let usuarios = [];
+    // Aplicativos aceitos na coluna "Aplicativo" da planilha de cadastro
+    const APLICATIVOS = {
+        'plipag': 'PliPag',
+        'notas': 'Notas',
+        'plipag, notas': 'PliPag e Notas'
+    };
+
+    let usuarios = [];          // cada item é UMA LINHA da planilha de cadastro (o mesmo e-mail pode ter mais de uma)
     let chaveAdmin = sessionStorage.getItem('azlinks_admin_chave') || '';
-    let emailEmEdicao = null;   // null = novo cadastro
-    let emailParaExcluir = null;
+    let emEdicao = null;        // null = novo cadastro; senão { linha, email, aplicativo } como foi aberto
+    let linhaParaExcluir = null;
 
     const $ = id => document.getElementById(id);
 
@@ -256,6 +281,10 @@
         const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
         return m ? m[3] + '/' + m[2] + '/' + m[1] : '';
     }
+
+    function appValido(u) { return Object.prototype.hasOwnProperty.call(APLICATIVOS, u.aplicativo); }
+    function rotuloApp(u) { return appValido(u) ? APLICATIVOS[u.aplicativo] : 'Sem aplicativo'; }
+    function achar(linha) { return usuarios.find(x => String(x.linha) === String(linha)); }
 
     // ===== Comunicação com o Apps Script =====
     async function chamar(op, extra) {
@@ -276,7 +305,7 @@
         let data;
         try { data = await res.json(); }
         catch (err) { throw new Error('Resposta inesperada do Apps Script. Confira se a implantação está atualizada.'); }
-        if (data.status !== 'success') throw new Error(data.message || 'Erro no Apps Script');
+        if (data.status !== 'success') throw new Error(data.message || data.aviso || data.error || 'Erro no Apps Script');
         usuarios = data.usuarios || [];
         return data;
     }
@@ -308,21 +337,41 @@
         }
     }
 
-    // ===== Lista em cards =====
+    // ===== Lista =====
+    function planilhasHtml(u) {
+        const cod = id => '<code title="' + esc(id) + '">' + esc(id) + '</code>';
+        if (u.aplicativo === 'plipag, notas') {
+            return '<div class="row"><span class="lbl">Lançamentos:</span>' + cod(u.planilha) + '</div>' +
+                   '<div class="row"><span class="lbl">Notas:</span>' + cod(u.planilhaNotas) + '</div>';
+        }
+        if (u.aplicativo === 'notas') {
+            return '<div class="row"><span class="lbl">Notas:</span>' + cod(u.planilha) + '</div>';
+        }
+        if (u.aplicativo === 'plipag') {
+            return '<div class="row"><span class="lbl">Lançamentos:</span>' + cod(u.planilha) + '</div>';
+        }
+        return '<div class="row">' + (u.planilha ? cod(u.planilha) : '<em>—</em>') + '</div>';
+    }
+
+    function statusHtml(u, vencida) {
+        if (!appValido(u)) return '<span class="badge badge-expired">Sem acesso</span>';
+        return '<span class="badge ' + (vencida ? 'badge-expired' : 'badge-active') + '">' + (vencida ? 'Vencida' : 'Ativa') + '</span>';
+    }
+
     function render() {
         const termo = $('buscaNome').value.trim().toLowerCase();
         const hoje = hojeIso();
         const lista = usuarios.filter(u => !termo || u.nome.toLowerCase().includes(termo) || u.email.toLowerCase().includes(termo));
 
-        $('contador').textContent = lista.length + (lista.length === 1 ? ' usuário' : ' usuários');
+        $('contador').textContent = lista.length + (lista.length === 1 ? ' cadastro' : ' cadastros');
         $('vazio').style.display = lista.length ? 'none' : 'block';
 
         const menuHtml = u => `
             <div class="menu">
                 <button type="button" class="dropbtn" data-menu title="Ações">⋮</button>
                 <div class="dropdown-content">
-                    <button type="button" data-editar="${esc(u.email)}">Editar</button>
-                    <button type="button" class="danger" data-excluir="${esc(u.email)}">Excluir</button>
+                    <button type="button" data-editar="${esc(u.linha)}">Editar</button>
+                    <button type="button" class="danger" data-excluir="${esc(u.linha)}">Excluir</button>
                 </div>
             </div>`;
 
@@ -332,29 +381,25 @@
                 <tr>
                     <td><strong>${esc(u.nome)}</strong></td>
                     <td>${esc(u.email)}</td>
-                    <td class="col-plan"><code title="${esc(u.planilha)}">${esc(u.planilha)}</code></td>
+                    <td><span class="badge badge-app">${esc(rotuloApp(u))}</span></td>
+                    <td class="col-plan">${planilhasHtml(u)}</td>
                     <td>${u.validade ? esc(formatarData(u.validade)) : '<em>Sem vencimento</em>'}</td>
-                    <td><span class="badge ${vencida ? 'badge-expired' : 'badge-active'}">${vencida ? 'Vencida' : 'Ativa'}</span></td>
+                    <td>${statusHtml(u, vencida)}</td>
                     <td class="col-acoes">${menuHtml(u)}</td>
                 </tr>`;
         }).join('');
 
         $('cards').innerHTML = lista.map(u => {
             const vencida = !!u.validade && hoje > u.validade;
+            const ok = appValido(u) && !vencida;
             return `
-                <div class="user-card ${vencida ? 'expired' : 'active'}">
-                    <div class="menu">
-                        <button type="button" class="dropbtn" data-menu title="Ações">⋮</button>
-                        <div class="dropdown-content">
-                            <button type="button" data-editar="${esc(u.email)}">Editar</button>
-                            <button type="button" class="danger" data-excluir="${esc(u.email)}">Excluir</button>
-                        </div>
-                    </div>
+                <div class="user-card ${ok ? 'active' : 'expired'}">
+                    ${menuHtml(u)}
                     <div class="user-name">${esc(u.nome)}</div>
                     <div class="user-email">${esc(u.email)}</div>
-                    <div class="row"><span class="lbl">Planilha:</span><code title="${esc(u.planilha)}">${esc(u.planilha)}</code></div>
+                    ${planilhasHtml(u)}
                     <div class="row"><span class="lbl">Validade:</span><span>${u.validade ? esc(formatarData(u.validade)) : '<em>Sem vencimento</em>'}</span></div>
-                    <span class="badge ${vencida ? 'badge-expired' : 'badge-active'}">${vencida ? 'Vencida' : 'Ativa'}</span>
+                    <div class="badges"><span class="badge badge-app">${esc(rotuloApp(u))}</span>${statusHtml(u, vencida)}</div>
                 </div>`;
         }).join('');
     }
@@ -374,26 +419,43 @@
     });
 
     // ===== Cadastro / edição =====
+    // O rótulo e a planilha das Notas mudam conforme o aplicativo escolhido
+    function atualizarCamposApp() {
+        const app = $('aplicativo').value;
+        const ambos = app === 'plipag, notas';
+        $('rotuloPlanilha').textContent =
+            app === 'notas' ? 'Link ou ID da Planilha de Notas *'
+            : (app === 'plipag' || ambos) ? 'Link ou ID da Planilha de Lançamentos (PliPag) *'
+            : 'Link ou ID da Planilha do Google *';
+        $('grupoPlanilhaNotas').classList.toggle('oculto', !ambos);
+        $('planilhaNotas').required = ambos;
+    }
+    $('aplicativo').addEventListener('change', atualizarCamposApp);
+
     function abrirModalNovo() {
-        emailEmEdicao = null;
+        emEdicao = null;
         $('formUsuario').reset();
         $('email').readOnly = false;
         $('modalTitulo').textContent = 'Cadastrar Usuário';
+        atualizarCamposApp();
         mostrarErro('formErro', '');
         $('modalForm').classList.add('active');
         setTimeout(() => $('email').focus(), 50);
     }
 
-    function abrirModalEditar(email) {
-        const u = usuarios.find(x => x.email === email);
+    function abrirModalEditar(linha) {
+        const u = achar(linha);
         if (!u) return;
-        emailEmEdicao = email;
+        emEdicao = { linha: u.linha, email: u.email, aplicativo: u.aplicativo };
         $('email').value = u.email;
         $('email').readOnly = true;
         $('nome').value = u.nome;
+        $('aplicativo').value = appValido(u) ? u.aplicativo : '';
         $('planilha').value = u.planilha;
+        $('planilhaNotas').value = u.planilhaNotas || '';
         $('validade').value = u.validade || '';
         $('modalTitulo').textContent = 'Editar Usuário';
+        atualizarCamposApp();
         mostrarErro('formErro', '');
         $('modalForm').classList.add('active');
         setTimeout(() => $('nome').focus(), 50);
@@ -402,20 +464,29 @@
     $('formUsuario').addEventListener('submit', async e => {
         e.preventDefault();
         const email = $('email').value.trim().toLowerCase();
-        // Impede duplicar um e-mail já cadastrado ao criar um novo
-        if (emailEmEdicao === null && usuarios.some(u => u.email === email)) {
-            mostrarErro('formErro', 'Este e-mail já está cadastrado. Use a opção Editar no cartão dele.');
+        const aplicativo = $('aplicativo').value;
+
+        // Impede duplicar o mesmo e-mail para o mesmo aplicativo
+        const repetido = usuarios.some(u => u.email === email && u.aplicativo === aplicativo &&
+            !(emEdicao && String(u.linha) === String(emEdicao.linha)));
+        if (repetido) {
+            mostrarErro('formErro', 'Este e-mail já tem uma linha para este aplicativo. Use a opção Editar no cadastro dele.');
             return;
         }
+
         const btn = $('btnSalvar');
         btn.disabled = true;
         mostrarErro('formErro', '');
         try {
             await chamar('salvar', {
                 usuario: {
+                    linha: emEdicao ? emEdicao.linha : null,
+                    original: emEdicao ? { email: emEdicao.email, aplicativo: emEdicao.aplicativo } : null,
                     email: email,
                     nome: $('nome').value.trim(),
+                    aplicativo: aplicativo,
                     planilha: $('planilha').value.trim(),
+                    planilhaNotas: aplicativo === 'plipag, notas' ? $('planilhaNotas').value.trim() : '',
                     validade: $('validade').value
                 }
             });
@@ -429,22 +500,22 @@
     });
 
     // ===== Exclusão =====
-    function abrirModalExcluir(email) {
-        const u = usuarios.find(x => x.email === email);
+    function abrirModalExcluir(linha) {
+        const u = achar(linha);
         if (!u) return;
-        emailParaExcluir = email;
-        $('textoExcluir').textContent = 'Deseja excluir o usuário ' + u.nome + ' (' + u.email + ')?';
+        linhaParaExcluir = { linha: u.linha, email: u.email, aplicativo: u.aplicativo };
+        $('textoExcluir').textContent = 'Deseja excluir o cadastro de ' + u.nome + ' (' + u.email + ') para o aplicativo ' + rotuloApp(u) + '?';
         mostrarErro('excluirErro', '');
         $('modalExcluir').classList.add('active');
     }
 
     $('btnExcluir').addEventListener('click', async () => {
-        if (!emailParaExcluir) return;
+        if (!linhaParaExcluir) return;
         const btn = $('btnExcluir');
         btn.disabled = true;
         mostrarErro('excluirErro', '');
         try {
-            await chamar('excluir', { email: emailParaExcluir });
+            await chamar('excluir', { usuario: linhaParaExcluir });
             fecharModais();
             render();
         } catch (err) {
@@ -457,8 +528,9 @@
     function fecharModais() {
         ['modalForm', 'modalExcluir'].forEach(id => $(id).classList.remove('active'));
         $('formUsuario').reset();
-        emailEmEdicao = null;
-        emailParaExcluir = null;
+        atualizarCamposApp();
+        emEdicao = null;
+        linhaParaExcluir = null;
     }
 
     document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharModais(); });
