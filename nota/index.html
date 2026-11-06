@@ -2078,7 +2078,7 @@ async function lancarLink(link) {
 
   try {
     const dados = await enviarMotor({
-      acao: "lancar",
+      acao: EMBUTIDO ? "ler" : "lancar",   // dentro do PliPag só lê a nota: nada é gravado na planilha de notas
       link: valor
     });
 
