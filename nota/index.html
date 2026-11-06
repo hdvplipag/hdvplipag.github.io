@@ -1184,8 +1184,8 @@ function mostrarNomeLicenca(nome) {
 async function consultarLicenca(email) {
   try {
     const d = await enviarMotor({ acao: "licenca", email: email });
-    if (d && d.ok === true && d.cadastrado === false) return { estado: "nao" };
-    if (d && d.ok === true && d.cadastrado === true && d.semAcesso) return { estado: "nao", semAcesso: true };
+    if (d && d.ok === true && d.cadastrado === false) return { estado: "nao", detalhe: d.detalhe || "" };
+    if (d && d.ok === true && d.cadastrado === true && d.semAcesso) return { estado: "nao", semAcesso: true, detalhe: d.detalhe || "" };
     if (d && d.ok === true && d.cadastrado === true && d.planilha) return { estado: "ok", dados: d };
     return { estado: "erro", semInternet: false, mensagem: (d && d.aviso) || "Não foi possível validar a licença." };
   } catch (e) {
@@ -1282,9 +1282,9 @@ async function enviarLoginLicenca(ev) {
     if (r.estado === "nao") {
       const g = lerLicencaGuardada();
       if (g && String(g.email || "").toLowerCase() === email) { try { localStorage.removeItem(CHAVE_LICENCA); } catch (_) {} }
-      mostrarErro(r.semAcesso
+      mostrarErro((r.semAcesso
         ? "Seu usuário não tem acesso ao app de Notas. Entre em contato com o desenvolvedor."
-        : "E-mail não cadastrado. Entre em contato com o desenvolvedor.");
+        : "E-mail não cadastrado. Entre em contato com o desenvolvedor.") + (r.detalhe ? " (" + r.detalhe + ")" : ""));
       return;
     }
     if (r.estado === "ok") {
