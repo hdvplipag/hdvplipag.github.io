@@ -1175,7 +1175,7 @@ function guardarLicenca(u) {
 }
 
 function mostrarNomeLicenca(nome) {
-  el("licencaNome").textContent = nome;
+  el("licencaNome").textContent = nome || lerEmailLicenca();
   el("rodapeLicenca").style.display = "";
 }
 
@@ -1185,7 +1185,8 @@ async function consultarLicenca(email) {
   try {
     const d = await enviarMotor({ acao: "licenca", email: email });
     if (d && d.ok === true && d.cadastrado === false) return { estado: "nao" };
-    if (d && d.ok === true && d.cadastrado === true) return { estado: "ok", dados: d };
+    if (d && d.ok === true && d.cadastrado === true && d.semAcesso) return { estado: "nao", semAcesso: true };
+    if (d && d.ok === true && d.cadastrado === true && d.planilha) return { estado: "ok", dados: d };
     return { estado: "erro", semInternet: false, mensagem: (d && d.aviso) || "Não foi possível validar a licença." };
   } catch (e) {
     return { estado: "erro", semInternet: !!(e && e.name === "SemConexao"), mensagem: (e && e.message) || "Não foi possível validar a licença." };
@@ -1281,7 +1282,9 @@ async function enviarLoginLicenca(ev) {
     if (r.estado === "nao") {
       const g = lerLicencaGuardada();
       if (g && String(g.email || "").toLowerCase() === email) { try { localStorage.removeItem(CHAVE_LICENCA); } catch (_) {} }
-      mostrarErro("E-mail não cadastrado. Entre em contato com o desenvolvedor.");
+      mostrarErro(r.semAcesso
+        ? "Seu usuário não tem acesso ao app de Notas. Entre em contato com o desenvolvedor."
+        : "E-mail não cadastrado. Entre em contato com o desenvolvedor.");
       return;
     }
     if (r.estado === "ok") {
@@ -1465,6 +1468,13 @@ async function enviarMotor(dados) {
   // para a tela mostrar a causa real em vez da mensagem genérica.
   if (resultado && resultado.ok === false && !resultado.aviso && mensagemMotor) {
     resultado.aviso = mensagemMotor;
+  }
+
+  // Planilha guardada neste aparelho ficou desatualizada: reconfere a licença no cadastro e se ajusta
+  if (!EMBUTIDO && corpo.acao !== "licenca" && resultado && resultado.ok === false &&
+      /planilha n[ãa]o autorizada/i.test(String(resultado.aviso || ""))) {
+    ultimaRevalidacaoLicenca = 0;
+    revalidarLicenca();
   }
 
   // Nota recém-lançada: grava os produtos na hora no IndexedDB (a pesquisa já os enxerga)
