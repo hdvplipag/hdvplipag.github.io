@@ -535,6 +535,9 @@
 
     .botao-rodape-camera { background: var(--azul); color: #fff; padding: 0; }
     .botao-rodape-produtos { background: #e7f1fb; color: #124f80; }
+    /* Fora do PliPag a câmera fica no topo das telas Produtos e Lista; a barra inferior só tem Produtos e Lista */
+    html:not(.embutido) #btnNovaCaptura { display: none; }
+    .acoes-topo { display: flex; align-items: center; gap: 8px; }
 
     .filtro-produtos {
       position: relative;
@@ -916,7 +919,10 @@
     <section class="cartao">
       <div class="topo-produtos">
         <h2>Lista</h2>
+        <div class="acoes-topo">
+        <button id="btnCameraLista" class="botao-camera-pequeno" type="button" aria-label="Digitalizar nota" title="Digitalizar"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></button>
         <button id="btnSacola" class="botao-camera-pequeno botao-sacola" type="button" aria-label="Produtos selecionados" title="Produtos selecionados"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8h12l1 13H5z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg><b id="contadorSacola" class="contador-lista" style="display:none"></b></button>
+        </div>
       </div>
       <div class="filtro-produtos">
         <svg class="lupa-busca" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#6b7a89" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -937,7 +943,10 @@
   <!-- Tela Produtos: todos os produtos cadastrados, em ordem alfabética -->
   <div id="telaTodos" style="display:none">
     <section class="cartao">
-      <h2>Produtos</h2>
+      <div class="topo-produtos">
+        <h2>Produtos</h2>
+        <button id="btnCameraTodos" class="botao-camera-pequeno" type="button" aria-label="Digitalizar nota" title="Digitalizar"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></button>
+      </div>
       <div class="filtro-produtos">
         <svg class="lupa-busca" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#6b7a89" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input id="filtroTodos" type="text" inputmode="search" autocomplete="off" placeholder="Buscar produto…" aria-label="Buscar produto">
@@ -2827,10 +2836,13 @@ el("btnOutraCaptura").addEventListener("click", async () => {
   window.location.reload();
 });
 
-// Câmera pequena no topo: volta para a tela de digitalização (reinício limpo)
-el("btnNovaCaptura").addEventListener("click", async () => {
-  try { await pararCamera(); } catch (_) {}
-  window.location.reload();
+// Câmera: volta para a tela de digitalização (reinício limpo). Fica no topo das telas Produtos e Lista
+// (e na barra inferior só dentro do PliPag).
+["btnNovaCaptura", "btnCameraTodos", "btnCameraLista"].forEach((id) => {
+  el(id).addEventListener("click", async () => {
+    try { await pararCamera(); } catch (_) {}
+    window.location.reload();
+  });
 });
 
 el("btnConcluirCapturas").addEventListener("click", () => {
@@ -2878,9 +2890,12 @@ let carregandoProdutos = false;
 let sequenciaProdutos = 0;
 let timerBuscaProdutos = null;
 
-function criarCartaoProduto(p, semCheckbox) {
+// modoTodos = true: cartão da tela Produtos (o checkbox liga/desliga o item na Lista e a tela continua como está);
+// false: cartão da tela Lista (marcar envia para a Lista e limpa a busca para o próximo produto).
+function criarCartaoProduto(p, modoTodos) {
   const cartao = document.createElement("article");
   cartao.className = "produto";
+  cartao._produto = p;
 
   const dia = formatarDataHora(p.data).split(" ")[0];
   // Maps: primeiro o bairro, depois o apelido e o endereço (rua, número, cidade),
@@ -2899,7 +2914,7 @@ function criarCartaoProduto(p, semCheckbox) {
     : "";
 
   cartao.innerHTML = `
-    ${semCheckbox ? "" : '<label class="produto-marcar"><input type="checkbox" class="check-produto" aria-label="Enviar para a lista"></label>'}
+    <label class="produto-marcar"><input type="checkbox" class="check-produto" aria-label="Enviar para a lista"></label>
     <div class="produto-data">${escaparHtml(dia)}</div>
     <div class="produto-nome">${escaparHtml(p.descricao || "Produto")}</div>
     <div class="produto-meta">${escaparHtml(p.loja || "")}</div>
@@ -2911,6 +2926,10 @@ function criarCartaoProduto(p, semCheckbox) {
   if (!caixa) return cartao;
   caixa.checked = produtoNaLista(p);
   caixa.addEventListener("change", () => {
+    if (modoTodos) {
+      alternarProdutoNaLista(p, caixa.checked);   // marcar inclui na Lista; desmarcar tira da Lista
+      return;
+    }
     if (!caixa.checked) return;
     // O produto marcado vai para a lista e a tela fica em branco para a próxima busca
     alternarProdutoNaLista(p, true);
@@ -3209,6 +3228,15 @@ function renderizarListaCompras() {
   sac.style.display = listaCompras.length ? "block" : "none";
   el("btnLimparLista").style.display = listaCompras.length ? "" : "none";
   renderizarSacola();
+  sincronizarChecksTodos();
+}
+
+// Atualiza os checkboxes dos cartões da tela Produtos conforme o que está na Lista
+function sincronizarChecksTodos() {
+  document.querySelectorAll("#listaTodos article.produto").forEach((art) => {
+    const c = art.querySelector(".check-produto");
+    if (c && art._produto) c.checked = produtoNaLista(art._produto);
+  });
 }
 
 function imprimirLista() {
