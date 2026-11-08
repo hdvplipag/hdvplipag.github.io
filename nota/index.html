@@ -598,7 +598,6 @@
     .acoes-lista { display: flex; align-items: center; gap: 8px; }
     .botao-limpar-lista { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; min-height: 44px; padding: 0; border-radius: 12px; background: #b3261e; color: #fff; }
     .botao-lanterna { display: flex; align-items: center; justify-content: center; }
-    #sacolaItens { max-height: 50vh; overflow-y: auto; }
     .botao-camera-pequeno.botao-lanterna.ligada { background: #f5b301; color: #3b2a00; }
     .modal-fundo { position: fixed; inset: 0; z-index: 60; background: rgba(15, 30, 45, .55); display: none; align-items: center; justify-content: center; padding: 20px; }
     .modal-fundo.visivel { display: flex; }
@@ -919,24 +918,23 @@
     <section class="cartao">
       <div class="topo-produtos">
         <h2>Lista</h2>
-        <div class="acoes-topo">
-        <button id="btnSacola" class="botao-camera-pequeno botao-sacola" type="button" aria-label="Produtos selecionados" title="Produtos selecionados"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8h12l1 13H5z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg><b id="contadorSacola" class="contador-lista" style="display:none"></b></button>
+        <div class="acoes-lista">
+        <button id="btnLimparLista" class="botao-limpar-lista" type="button" style="display:none" aria-label="Limpar lista" title="Limpar lista"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
+        <div class="menu-lista-ancora">
+          <button id="btnImprimirLista" class="botao-camera-pequeno" type="button" aria-label="Imprimir ou enviar a lista" title="Imprimir ou enviar a lista"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></button>
+          <div id="menuLista" class="menu-lista" style="display:none">
+            <button id="btnImprimir" type="button">🖨️ Imprimir</button>
+            <button id="btnWhatsapp" type="button">💬 WhatsApp</button>
+            <button id="btnTelegram" type="button">✈️ Telegram</button>
+          </div>
+        </div>
         </div>
       </div>
-      <div class="filtro-produtos">
-        <svg class="lupa-busca" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#6b7a89" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input id="filtroProdutos" type="text" inputmode="search" autocomplete="off" placeholder="Buscar produto…" aria-label="Buscar produto">
-        <button id="btnLimparFiltroProdutos" type="button" aria-label="Limpar busca" style="display:none">✕</button>
-      </div>
-      <div class="filtro-produtos" style="margin-top:10px">
-        <svg class="lupa-busca" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#6b7a89" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input id="filtroLoja" type="text" inputmode="search" autocomplete="off" placeholder="Buscar loja ou apelido…" aria-label="Buscar por loja ou apelido">
-        <button id="btnLimparFiltroLoja" type="button" aria-label="Limpar busca da loja" style="display:none">✕</button>
-      </div>
-      <div id="resumoProdutos" class="dica"></div>
     </section>
-    <div id="listaProdutos"></div>
-    <p id="fimProdutos" class="dica" style="text-align:center"></p>
+    <section class="cartao">
+      <div id="sacolaItens"></div>
+      <div id="sacolaTotal" class="total-lista"></div>
+    </section>
   </div>
 
   <!-- Tela Produtos: todos os produtos cadastrados, em ordem alfabética -->
@@ -986,28 +984,6 @@
       <button id="apelidoPular" class="modal-cancelar" type="button">Agora não</button>
       <button id="apelidoSalvar" class="modal-confirmar" type="button" style="background:#124f80">Salvar</button>
     </div>
-  </div>
-</div>
-
-<div id="sacolaFolha" class="modal-fundo sacola-folha" role="dialog" aria-modal="true" aria-labelledby="sacolaTitulo">
-  <div class="modal-caixa">
-    <div class="sacola-topo">
-      <h3 id="sacolaTitulo">Sacola</h3>
-      <div class="acoes-lista">
-        <button id="btnLimparLista" class="botao-limpar-lista" type="button" style="display:none" aria-label="Limpar lista" title="Limpar lista"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
-        <div class="menu-lista-ancora">
-          <button id="btnImprimirLista" class="botao-camera-pequeno" type="button" aria-label="Imprimir ou enviar a lista" title="Imprimir ou enviar a lista"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></button>
-          <div id="menuLista" class="menu-lista" style="display:none">
-            <button id="btnImprimir" type="button">🖨️ Imprimir</button>
-            <button id="btnWhatsapp" type="button">💬 WhatsApp</button>
-            <button id="btnTelegram" type="button">✈️ Telegram</button>
-          </div>
-        </div>
-        <button id="sacolaFechar" class="botao-camera-pequeno botao-lanterna" type="button" aria-label="Fechar">✕</button>
-      </div>
-    </div>
-    <div id="sacolaItens"></div>
-    <div id="sacolaTotal" class="total-lista"></div>
   </div>
 </div>
 
@@ -2886,24 +2862,15 @@ async function abrirProdutos() {
   el("btnLista").classList.add("ativo");
   try { window.scrollTo(0, 0); } catch (_) {}
 
-  limparTelaBusca();
-  aquecerProdutos();
+  renderizarSacola();
 }
 
 /* PRODUTOS (aba Itens) */
 
 const POR_PAGINA_PRODUTOS = 50;
-let produtos = [];
-let totalProdutos = 0;
-let proximoOffsetProdutos = 0;
-let fimProdutos = false;
-let carregandoProdutos = false;
-let sequenciaProdutos = 0;
-let timerBuscaProdutos = null;
 
-// modoTodos = true: cartão da tela Produtos (o checkbox liga/desliga o item na Lista e a tela continua como está);
-// false: cartão da tela Lista (marcar envia para a Lista e limpa a busca para o próximo produto).
-function criarCartaoProduto(p, modoTodos) {
+// Cartão da tela Produtos: o checkbox inclui o item na Lista (marcar) ou o tira dela (desmarcar).
+function criarCartaoProduto(p) {
   const cartao = document.createElement("article");
   cartao.className = "produto";
   cartao._produto = p;
@@ -2937,127 +2904,18 @@ function criarCartaoProduto(p, modoTodos) {
   if (!caixa) return cartao;
   caixa.checked = produtoNaLista(p);
   caixa.addEventListener("change", () => {
-    if (modoTodos) {
-      alternarProdutoNaLista(p, caixa.checked);   // marcar inclui na Lista; desmarcar tira da Lista
-      return;
-    }
-    if (!caixa.checked) return;
-    // O produto marcado vai para a lista e a tela fica em branco para a próxima busca
-    alternarProdutoNaLista(p, true);
-    limparTelaBusca();
-    try { el("filtroProdutos").focus(); } catch (_) {}
+    alternarProdutoNaLista(p, caixa.checked);   // marcar inclui na Lista; desmarcar tira da Lista
   });
   return cartao;
 }
 
-let spinnerProdutosAtivo = false;
-let erroProdutos = false;
 let ultimoAquecimento = 0;
-
-function temConsultaProdutos() {
-  // só busca com 3 letras ou mais (no produto ou na loja/apelido)
-  return el("filtroProdutos").value.trim().length >= 3 || el("filtroLoja").value.trim().length >= 3;
-}
 
 // Ao abrir a tela, atualiza a cópia local (IndexedDB) se ela estiver velha ou não existir
 async function aquecerProdutos() {
   // ao entrar na tela com internet, atualiza sozinho se a cópia tiver mais de 2 minutos
   sincronizarProdutos(false, false, 2 * 60 * 1000);
 }
-
-function renderizarProdutos() {
-  const lista = el("listaProdutos");
-  lista.replaceChildren();
-  acumulados.forEach((p) => lista.appendChild(criarCartaoProduto(p)));
-
-  // Na abertura (nada na tela ainda): círculo girando com três pontinhos
-  const girando = carregandoProdutos && !acumulados.length;
-  if (girando) {
-    el("carregando").classList.add("visivel");
-    spinnerProdutosAtivo = true;
-  } else if (spinnerProdutosAtivo) {
-    el("carregando").classList.remove("visivel");
-    spinnerProdutosAtivo = false;
-  }
-
-  const naoAchou = temConsultaProdutos() && !carregandoProdutos && !produtos.length && !erroProdutos;
-  let texto = "";
-  if (!girando) {
-    if (naoAchou) texto = "Produto não localizado.";
-    else if (acumulados.length) texto = acumulados.length + (acumulados.length === 1 ? " produto" : " produtos");
-    else if (!temConsultaProdutos()) texto = "Digite as três primeiras letras de um produto ou do nome da loja ou apelido para buscar.";
-  }
-  el("resumoProdutos").textContent = texto;
-  el("resumoProdutos").classList.toggle("produto-nao-achado", naoAchou);
-
-  el("fimProdutos").textContent = "";
-}
-
-async function carregarProdutos(reiniciar) {
-  if (carregandoProdutos && !reiniciar) return;
-  if (!reiniciar && fimProdutos) return;
-
-  const minha = ++sequenciaProdutos;
-
-  // Sem texto na busca (e sem categoria): lista vazia, nada é pedido ao servidor
-  if (!temConsultaProdutos()) {
-    produtos = []; totalProdutos = 0; proximoOffsetProdutos = 0; fimProdutos = true;
-    carregandoProdutos = false;
-    renderizarProdutos();
-    return;
-  }
-
-  const offset = reiniciar ? 0 : proximoOffsetProdutos;
-  const textoProduto = el("filtroProdutos").value.trim();
-  const textoLoja = el("filtroLoja").value.trim();
-  const busca = textoProduto.length >= 3 ? textoProduto : "";
-  const buscaLoja = textoLoja.length >= 3 ? textoLoja : "";
-
-  carregandoProdutos = true;
-  renderizarProdutos();
-
-  try {
-    const dados = await enviarMotor({
-      acao: "produtos",
-      busca: busca,
-      buscaLoja: buscaLoja,
-      offset: offset,
-      limite: POR_PAGINA_PRODUTOS
-    });
-
-    if (minha !== sequenciaProdutos) return;   // chegou uma busca mais nova
-
-    if (!dados || dados.ok === false || !Array.isArray(dados.produtos)) {
-      throw new Error((dados && dados.aviso) || "Não foi possível ler a lista de produtos.");
-    }
-
-    erroProdutos = false;
-    if (reiniciar && (busca || buscaLoja)) acumularProdutos(dados.produtos);
-    produtos = reiniciar ? dados.produtos : produtos.concat(dados.produtos);
-    proximoOffsetProdutos = offset + dados.produtos.length;
-    fimProdutos = !!dados.fim;
-    totalProdutos = Number(dados.total) || 0;
-  } catch (erro) {
-    if (minha === sequenciaProdutos) {
-      erroProdutos = true;
-      mostrarMensagem(erro.message || "Erro ao carregar os produtos.", "erro");
-    }
-  } finally {
-    if (minha === sequenciaProdutos) {
-      carregandoProdutos = false;
-      renderizarProdutos();
-    }
-  }
-}
-
-window.addEventListener("scroll", () => {
-  if (telaAtual !== "produtos") return;
-  if (carregandoProdutos || fimProdutos || !produtos.length) return;
-  if (window.innerHeight + window.scrollY >= document.body.scrollHeight - 400) {
-    carregarProdutos(false);
-  }
-});
-
 
 /* TELA PRODUTOS: todos os produtos cadastrados, em ordem alfabética, de 50 em 50 */
 let todos = [];
@@ -3096,7 +2954,7 @@ function renderizarTodos() {
   el("dicaTodos").style.display = temConsultaTodos() ? "none" : "";
   const lista = el("listaTodos");
   lista.replaceChildren();
-  todos.forEach((p) => lista.appendChild(criarCartaoProduto(p, true)));
+  todos.forEach((p) => lista.appendChild(criarCartaoProduto(p)));
 
   const girando = carregandoTodos && (!todos.length || limpandoBuscaTodos);
   if (girando) {
@@ -3256,9 +3114,6 @@ function renderizarListaCompras() {
   const rod = el("contadorRodape");
   rod.textContent = String(listaCompras.length);
   rod.style.display = listaCompras.length ? "block" : "none";
-  const sac = el("contadorSacola");
-  sac.textContent = String(listaCompras.length);
-  sac.style.display = listaCompras.length ? "block" : "none";
   el("btnLimparLista").style.display = listaCompras.length ? "" : "none";
   renderizarSacola();
   sincronizarChecksTodos();
@@ -3321,7 +3176,6 @@ el("btnLimparLista").addEventListener("click", async () => {
   listaCompras = [];
   gravarLocal(CHAVE_LISTA, listaCompras);
   renderizarListaCompras();
-  renderizarProdutos();
 });
 
 el("btnImprimirLista").addEventListener("click", (ev) => {
@@ -3393,7 +3247,7 @@ function renderizarSacola() {
   if (!listaCompras.length) {
     const vazio = document.createElement("p");
     vazio.className = "dica";
-    vazio.textContent = "A sacola está vazia. Busque um produto e marque a caixa \"Lista\" para colocá-lo aqui.";
+    vazio.textContent = "A lista está vazia. Na tela Produtos, marque a caixa do produto para incluí-lo aqui.";
     caixa.appendChild(vazio);
   }
   listaCompras.forEach((b) => {
@@ -3449,88 +3303,7 @@ function atualizarTotaisSacola() {
       : "");
 }
 
-el("btnSacola").addEventListener("click", () => {
-  renderizarSacola();
-  el("sacolaFolha").classList.add("visivel");
-});
-el("sacolaFechar").addEventListener("click", () => el("sacolaFolha").classList.remove("visivel"));
-el("sacolaFolha").addEventListener("click", (ev) => {
-  if (ev.target === el("sacolaFolha")) el("sacolaFolha").classList.remove("visivel");
-});
-
-/* PRODUTOS DA BUSCA ATUAL (a cada nova busca a relação anterior é limpa) */
-let acumulados = [];
-
-function acumularProdutos(lista) {
-  const novos = [];
-  (lista || []).forEach((p) => {
-    if (produtoNaLista(p)) return;
-    novos.push(p);
-  });
-  // sempre em ordem alfabética (produto, depois loja), sem diferenciar maiúsculas e acentos
-  const cmp = (a, b) => String(a || "").localeCompare(String(b || ""), "pt-BR", { sensitivity: "base", numeric: true });
-  novos.sort((a, b) => cmp(a.descricao, b.descricao) || cmp(a.loja, b.loja) || cmp(a.apelido, b.apelido));
-  // cada nova busca substitui a relação anterior
-  acumulados = novos;
-}
-
-// Limpa apenas a lista de produtos exibida (mantém o texto dos campos)
-function limparListaProdutos() {
-  acumulados = [];
-  produtos = [];
-  totalProdutos = 0;
-  erroProdutos = false;
-  sequenciaProdutos++;            // descarta qualquer busca ainda em andamento
-  clearTimeout(timerBuscaProdutos);
-  carregandoProdutos = false;
-  renderizarProdutos();
-}
-
-// Limpa a tela de busca: sem resultados e com o campo em branco, pronta para outro produto
-function limparTelaBusca() {
-  acumulados = [];
-  produtos = [];
-  totalProdutos = 0;
-  erroProdutos = false;
-  sequenciaProdutos++;            // descarta qualquer busca ainda em andamento
-  clearTimeout(timerBuscaProdutos);
-  el("filtroProdutos").value = "";
-  el("btnLimparFiltroProdutos").style.display = "none";
-  el("filtroLoja").value = "";
-  el("btnLimparFiltroLoja").style.display = "none";
-  carregandoProdutos = false;
-  renderizarProdutos();
-}
-
 renderizarListaCompras();
-
-el("filtroProdutos").addEventListener("input", () => {
-  el("btnLimparFiltroProdutos").style.display = el("filtroProdutos").value ? "block" : "none";
-  if (!el("filtroProdutos").value) { limparListaProdutos(); return; }
-  clearTimeout(timerBuscaProdutos);
-  timerBuscaProdutos = setTimeout(() => carregarProdutos(true), 150);
-});
-
-el("btnLimparFiltroProdutos").addEventListener("click", () => {
-  el("filtroProdutos").value = "";
-  el("btnLimparFiltroProdutos").style.display = "none";
-  limparListaProdutos();
-  el("filtroProdutos").focus();
-});
-
-el("filtroLoja").addEventListener("input", () => {
-  el("btnLimparFiltroLoja").style.display = el("filtroLoja").value ? "block" : "none";
-  if (!el("filtroLoja").value) { limparListaProdutos(); return; }
-  clearTimeout(timerBuscaProdutos);
-  timerBuscaProdutos = setTimeout(() => carregarProdutos(true), 150);
-});
-
-el("btnLimparFiltroLoja").addEventListener("click", () => {
-  el("filtroLoja").value = "";
-  el("btnLimparFiltroLoja").style.display = "none";
-  limparListaProdutos();
-  el("filtroLoja").focus();
-});
 
 el("btnLista").addEventListener("click", abrirProdutos);
 el("btnProdutos").addEventListener("click", abrirTodosProdutos);
