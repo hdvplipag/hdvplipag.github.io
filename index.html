@@ -411,6 +411,7 @@
             <span class="theme-subtext">Meta de Gastos</span>
             <span id="textMetaGastos" class="theme-text">0% (R$ 0,00 / R$ 3.500,00)</span>
           </div>
+          <div id="periodoMetaGastos" class="hidden text-[10px] theme-subtext mb-1.5"></div>
           <div class="w-full bg-slate-900 rounded-full h-2 overflow-hidden border border-slate-800">
             <div id="barMetaGastos" class="bg-emerald-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
           </div>
@@ -769,8 +770,22 @@
       <h3 class="text-lg font-bold mb-4 theme-text flex items-center gap-2"><i class="fa-solid fa-bullseye text-emerald-500"></i> Definir Meta de Gastos</h3>
       <div class="space-y-4">
         <div>
-          <label class="block text-xs font-semibold theme-subtext mb-1">Limite do Mês (R$)</label>
+          <label class="block text-xs font-semibold theme-subtext mb-1">Limite da Meta (R$)</label>
           <input type="number" id="inputNovaMeta" step="0.01" class="w-full bg-slate-900 text-white border border-slate-700 rounded-xl p-2.5 text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold theme-subtext mb-1">Período da meta</label>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <span class="block text-[10px] theme-subtext mb-1">Data inicial</span>
+              <input type="date" id="inputMetaInicio" class="w-full bg-slate-900 text-white border border-slate-700 rounded-xl p-2.5 text-sm">
+            </div>
+            <div>
+              <span class="block text-[10px] theme-subtext mb-1">Data final</span>
+              <input type="date" id="inputMetaFim" class="w-full bg-slate-900 text-white border border-slate-700 rounded-xl p-2.5 text-sm">
+            </div>
+          </div>
+          <button type="button" onclick="limparPeriodoMeta()" class="mt-2 text-[11px] text-emerald-500 underline">Sem período (acompanhar o período filtrado na tela)</button>
         </div>
         <div class="flex justify-end gap-3 mt-4">
           <button type="button" onclick="fecharModalMeta()" class="px-4 py-2 bg-slate-800 text-white rounded-xl text-sm">Cancelar</button>
@@ -935,6 +950,8 @@
   </script>
 <script>
     let budgetMetaGlobal = 3500;
+    let budgetInicioGlobal = '';   // período da meta (AAAA-MM-DD); vazio = acompanha o período filtrado na tela
+    let budgetFimGlobal = '';
     let userPhotoGlobal = '';
     let chartCategoriaInst = null;
     let chartFormaPagtoInst = null;
@@ -2920,7 +2937,13 @@
 
     function abrirModalMeta() {
       document.getElementById('inputNovaMeta').value = budgetMetaGlobal;
+      document.getElementById('inputMetaInicio').value = budgetInicioGlobal;
+      document.getElementById('inputMetaFim').value = budgetFimGlobal;
       document.getElementById('modalMeta').classList.remove('hidden');
+    }
+    function limparPeriodoMeta() {
+      document.getElementById('inputMetaInicio').value = '';
+      document.getElementById('inputMetaFim').value = '';
     }
     function fecharModalMeta() { document.getElementById('modalMeta').classList.add('hidden'); }
 
@@ -2940,14 +2963,25 @@
 
     function salvarNovaMeta() {
       const val = parseFloat(document.getElementById('inputNovaMeta').value) || 3500;
-      budgetMetaGlobal = val;
+      const inicio = document.getElementById('inputMetaInicio').value;
+      const fim = document.getElementById('inputMetaFim').value;
+      if (!inicio !== !fim) { exibirToast("Informe a data inicial e a data final do período da meta.", "erro"); return; }
+      if (inicio && inicio > fim) { exibirToast("A data final deve ser igual ou posterior à data inicial.", "erro"); return; }
       if (typeof google !== 'undefined' && google.script && google.script.run) {
         google.script.run.withSuccessHandler(function() {
+          budgetMetaGlobal = val;
+          budgetInicioGlobal = inicio;
+          budgetFimGlobal = fim;
           fecharModalMeta();
           carregarDados();
           exibirToast("Meta atualizada com sucesso!", "sucesso");
-        }).setBudgetMeta(val);
-      } else fecharModalMeta();
+        }).withFailureHandler(function(err) {
+          exibirToast((err && err.message) ? err.message : "Não foi possível salvar a meta.", "erro");
+        }).setBudgetMeta(val, inicio, fim);
+      } else {
+        budgetMetaGlobal = val; budgetInicioGlobal = inicio; budgetFimGlobal = fim;
+        fecharModalMeta();
+      }
     }
 
     // Ao entrar no aplicativo, sempre começa no topo (Saldo Consolidado)
@@ -2965,6 +2999,8 @@
             try {
               if (data) {
                 budgetMetaGlobal = Number(data.budgetMeta) || 3500;
+                budgetInicioGlobal = data.budgetInicio || '';
+                budgetFimGlobal = data.budgetFim || '';
                 userPhotoGlobal = data.userPhoto || '';
                 exibirFotoPerfil(userPhotoGlobal);
                 atualizarPerfilRapido();
@@ -3106,6 +3142,21 @@
       });
     }
 
+    // Gasto que conta para a meta: com período definido, soma as despesas de TODOS os lançamentos dentro dele
+    // (independe dos filtros da tela); sem período, usa o total da tela, como antes.
+    function gastoDaMeta(totalDaTela) {
+      if (!budgetInicioGlobal || !budgetFimGlobal) return totalDaTela;
+      return listaTransacoesGlobal.reduce(function(soma, t) {
+        if ((t.type || '').trim().toLowerCase() === 'receita') return soma;
+        const dia = String(t.date || '').slice(0, 10);
+        return (dia >= budgetInicioGlobal && dia <= budgetFimGlobal) ? soma + (Number(t.amount) || 0) : soma;
+      }, 0);
+    }
+    function dataBRMeta(iso) {
+      const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      return m ? m[3] + '/' + m[2] + '/' + m[1] : '';
+    }
+
     function renderizarDados(transacoes) {
       let totalReceitas = 0, totalDespesas = 0, countRec = 0, countDesp = 0;
       let categoriasMap = {};
@@ -3166,11 +3217,19 @@
         badge.innerText = "Negativo";
       }
 
-      const pct = budgetMetaGlobal > 0 ? Math.min(Math.round((totalDespesas / budgetMetaGlobal) * 100), 100) : 0;
-      document.getElementById('textMetaGastos').innerText = `${pct}% (R$ ${totalDespesas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} / R$ ${budgetMetaGlobal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })})`;
+      const gastoMeta = gastoDaMeta(totalDespesas);
+      const pct = budgetMetaGlobal > 0 ? Math.min(Math.round((gastoMeta / budgetMetaGlobal) * 100), 100) : 0;
+      document.getElementById('textMetaGastos').innerText = `${pct}% (R$ ${gastoMeta.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} / R$ ${budgetMetaGlobal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })})`;
+      const periodoMeta = document.getElementById('periodoMetaGastos');
+      if (budgetInicioGlobal && budgetFimGlobal) {
+        periodoMeta.innerText = `Período: ${dataBRMeta(budgetInicioGlobal)} a ${dataBRMeta(budgetFimGlobal)}`;
+        periodoMeta.classList.remove('hidden');
+      } else {
+        periodoMeta.classList.add('hidden');
+      }
       const barMeta = document.getElementById('barMetaGastos');
       barMeta.style.width = `${pct}%`;
-      const estourouMeta = budgetMetaGlobal > 0 && totalDespesas > budgetMetaGlobal;
+      const estourouMeta = budgetMetaGlobal > 0 && gastoMeta > budgetMetaGlobal;
       barMeta.classList.toggle('bg-rose-500', estourouMeta);
       barMeta.classList.toggle('bg-emerald-500', !estourouMeta);
 
