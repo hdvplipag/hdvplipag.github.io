@@ -951,6 +951,12 @@
         <input id="filtroTodos" type="text" inputmode="search" autocomplete="off" placeholder="Buscar produto…" aria-label="Buscar produto">
         <button id="btnLimparFiltroTodos" type="button" aria-label="Limpar busca" style="display:none">✕</button>
       </div>
+      <div class="filtro-produtos" style="margin-top:10px">
+        <svg class="lupa-busca" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#6b7a89" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="filtroLojaTodos" type="text" inputmode="search" autocomplete="off" placeholder="Buscar loja ou apelido…" aria-label="Buscar por loja ou apelido">
+        <button id="btnLimparFiltroLojaTodos" type="button" aria-label="Limpar busca da loja" style="display:none">✕</button>
+      </div>
+      <div id="dicaTodos" class="dica">Digite as três primeiras letras de um produto ou do nome da loja ou apelido para buscar.</div>
       <div id="resumoTodos" class="dica"></div>
     </section>
     <div id="listaTodos"></div>
@@ -3081,7 +3087,13 @@ async function abrirTodosProdutos() {
   carregarTodos(true);
 }
 
+// Há texto em algum dos campos de busca da tela Produtos?
+function temConsultaTodos() {
+  return el("filtroTodos").value.trim().length > 0 || el("filtroLojaTodos").value.trim().length > 0;
+}
+
 function renderizarTodos() {
+  el("dicaTodos").style.display = temConsultaTodos() ? "none" : "";
   const lista = el("listaTodos");
   lista.replaceChildren();
   todos.forEach((p) => lista.appendChild(criarCartaoProduto(p, true)));
@@ -3116,6 +3128,8 @@ async function carregarTodos(reiniciar, limpando) {
   const minha = ++sequenciaTodos;
   const offset = reiniciar ? 0 : proximoOffsetTodos;
   const busca = el("filtroTodos").value.trim();
+  const textoLoja = el("filtroLojaTodos").value.trim();
+  const buscaLoja = textoLoja.length >= 3 ? textoLoja : "";
 
   carregandoTodos = true;
   renderizarTodos();
@@ -3125,6 +3139,7 @@ async function carregarTodos(reiniciar, limpando) {
       acao: "produtos",
       todos: true,
       busca: busca,
+      buscaLoja: buscaLoja,
       offset: offset,
       limite: POR_PAGINA_PRODUTOS
     });
@@ -3162,6 +3177,19 @@ el("filtroTodos").addEventListener("input", () => {
 el("btnLimparFiltroTodos").addEventListener("click", () => {
   el("filtroTodos").value = "";
   el("btnLimparFiltroTodos").style.display = "none";
+  clearTimeout(timerBuscaTodos);
+  carregarTodos(true, true);
+});
+
+el("filtroLojaTodos").addEventListener("input", () => {
+  el("btnLimparFiltroLojaTodos").style.display = el("filtroLojaTodos").value ? "block" : "none";
+  clearTimeout(timerBuscaTodos);
+  timerBuscaTodos = setTimeout(() => carregarTodos(true), 250);
+});
+
+el("btnLimparFiltroLojaTodos").addEventListener("click", () => {
+  el("filtroLojaTodos").value = "";
+  el("btnLimparFiltroLojaTodos").style.display = "none";
   clearTimeout(timerBuscaTodos);
   carregarTodos(true, true);
 });
