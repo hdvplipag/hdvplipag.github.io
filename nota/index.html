@@ -920,7 +920,6 @@
       <div class="topo-produtos">
         <h2>Lista</h2>
         <div class="acoes-topo">
-        <button id="btnCameraLista" class="botao-camera-pequeno" type="button" aria-label="Digitalizar nota" title="Digitalizar"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></button>
         <button id="btnSacola" class="botao-camera-pequeno botao-sacola" type="button" aria-label="Produtos selecionados" title="Produtos selecionados"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8h12l1 13H5z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg><b id="contadorSacola" class="contador-lista" style="display:none"></b></button>
         </div>
       </div>
@@ -2833,15 +2832,21 @@ el("btnOutraCaptura").addEventListener("click", async () => {
    */
   esconderPerguntaOutraCaptura_();
   try { await pararCamera(); } catch (_) {}
-  window.location.reload();
+  reiniciarNaCamera();
 });
 
-// Câmera: volta para a tela de digitalização (reinício limpo). Fica no topo das telas Produtos e Lista
+// Recarrega a página já abrindo a câmera (o app de Notas abre nos produtos; #camera pede a leitura)
+function reiniciarNaCamera() {
+  try { location.hash = "camera"; } catch (_) {}
+  window.location.reload();
+}
+
+// Câmera: volta para a tela de digitalização (reinício limpo). Fica no topo da tela Produtos
 // (e na barra inferior só dentro do PliPag).
-["btnNovaCaptura", "btnCameraTodos", "btnCameraLista"].forEach((id) => {
+["btnNovaCaptura", "btnCameraTodos"].forEach((id) => {
   el(id).addEventListener("click", async () => {
     try { await pararCamera(); } catch (_) {}
-    window.location.reload();
+    reiniciarNaCamera();
   });
 });
 
@@ -3527,7 +3532,28 @@ if (EH_IOS) {
   el("btnLer").textContent = "📷 Capturar";
 }
 
-window.addEventListener("load", () => { if (LICENCA_OK) iniciarCamera(); }, { once: true });
+// Onde o app abre: no PliPag (embutido) direto na câmera; no app de Notas, na listagem de produtos.
+// Os botões de câmera recarregam a página com #camera para abrir a leitura.
+const ABRIR_NA_CAMERA = EMBUTIDO || location.hash === "#camera";
+if (LICENCA_OK && !ABRIR_NA_CAMERA) {
+  // já mostra os produtos, para a tela da câmera não piscar antes
+  el("telaLeitura").style.display = "none";
+  el("telaTodos").style.display = "block";
+  el("btnProdutos").classList.add("ativo");
+}
+
+window.addEventListener("load", () => {
+  if (!LICENCA_OK) return;
+  if (ABRIR_NA_CAMERA) {
+    if (location.hash === "#camera") {
+      // limpa o marcador: um novo carregamento da página volta a abrir nos produtos
+      try { history.replaceState(null, "", location.pathname + location.search); } catch (_) {}
+    }
+    iniciarCamera();
+  } else {
+    abrirTodosProdutos();
+  }
+}, { once: true });
 
 
 /*
