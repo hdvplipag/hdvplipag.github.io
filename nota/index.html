@@ -2080,6 +2080,20 @@ async function lancarLink(link) {
       const aviso = String(dados.aviso);
       const notaDuplicada = /notinha\s+j[aá]\s+foi\s+lan[cç]ada|nota\s+j[aá]\s+foi\s+lan[cç]ada|duplicad/i.test(aviso);
 
+      // A SEFAZ demora a liberar notas recém-emitidas e às vezes responde com uma página sem os dados:
+      // a nota vai para a fila e é tentada de novo sozinha (a cada minuto, ao voltar ao app e ao reconectar).
+      const sefazSemDados = !EMBUTIDO && dados.ok === false && !notaDuplicada &&
+        /n[ãa]o foi poss[ií]vel identificar|nenhum produto foi identificado|p[áa]gina vazia|sefaz recusou|sefaz respondeu com o c[óo]digo|n[ãa]o foi poss[ií]vel acessar a sefaz/i.test(aviso);
+
+      if (sefazSemDados) {
+        await enfileirarNota(valor, aviso);
+        mostrarMensagem(
+          "A SEFAZ ainda não liberou os dados desta nota. Ela ficou na fila e será lançada sozinha em instantes.",
+          "erro"
+        );
+        return;
+      }
+
       mostrarMensagem(
         aviso,
         dados.ok === false || notaDuplicada ? "erro" : "info"
@@ -3749,12 +3763,12 @@ function filaSalvar(item) { return operarFila_("readwrite", (s) => s.put(item));
 function filaRemover(id) { return operarFila_("readwrite", (s) => s.delete(id)); }
 
 // Guarda o link na fila (sem repetir o mesmo link) e mostra o aviso na tela
-async function enfileirarNota(link) {
+async function enfileirarNota(link, motivo) {
   limparMensagem();
   try {
     const atuais = await filaListar();
     if (!atuais.some((i) => i.link === link)) {
-      await operarFila_("readwrite", (s) => s.add({ link: link, criado: Date.now(), tentativas: 0, erro: "" }));
+      await operarFila_("readwrite", (s) => s.add({ link: link, criado: Date.now(), tentativas: 0, erro: motivo || "" }));
     }
     el("linkNota").value = "";
     resumoFila = "";
