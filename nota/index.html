@@ -3735,7 +3735,7 @@ iniciarBaseLocal();
 
 /* FILA DE NOTAS (IndexedDB): QR lidos sem internet ficam guardados e são lançados quando a conexão voltar.
    O servidor recusa nota repetida, então reenviar da fila nunca duplica o lançamento. */
-const MAX_TENTATIVAS_FILA = 10;   // depois disso a nota só é reenviada pelo botão "Lançar agora"
+const MAX_TENTATIVAS_FILA = 5;   // depois disso a nota só é reenviada pelo botão "Lançar agora"
 let processandoFila = false;
 let resumoFila = "";
 let timerResumoFila = null;
