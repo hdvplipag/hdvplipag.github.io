@@ -2077,13 +2077,23 @@ async function lancarLink(link) {
     }
 
     if (dados.aviso) {
-      const aviso = String(dados.aviso);
+      const aviso = semTrechoSefaz_(dados.aviso);
       const notaDuplicada = /notinha\s+j[aá]\s+foi\s+lan[cç]ada|nota\s+j[aá]\s+foi\s+lan[cç]ada|duplicad/i.test(aviso);
 
       // A SEFAZ demora a liberar notas recém-emitidas e às vezes responde com uma página sem os dados:
       // a nota vai para a fila e é tentada de novo sozinha (a cada minuto, ao voltar ao app e ao reconectar).
-      const sefazSemDados = !EMBUTIDO && dados.ok === false && !notaDuplicada &&
+      const semDadosSefaz = dados.ok === false && !notaDuplicada &&
         /n[ãa]o foi poss[ií]vel identificar|nenhum produto foi identificado|p[áa]gina vazia|sefaz recusou|sefaz respondeu com o c[óo]digo|n[ãa]o foi poss[ií]vel acessar a sefaz/i.test(aviso);
+      const sefazSemDados = !EMBUTIDO && semDadosSefaz;
+
+      // Dentro do PliPag nada é guardado na fila: só avisa, de forma curta, para ler o QR Code de novo.
+      if (EMBUTIDO && semDadosSefaz) {
+        mostrarMensagem(
+          "A SEFAZ ainda não liberou os dados desta nota. Aguarde um instante e leia o QR Code novamente.",
+          "erro"
+        );
+        return;
+      }
 
       if (sefazSemDados) {
         await enfileirarNota(valor, aviso);
@@ -3762,13 +3772,18 @@ async function filaListar() {
 function filaSalvar(item) { return operarFila_("readwrite", (s) => s.put(item)); }
 function filaRemover(id) { return operarFila_("readwrite", (s) => s.delete(id)); }
 
+// Tira da mensagem o trecho técnico da página da SEFAZ (útil só no registro do servidor, não para o usuário)
+function semTrechoSefaz_(texto) {
+  return String(texto || "").replace(/\s*\(Trecho recebido da SEFAZ:[\s\S]*?"\)\s*$/i, "").trim();
+}
+
 // Guarda o link na fila (sem repetir o mesmo link) e mostra o aviso na tela
 async function enfileirarNota(link, motivo) {
   limparMensagem();
   try {
     const atuais = await filaListar();
     if (!atuais.some((i) => i.link === link)) {
-      await operarFila_("readwrite", (s) => s.add({ link: link, criado: Date.now(), tentativas: 0, erro: motivo || "" }));
+      await operarFila_("readwrite", (s) => s.add({ link: link, criado: Date.now(), tentativas: 0, erro: semTrechoSefaz_(motivo) }));
     }
     el("linkNota").value = "";
     resumoFila = "";
@@ -3819,7 +3834,7 @@ async function renderizarFila() {
     if (item.erro) {
       const erro = document.createElement("small");
       erro.className = "fila-erro";
-      erro.textContent = item.erro;
+      erro.textContent = semTrechoSefaz_(item.erro);
       info.appendChild(erro);
     }
     const remover = document.createElement("button");
@@ -3887,7 +3902,7 @@ async function processarFila(manual) {
       } else {
         // por exemplo, a nota ainda não está disponível na SEFAZ: tenta de novo mais tarde
         item.tentativas = (item.tentativas || 0) + 1;
-        item.erro = aviso || "Não foi possível lançar a nota.";
+        item.erro = semTrechoSefaz_(aviso) || "Não foi possível lançar a nota.";
         await filaSalvar(item);
         pendentes++;
       }
