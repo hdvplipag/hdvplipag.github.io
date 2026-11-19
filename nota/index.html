@@ -605,6 +605,20 @@
     #apelidoModal { z-index: 65; align-items: center; justify-content: center; background: rgba(15, 30, 45, .55); }
     #apelidoModal p { font-weight: 800; color: #17324d; margin-bottom: 14px; }
     #apelidoModal .modal-caixa { border-top: 6px solid #f5b301; animation: surgirAviso .2s ease-out; }
+    #manualModal { z-index: 66; align-items: flex-start; overflow-y: auto; padding: 14px; }
+    #manualModal .modal-caixa { max-width: 440px; margin: auto; text-align: left; border-top: 6px solid #f5b301; animation: surgirAviso .2s ease-out; }
+    #manualModal h3 { margin-bottom: 4px; }
+    #manualModal p { margin: 0 0 12px; }
+    #manualModal label { display: block; font-size: .85rem; font-weight: 700; color: #526171; margin: 10px 0 4px; }
+    #manualModal input, #manualModal select { width: 100%; min-height: 46px; background: #fff; }
+    #manualModal small { display: block; margin-top: 3px; font-size: .78rem; color: #526171; }
+    .manual-item { display: grid; grid-template-columns: 1fr 58px 86px 36px; gap: 6px; margin-bottom: 6px; align-items: center; }
+    .manual-item input { min-height: 42px; padding: 0 8px; font-size: .95rem; }
+    .manual-item button { min-height: 42px; padding: 0; border-radius: 10px; background: #fdeceb; color: #b3261e; font-weight: 800; }
+    #manualAddItem { width: 100%; min-height: 44px; border-radius: 12px; font-weight: 800; margin: 4px 0 6px; }
+    #manualErro { color: #b3261e; font-weight: 700; font-size: .9rem; margin: 8px 0 10px; display: none; }
+    #manualErro.visivel { display: block; }
+    .fila-manual { margin-top: 6px; min-height: 40px; padding: 0 14px; border-radius: 10px; background: #124f80; color: #fff; font-weight: 800; }
     @keyframes surgirAviso { from { transform: scale(.94); opacity: 0; } to { transform: scale(1); opacity: 1; } }
     .modal-caixa { width: 100%; max-width: 340px; background: #fff; border-radius: 20px; padding: 22px 20px 18px; text-align: center; box-shadow: 0 18px 50px rgba(0,0,0,.3); }
     .modal-icone { width: 56px; height: 56px; margin: 0 auto 12px; border-radius: 50%; background: #fdeceb; display: flex; align-items: center; justify-content: center; }
@@ -983,6 +997,40 @@
     <div class="modal-botoes">
       <button id="apelidoPular" class="modal-cancelar" type="button">Agora não</button>
       <button id="apelidoSalvar" class="modal-confirmar" type="button" style="background:#124f80">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div id="manualModal" class="modal-fundo" role="dialog" aria-modal="true" aria-labelledby="manualTitulo">
+  <div class="modal-caixa">
+    <h3 id="manualTitulo">Lançar compra manualmente</h3>
+    <p id="manualTexto"></p>
+
+    <label for="manualLoja">Loja</label>
+    <input id="manualLoja" type="text" maxlength="120" autocomplete="off">
+    <small id="manualCnpj"></small>
+
+    <label for="manualData">Data da compra</label>
+    <input id="manualData" type="date">
+
+    <label for="manualTotal">Valor total (R$)</label>
+    <input id="manualTotal" type="text" inputmode="decimal" placeholder="0,00" autocomplete="off">
+
+    <label for="manualPagamento">Forma de pagamento</label>
+    <select id="manualPagamento"></select>
+
+    <label for="manualCategoria">Categoria</label>
+    <select id="manualCategoria"></select>
+
+    <label>Itens (opcional)</label>
+    <div id="manualItens"></div>
+    <button id="manualAddItem" class="modal-cancelar" type="button">+ Adicionar item</button>
+    <small id="manualSoma"></small>
+
+    <p id="manualErro" role="alert"></p>
+    <div class="modal-botoes">
+      <button id="manualCancelar" class="modal-cancelar" type="button">Cancelar</button>
+      <button id="manualSalvar" class="modal-confirmar" type="button" style="background:#124f80">Lançar compra</button>
     </div>
   </div>
 </div>
@@ -1410,6 +1458,11 @@ async function enviarMotor(dados) {
   if (dados.busca !== undefined) corpo.busca = dados.busca;
   if (dados.buscaLoja !== undefined) corpo.buscaLoja = dados.buscaLoja;
   if (dados.todos) corpo.todos = true;
+  if (dados.chaveAcesso !== undefined) corpo.chaveAcesso = dados.chaveAcesso;   // lançamento manual
+  if (dados.data !== undefined) corpo.data = dados.data;
+  if (dados.total !== undefined) corpo.total = dados.total;
+  if (dados.pagamento !== undefined) corpo.pagamento = dados.pagamento;
+  if (dados.itens !== undefined) corpo.itens = dados.itens;
 
   let resposta;
 
@@ -1468,12 +1521,12 @@ async function enviarMotor(dados) {
   }
 
   // Nota recém-lançada: grava os produtos na hora no IndexedDB (a pesquisa já os enxerga)
-  if (corpo.acao === "lancar" && resultado && resultado.ok !== false && !resultado.somenteLeitura) {
+  if ((corpo.acao === "lancar" || corpo.acao === "lancarmanual") && resultado && resultado.ok !== false && !resultado.somenteLeitura) {
     incluirNotaNaBaseLocal(resultado);
   }
 
   // Notas lançadas, excluídas ou alteradas: a cópia local precisa ser atualizada
-  if (["lancar", "categoria", "apelido", "excluir"].indexOf(corpo.acao) !== -1 &&
+  if (["lancar", "lancarmanual", "categoria", "apelido", "excluir"].indexOf(corpo.acao) !== -1 &&
       resultado && resultado.ok !== false) {
     marcarBaseDesatualizada();
   }
@@ -2026,6 +2079,251 @@ async function pedirApelidoDaNota(dados) {
 }
 
 
+/* LANÇAMENTO MANUAL (cupom com QR Code no formato novo) */
+const FORMAS_PAGAMENTO = ["", "Dinheiro", "Pix", "Cartão de crédito", "Cartão de débito", "Outro"];
+
+function valorDigitado(texto) {
+  let t = String(texto || "").replace(/\s/g, "").replace(/R\$/gi, "");
+  if (!t) return NaN;
+  if (t.indexOf(",") >= 0) t = t.replace(/\./g, "").replace(",", ".");
+  return Number(t);
+}
+
+// Abre o formulário. Devolve os valores validados ou null se a pessoa cancelar.
+function perguntarCompraManual(base, anterior) {
+  return new Promise((resolver) => {
+    const caixa = el("manualModal");
+    const bruto = (anterior && anterior.bruto) || null;
+    const partes = String(base.anoMes || "").split("-");
+    const ano = Number(partes[0]);
+    const mes = Number(partes[1]);
+    const temMes = ano > 2000 && mes >= 1 && mes <= 12;
+    const mm = String(mes).padStart(2, "0");
+    const ultimoDia = temMes ? new Date(ano, mes, 0).getDate() : 31;
+
+    const temQr = Number(base.totalQr) > 0;
+    el("manualTexto").textContent = temQr
+      ? "Esta nota foi emitida em contingência e a SEFAZ não entrega os dados dela. O total e o dia da emissão vieram do próprio QR Code do cupom: confira" +
+        (base.loja ? "." : " e informe o nome da loja.")
+      : base.loja
+      ? "O QR Code deste cupom não traz os dados da nota. A loja foi reconhecida pelo CNPJ no seu histórico; informe o total e, se quiser, os itens."
+      : "O QR Code deste cupom não traz os dados da nota e esta loja ainda não está no seu histórico. Informe o nome da loja, o total e, se quiser, os itens.";
+    el("manualLoja").value = bruto ? bruto.loja : (base.loja || "");
+    el("manualCnpj").textContent = base.cnpj ? "CNPJ " + base.cnpj + " (da chave de acesso)" : "";
+
+    const campoData = el("manualData");
+    if (temMes) {
+      campoData.min = ano + "-" + mm + "-01";
+      campoData.max = ano + "-" + mm + "-" + String(ultimoDia).padStart(2, "0");
+    } else {
+      campoData.removeAttribute("min");
+      campoData.removeAttribute("max");
+    }
+    let dataInicial = "";
+    if (bruto && bruto.data) {
+      dataInicial = bruto.data;
+    } else if (temMes) {
+      const hoje = new Date();
+      dataInicial = (hoje.getFullYear() === ano && hoje.getMonth() + 1 === mes)
+        ? ano + "-" + mm + "-" + String(hoje.getDate()).padStart(2, "0")
+        : ano + "-" + mm + "-01";
+    }
+    if (!bruto && temMes && /^\d{2}$/.test(String(base.diaQr || ""))) {
+      const dia = Number(base.diaQr);
+      if (dia >= 1 && dia <= ultimoDia) dataInicial = ano + "-" + mm + "-" + String(base.diaQr);
+    }
+    campoData.value = dataInicial;
+    el("manualTotal").value = bruto ? bruto.total : (temQr ? Number(base.totalQr).toFixed(2).replace(".", ",") : "");
+
+    const selPag = el("manualPagamento");
+    selPag.replaceChildren();
+    FORMAS_PAGAMENTO.forEach((f) => {
+      const o = document.createElement("option");
+      o.value = f;
+      o.textContent = f || "Não informar";
+      selPag.appendChild(o);
+    });
+    selPag.value = bruto ? bruto.pagamento : "";
+
+    const selCat = el("manualCategoria");
+    selCat.replaceChildren();
+    const categorias = CATEGORIAS.slice();
+    const catInicial = bruto ? bruto.categoria : (base.categoria || "Outros");
+    if (catInicial && categorias.indexOf(catInicial) === -1) categorias.unshift(catInicial);
+    categorias.forEach((cat) => {
+      const o = document.createElement("option");
+      o.value = cat;
+      o.textContent = cat;
+      selCat.appendChild(o);
+    });
+    selCat.value = catInicial || "Outros";
+
+    const listaItens = el("manualItens");
+    listaItens.replaceChildren();
+
+    function atualizarSoma() {
+      let soma = 0;
+      let qtd = 0;
+      listaItens.querySelectorAll(".manual-item").forEach((linha) => {
+        const v = valorDigitado(linha.querySelector(".mi-valor").value);
+        if (Number.isFinite(v) && v > 0) { soma += v; qtd++; }
+      });
+      el("manualSoma").textContent = qtd ? "Soma dos itens: " + formatarDinheiro(soma) : "";
+    }
+
+    function novaLinha(d, q, v) {
+      const linha = document.createElement("div");
+      linha.className = "manual-item";
+      const desc = document.createElement("input");
+      desc.type = "text"; desc.className = "mi-desc"; desc.placeholder = "Descrição"; desc.maxLength = 160; desc.autocomplete = "off"; desc.value = d || "";
+      const qtd = document.createElement("input");
+      qtd.type = "text"; qtd.className = "mi-qtd"; qtd.placeholder = "Qtd"; qtd.inputMode = "decimal"; qtd.autocomplete = "off"; qtd.value = q || "";
+      const val = document.createElement("input");
+      val.type = "text"; val.className = "mi-valor"; val.placeholder = "Valor"; val.inputMode = "decimal"; val.autocomplete = "off"; val.value = v || "";
+      val.addEventListener("input", atualizarSoma);
+      const rem = document.createElement("button");
+      rem.type = "button"; rem.textContent = "✕"; rem.setAttribute("aria-label", "Remover item");
+      rem.addEventListener("click", () => { linha.remove(); atualizarSoma(); });
+      linha.appendChild(desc); linha.appendChild(qtd); linha.appendChild(val); linha.appendChild(rem);
+      listaItens.appendChild(linha);
+      return linha;
+    }
+
+    if (bruto && bruto.itens && bruto.itens.length) {
+      bruto.itens.forEach((i) => novaLinha(i.d, i.q, i.v));
+    } else {
+      novaLinha("", "", "");
+    }
+    atualizarSoma();
+
+    const erro = el("manualErro");
+    function mostrarErro(texto) {
+      erro.textContent = texto || "";
+      erro.classList.toggle("visivel", !!texto);
+    }
+    mostrarErro(anterior && anterior.erro);
+
+    el("manualAddItem").onclick = () => {
+      const l = novaLinha("", "", "");
+      try { l.querySelector(".mi-desc").focus(); } catch (_) {}
+    };
+
+    function fechar(valor) {
+      caixa.classList.remove("visivel");
+      el("manualSalvar").onclick = null;
+      el("manualCancelar").onclick = null;
+      el("manualAddItem").onclick = null;
+      resolver(valor);
+    }
+
+    el("manualCancelar").onclick = () => fechar(null);
+
+    el("manualSalvar").onclick = () => {
+      const loja = el("manualLoja").value.replace(/\s+/g, " ").trim();
+      const data = campoData.value;
+      const totalTxt = el("manualTotal").value;
+      const total = valorDigitado(totalTxt);
+
+      const brutoAtual = {
+        loja: loja, data: data, total: totalTxt,
+        pagamento: selPag.value, categoria: selCat.value, itens: []
+      };
+      const itens = [];
+      let problema = "";
+
+      listaItens.querySelectorAll(".manual-item").forEach((linha) => {
+        const d = linha.querySelector(".mi-desc").value.replace(/\s+/g, " ").trim();
+        const q = linha.querySelector(".mi-qtd").value.trim();
+        const vTxt = linha.querySelector(".mi-valor").value.trim();
+        if (!d && !q && !vTxt) return;
+        brutoAtual.itens.push({ d: d, q: q, v: vTxt });
+        const v = valorDigitado(vTxt);
+        if (!d) { problema = problema || "Informe a descrição de todos os itens preenchidos."; return; }
+        if (!Number.isFinite(v) || v < 0) { problema = problema || 'Informe o valor do item "' + d + '".'; return; }
+        const qtd = q ? valorDigitado(q) : 1;
+        itens.push({ descricao: d, quantidade: Number.isFinite(qtd) && qtd > 0 ? qtd : 1, total: v });
+      });
+
+      if (!loja) problema = "Informe o nome da loja.";
+      else if (!data) problema = "Informe a data da compra.";
+      else if (!Number.isFinite(total) || total <= 0) problema = "Informe o valor total da compra.";
+
+      if (problema) {
+        mostrarErro(problema);
+        return;
+      }
+
+      fechar({
+        loja: loja, data: data, total: total,
+        pagamento: selPag.value, categoria: selCat.value,
+        itens: itens, bruto: brutoAtual
+      });
+    };
+
+    caixa.classList.add("visivel");
+    caixa.scrollTop = 0;
+    setTimeout(() => {
+      try { el(base.loja ? "manualTotal" : "manualLoja").focus(); } catch (_) {}
+    }, 150);
+  });
+}
+
+// Pede os dados, envia ao servidor e repete o formulário enquanto o servidor recusar.
+// Devolve true quando a nota ficou lançada (ou já estava), false se a pessoa cancelou.
+async function fluxoCompraManual(base) {
+  let valores = null;
+
+  for (;;) {
+    valores = await perguntarCompraManual(base, valores);
+
+    if (!valores) {
+      mostrarMensagem("Lançamento cancelado. Nada foi gravado para esta nota.", "info");
+      return false;
+    }
+
+    mostrarMensagem("Lançando a compra…", "buscando");
+
+    let r;
+    try {
+      r = await enviarMotor({
+        acao: "lancarmanual",
+        chaveAcesso: base.chaveAcesso,
+        loja: valores.loja,
+        data: valores.data,
+        total: valores.total,
+        pagamento: valores.pagamento,
+        categoria: valores.categoria,
+        itens: valores.itens
+      });
+    } catch (erro) {
+      valores.erro = (erro && erro.name === "SemConexao")
+        ? "Sem conexão com a internet. Confira e tente de novo."
+        : ((erro && erro.message) || "Falha ao lançar a nota.");
+      limparMensagem();
+      continue;
+    }
+
+    const aviso = semTrechoSefaz_((r && r.aviso) || "");
+
+    if (r && r.ok !== false) {
+      mostrarMensagem(aviso || "Nota lançada manualmente.", "sucesso");
+      if (r.chaveAcesso) guardarMinhaNota(r.chaveAcesso);
+      renderizarCompra(r);
+      await pedirApelidoDaNota(r);
+      return true;
+    }
+
+    if (/j[aá]\s+foi\s+lan[cç]ada/i.test(aviso)) {
+      mostrarMensagem(aviso, "erro");
+      return true;
+    }
+
+    valores.erro = aviso || "Não foi possível lançar a nota.";
+    limparMensagem();
+  }
+}
+
+
 async function lancarLink(link) {
   const valor = String(link || "").trim();
 
@@ -2073,6 +2371,23 @@ async function lancarLink(link) {
     });
 
     if (!dados) {
+      return;
+    }
+
+    // Cupom no formato novo de QR Code: a SEFAZ-AL não entrega os dados. O app já sabe o CNPJ (pela chave)
+    // e, se a loja já foi comprada antes, o nome dela: pede só o total (e, se quiser, os itens).
+    if (dados.manual === true && dados.ok === false && !dados.jaLancada) {
+      if (EMBUTIDO) {
+        mostrarMensagem(
+          semTrechoSefaz_(dados.aviso).replace(/\s*Informe abaixo[\s\S]*$/, "").trim() + " " +
+            (dados.loja ? "Loja: " + dados.loja + " (CNPJ " + dados.cnpj + "). " : "") +
+            "Lance esta compra manualmente.",
+          "erro"
+        );
+        return;
+      }
+      el("linkNota").value = "";
+      await fluxoCompraManual(dados);
       return;
     }
 
@@ -3837,6 +4152,20 @@ async function renderizarFila() {
       erro.textContent = semTrechoSefaz_(item.erro);
       info.appendChild(erro);
     }
+    if (item.manual) {
+      const botaoManual = document.createElement("button");
+      botaoManual.type = "button";
+      botaoManual.className = "fila-manual";
+      botaoManual.textContent = "Lançar manualmente";
+      botaoManual.addEventListener("click", async () => {
+        const feito = await fluxoCompraManual(item.manual);
+        if (feito) {
+          try { await filaRemover(item.id); } catch (_) {}
+        }
+        renderizarFila();
+      });
+      info.appendChild(botaoManual);
+    }
     const remover = document.createElement("button");
     remover.type = "button";
     remover.setAttribute("aria-label", "Remover da fila");
@@ -3892,7 +4221,18 @@ async function processarFila(manual) {
       const aviso = String((dados && dados.aviso) || "");
       const repetida = /notinha\s+j[aá]\s+foi\s+lan[cç]ada|nota\s+j[aá]\s+foi\s+lan[cç]ada|duplicad/i.test(aviso);
 
-      if (repetida) {
+      if (dados && dados.manual === true && dados.ok === false && !dados.jaLancada) {
+        // formato novo de QR Code: repetir não adianta; fica na fila com o botão "Lançar manualmente"
+        item.manual = {
+          chaveAcesso: dados.chaveAcesso, cnpj: dados.cnpj, anoMes: dados.anoMes,
+          loja: dados.loja || "", categoria: dados.categoria || "", apelido: dados.apelido || "",
+          contingencia: !!dados.contingencia, totalQr: dados.totalQr || null, diaQr: dados.diaQr || ""
+        };
+        item.tentativas = MAX_TENTATIVAS_FILA;
+        item.erro = "Cupom no formato novo de QR Code: a SEFAZ de Alagoas não entrega os dados. Toque em Lançar manualmente.";
+        await filaSalvar(item);
+        pendentes++;
+      } else if (repetida) {
         await filaRemover(item.id);
         repetidas++;
       } else if (dados && dados.ok !== false) {
